@@ -20,11 +20,10 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--text);font-family:var(--font-sans);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased;}
-
 .gold-text{background:linear-gradient(135deg,var(--gold2) 0%,var(--gold3) 50%,var(--gold) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 .serif{font-family:var(--font-serif);}
 
-/* ══════ LOGIN ══════ */
+/* LOGIN */
 #login-screen{display:flex;min-height:100vh;}
 .login-left{flex:1;position:relative;overflow:hidden;background:#060606;display:flex;flex-direction:column;justify-content:space-between;padding:52px;}
 .ll-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(201,168,76,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(201,168,76,0.03) 1px,transparent 1px);background-size:60px 60px;}
@@ -62,7 +61,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-sans);min-hei
 .reg-link a{color:var(--gold2);cursor:pointer;font-weight:600;text-decoration:none;}
 .login-err{display:none;align-items:center;gap:10px;background:rgba(224,85,85,0.06);border:1px solid rgba(224,85,85,0.2);color:#ff8888;padding:14px 16px;border-radius:12px;font-size:13px;margin-bottom:22px;}
 
-/* ══════ ADMIN ══════ */
+/* ADMIN */
 #admin-screen{display:none;min-height:100vh;}
 .adm-nav{height:66px;background:rgba(6,6,6,0.92);backdrop-filter:blur(24px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 36px;position:sticky;top:0;z-index:100;}
 .adm-nav-left{display:flex;align-items:center;gap:14px;}
@@ -82,10 +81,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-sans);min-hei
 .adm-stat{text-align:center;}
 .adm-stat-num{font-family:var(--font-serif);font-size:32px;font-weight:700;}
 .adm-stat-lbl{font-size:11px;color:var(--muted2);letter-spacing:1px;text-transform:uppercase;margin-top:2px;}
-.adm-section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.adm-section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
 .adm-section-title{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted2);}
+.adm-actions-hdr{display:flex;gap:10px;flex-wrap:wrap;}
 .adm-add{display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#060606;border:none;border-radius:12px;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-sans);box-shadow:0 4px 16px rgba(201,168,76,0.25);}
 .adm-add:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(201,168,76,0.35);}
+.adm-add-s{display:flex;align-items:center;gap:8px;background:transparent;color:var(--gold2);border:1px solid var(--border-gold);border-radius:12px;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-sans);position:relative;}
+.adm-add-s:hover{background:var(--gold-dim);}
+.adm-add-s .badge{position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:10px;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;}
 .livrets-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px;}
 .lv-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:border-color 0.25s,transform 0.2s;}
 .lv-card:hover{border-color:var(--border-gold);transform:translateY(-3px);}
@@ -109,7 +112,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-sans);min-hei
 .lv-btn:hover{border-color:var(--border-gold);color:var(--gold2);background:var(--gold-dim);}
 .lv-btn.full{grid-column:span 2;}
 .lv-btn.danger:hover{border-color:rgba(224,85,85,0.3);color:var(--red);background:rgba(224,85,85,0.05);}
-.lv-btn svg{width:14px;height:14px;flex-shrink:0;}
 .new-card{background:transparent;border:2px dashed var(--border);border-radius:var(--radius);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;cursor:pointer;min-height:220px;transition:all 0.25s;}
 .new-card:hover{border-color:rgba(201,168,76,0.3);background:rgba(201,168,76,0.02);}
 .new-card-plus{width:52px;height:52px;border-radius:16px;border:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:center;}
@@ -117,7 +119,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-sans);min-hei
 .new-card-plus svg{width:22px;height:22px;opacity:0.5;}
 .new-card p{font-size:13px;color:var(--muted);font-weight:600;}
 
-/* ══════ EDITOR ══════ */
+/* EDITOR */
 #editor-screen{display:none;min-height:100vh;}
 .ed-nav{height:66px;background:rgba(6,6,6,0.92);backdrop-filter:blur(24px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px;padding:0 36px;position:sticky;top:0;z-index:100;}
 .ed-title{font-family:var(--font-serif);font-size:18px;font-weight:700;flex:1;}
@@ -127,7 +129,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-sans);min-hei
 .tab.active{background:var(--card);color:var(--gold2);box-shadow:0 2px 10px rgba(0,0,0,0.4);}
 .sc{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:28px;margin-bottom:16px;}
 .sc-title{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold2);margin-bottom:22px;display:flex;align-items:center;gap:8px;}
-.sc-title svg{width:14px;height:14px;}
 .fg{margin-bottom:20px;}
 .fl2{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);margin-bottom:9px;display:block;}
 .fi{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:13px 16px;color:var(--text);font-size:14px;outline:none;transition:border-color 0.2s;font-family:var(--font-sans);}
@@ -143,12 +144,12 @@ textarea.fi{resize:vertical;min-height:80px;}
 .btn-d{background:rgba(224,85,85,0.06);border:1px solid rgba(224,85,85,0.15);color:var(--red);border-radius:10px;padding:9px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-sans);}
 .btn-add{width:100%;margin-top:10px;background:transparent;border:1px dashed var(--border);color:var(--muted2);border-radius:10px;padding:11px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-sans);}
 .btn-add:hover{border-color:var(--border-gold);color:var(--gold2);}
+.btn-prefill{display:inline-flex;align-items:center;gap:6px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);color:var(--gold2);border-radius:10px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-sans);margin-bottom:18px;}
+.btn-prefill:hover{background:rgba(201,168,76,0.15);}
 .ed-actions{display:flex;gap:12px;margin-top:8px;}
-.ed-msg{padding:14px 18px;border-radius:12px;font-size:13px;margin-bottom:18px;display:none;}
+.ed-msg{padding:14px 18px;border-radius:12px;font-size:13px;margin-bottom:18px;display:none;word-break:break-word;}
 .ed-msg.ok{background:rgba(82,183,136,0.06);border:1px solid rgba(82,183,136,0.2);color:var(--green);}
 .ed-msg.err{background:rgba(224,85,85,0.06);border:1px solid rgba(224,85,85,0.2);color:var(--red);}
-
-/* Image upload */
 .img-uploader{border:2px dashed var(--border);border-radius:14px;padding:24px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--bg3);}
 .img-uploader:hover{border-color:rgba(201,168,76,0.3);background:rgba(201,168,76,0.03);}
 .img-uploader.has-image{padding:0;border-style:solid;overflow:hidden;}
@@ -159,83 +160,56 @@ textarea.fi{resize:vertical;min-height:80px;}
 .img-uploader-empty small{font-size:10px;color:var(--muted);margin-top:4px;display:block;letter-spacing:0.3px;}
 .img-remove{color:var(--red);background:none;border:none;font-size:11px;cursor:pointer;font-weight:700;letter-spacing:0.5px;}
 
-/* Galerie multi */
-.gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:10px;}
-.gal-item{position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1;border:1px solid var(--border);}
-.gal-item img{width:100%;height:100%;object-fit:cover;}
-.gal-remove{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;background:rgba(224,85,85,0.9);border:none;color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;}
-
-/* QR Code modal */
+/* MODALES */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:1000;align-items:center;justify-content:center;padding:24px;}
 .modal-overlay.show{display:flex;}
-.modal-content{background:var(--card);border:1px solid var(--border-gold);border-radius:24px;padding:32px;max-width:420px;width:100%;text-align:center;}
+.modal-content{background:var(--card);border:1px solid var(--border-gold);border-radius:24px;padding:32px;max-width:420px;width:100%;text-align:center;position:relative;}
+.modal-content.wide{max-width:640px;}
 .modal-title{font-family:var(--font-serif);font-size:22px;font-weight:700;margin-bottom:8px;}
 .modal-sub{font-size:13px;color:var(--muted2);margin-bottom:24px;}
 .qr-wrapper{background:#fff;padding:16px;border-radius:14px;display:inline-block;margin-bottom:20px;}
 .modal-actions{display:flex;gap:10px;margin-top:8px;}
-.modal-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:var(--bg3);color:var(--muted2);cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.modal-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:var(--bg3);color:var(--muted2);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;}
 
-/* ══════ VOYAGEUR ══════ */
+/* VOYAGEUR */
 #voyageur-screen{display:none;min-height:100vh;background:var(--bg);}
-
-.vh{
-  background:#060606;
-  padding:clamp(48px,10vw,80px) clamp(24px,6vw,48px) clamp(36px,7vw,60px);
-  text-align:center;position:relative;overflow:hidden;
-  border-bottom:1px solid rgba(201,168,76,0.12);
-}
+.vh{background:#060606;padding:clamp(48px,10vw,80px) clamp(24px,6vw,48px) clamp(36px,7vw,60px);text-align:center;position:relative;overflow:hidden;border-bottom:1px solid rgba(201,168,76,0.12);}
 .vh-bg{position:absolute;inset:0;background-size:cover;background-position:center;z-index:0;}
-.vh-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(6,6,6,0.6) 0%,rgba(201,168,76,0.18) 50%,rgba(6,6,6,0.75) 100%);}
-.vh-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(201,168,76,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(201,168,76,0.025) 1px,transparent 1px);background-size:48px 48px;z-index:1;}
-.vh-glow{position:absolute;top:-30%;left:50%;transform:translateX(-50%);width:80%;height:120%;background:radial-gradient(ellipse,rgba(201,168,76,0.07) 0%,transparent 65%);pointer-events:none;z-index:1;}
-.vh-badge{position:relative;z-index:2;display:inline-flex;align-items:center;gap:8px;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);padding:6px 16px;border-radius:30px;margin-bottom:24px;font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold2);backdrop-filter:blur(8px);}
+.vh-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,6,6,0.55) 0%,rgba(6,6,6,0.65) 40%,rgba(6,6,6,0.85) 100%);}
+.vh-bg::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 30%,rgba(6,6,6,0.4) 100%);z-index:1;}
+.vh-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(201,168,76,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(201,168,76,0.02) 1px,transparent 1px);background-size:48px 48px;z-index:1;}
+.vh-glow{position:absolute;top:-30%;left:50%;transform:translateX(-50%);width:80%;height:120%;background:radial-gradient(ellipse,rgba(201,168,76,0.05) 0%,transparent 65%);pointer-events:none;z-index:1;}
+.vh-badge{position:relative;z-index:2;display:inline-flex;align-items:center;gap:8px;background:rgba(201,168,76,0.18);border:1px solid rgba(201,168,76,0.4);padding:6px 16px;border-radius:30px;margin-bottom:24px;font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold2);backdrop-filter:blur(8px);}
 .vh-badge-dot{width:5px;height:5px;border-radius:50%;background:var(--gold2);animation:glow 2s ease-in-out infinite;}
 @keyframes glow{0%,100%{box-shadow:0 0 4px var(--gold2);opacity:1;}50%{box-shadow:0 0 12px var(--gold2);opacity:0.7;}}
-.vh h1{position:relative;z-index:2;font-family:var(--font-serif);font-size:clamp(32px,8vw,64px);font-weight:700;letter-spacing:-1.5px;line-height:1.05;margin-bottom:14px;background:linear-gradient(160deg,#ffffff 0%,var(--gold3) 40%,var(--gold) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-shadow:0 4px 30px rgba(0,0,0,0.5);}
-.vh-sub{position:relative;z-index:2;font-size:15px;color:var(--text);line-height:1.7;max-width:360px;margin:0 auto 30px;font-weight:400;text-shadow:0 2px 12px rgba(0,0,0,0.6);}
-.vh-tel{position:relative;z-index:2;display:inline-flex;align-items:center;gap:12px;background:rgba(201,168,76,0.18);border:1px solid rgba(201,168,76,0.4);border-radius:50px;padding:13px 26px;text-decoration:none;color:var(--gold2);font-size:13px;font-weight:600;letter-spacing:0.5px;backdrop-filter:blur(8px);}
-.vh-tel:hover{background:rgba(201,168,76,0.28);}
-.vh-tel-ico{width:18px;height:18px;}
-
-/* Language selector dropdown */
+.vh h1{position:relative;z-index:2;font-family:var(--font-serif);font-size:clamp(32px,8vw,64px);font-weight:700;letter-spacing:-1.5px;line-height:1.05;margin-bottom:14px;color:#fff;text-shadow:0 4px 30px rgba(0,0,0,0.7);}
+.vh-sub{position:relative;z-index:2;font-size:15px;color:#f0ebe0;line-height:1.7;max-width:360px;margin:0 auto 30px;font-weight:400;text-shadow:0 2px 12px rgba(0,0,0,0.8);}
 .lang-dropdown{position:relative;z-index:3;display:inline-block;margin-bottom:18px;}
-.lang-current{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:50px;padding:8px 16px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;backdrop-filter:blur(8px);font-family:var(--font-sans);display:flex;align-items:center;gap:8px;transition:all 0.2s;}
-.lang-current:hover{background:rgba(201,168,76,0.2);border-color:rgba(201,168,76,0.4);}
+.lang-current{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:50px;padding:8px 16px;font-size:12px;font-weight:600;color:#fff;cursor:pointer;backdrop-filter:blur(10px);font-family:var(--font-sans);display:flex;align-items:center;gap:8px;transition:all 0.2s;}
+.lang-current:hover{background:rgba(201,168,76,0.25);border-color:rgba(201,168,76,0.5);}
 .lang-current .lang-flag{font-size:16px;}
-.lang-current .lang-chevron{width:12px;height:12px;opacity:0.7;transition:transform 0.2s;}
+.lang-current .lang-chevron{width:12px;height:12px;opacity:0.8;transition:transform 0.2s;}
 .lang-dropdown.open .lang-chevron{transform:rotate(180deg);}
-.lang-menu{display:none;position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);background:rgba(14,14,14,0.98);backdrop-filter:blur(20px);border:1px solid var(--border-gold);border-radius:14px;padding:6px;min-width:180px;max-height:340px;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,0.5);z-index:50;}
+.lang-menu{display:none;position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);background:rgba(14,14,14,0.98);backdrop-filter:blur(20px);border:1px solid var(--border-gold);border-radius:14px;padding:6px;min-width:200px;max-height:340px;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,0.6);z-index:50;}
 .lang-dropdown.open .lang-menu{display:block;}
 .lang-item{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:10px;cursor:pointer;font-size:13px;color:var(--text);transition:all 0.15s;font-family:var(--font-sans);font-weight:500;}
 .lang-item:hover{background:rgba(201,168,76,0.12);color:var(--gold2);}
 .lang-item.active{background:rgba(201,168,76,0.18);color:var(--gold2);}
 .lang-item .lang-flag{font-size:18px;}
-
 .vs{padding:8px clamp(16px,4vw,28px);max-width:640px;margin:0 auto;}
 .vs-label{font-size:9px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin:24px 0 12px;display:flex;align-items:center;gap:10px;}
 .vs-label::after{content:'';flex:1;height:1px;background:var(--border);}
 .vc{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:clamp(18px,4vw,26px);margin-bottom:12px;position:relative;overflow:hidden;}
 .vc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,168,76,0.15),transparent);}
 .vc-title{font-family:var(--font-serif);font-size:16px;font-weight:700;margin-bottom:16px;background:linear-gradient(90deg,var(--gold2),var(--gold3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;display:flex;align-items:center;gap:10px;}
-.vc-title svg{width:18px;height:18px;flex-shrink:0;}
 .vr{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:14px;gap:12px;}
 .vr:last-child{border-bottom:none;padding-bottom:0;}
 .vr .lb{color:var(--muted2);font-size:12px;font-weight:500;flex-shrink:0;letter-spacing:0.3px;}
 .vr .vl{font-weight:600;color:var(--text);text-align:right;}
 .copy-btn{background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.15);color:var(--gold2);font-size:9px;font-weight:800;padding:6px 12px;border-radius:8px;cursor:pointer;letter-spacing:1px;text-transform:uppercase;font-family:var(--font-sans);}
-.copy-btn:hover{background:rgba(201,168,76,0.15);}
 .wifi-code{font-family:'SF Mono','Fira Code',monospace;font-size:12px;color:var(--gold2);background:rgba(201,168,76,0.07);border:1px solid rgba(201,168,76,0.12);border-radius:8px;padding:5px 10px;}
-
-/* Vidéo + chapitres */
 .video-wrap{position:relative;padding-bottom:56.25%;height:0;background:#000;border-radius:var(--radius) var(--radius) 0 0;overflow:hidden;}
 .video-wrap iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0;}
-.chapitres-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;padding:16px;background:var(--bg3);border-top:1px solid var(--border);}
-.chap-btn{background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.15);color:var(--gold2);border-radius:10px;padding:10px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-sans);text-align:left;transition:all 0.2s;display:flex;flex-direction:column;gap:3px;}
-.chap-btn:hover{background:rgba(201,168,76,0.15);border-color:rgba(201,168,76,0.3);}
-.chap-time{font-family:'SF Mono',monospace;font-size:10px;color:var(--muted2);letter-spacing:0.5px;}
-.chap-title{font-size:12px;color:var(--text);font-weight:600;}
-
-/* Adresses */
 .va{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 18px;margin-bottom:9px;text-decoration:none;color:var(--text);transition:all 0.2s;}
 .va:hover{border-color:rgba(201,168,76,0.2);transform:translateX(4px);}
 .va-left h4{font-family:var(--font-serif);font-size:15px;font-weight:600;}
@@ -245,8 +219,6 @@ textarea.fi{resize:vertical;min-height:80px;}
 .vr2{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13px;color:var(--muted2);align-items:flex-start;}
 .vr2:last-child{border-bottom:none;}
 .vr2-ico{width:28px;height:28px;border-radius:8px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;}
-
-/* Équipements (guide d'utilisation) */
 .eq-card{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:12px;}
 .eq-img{width:100%;height:160px;object-fit:cover;display:block;background:var(--bg3);}
 .eq-body{padding:16px 18px;}
@@ -254,33 +226,22 @@ textarea.fi{resize:vertical;min-height:80px;}
 .eq-ico{font-size:20px;}
 .eq-nom{font-family:var(--font-serif);font-size:16px;font-weight:700;flex:1;}
 .eq-desc{font-size:13px;color:var(--muted2);line-height:1.6;margin-bottom:12px;white-space:pre-line;}
-.eq-vid-btn{display:inline-flex;align-items:center;gap:6px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);color:var(--gold2);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-sans);}
+.eq-vid-btn{display:inline-flex;align-items:center;gap:6px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);color:var(--gold2);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-sans);text-decoration:none;}
 .eq-vid-btn:hover{background:rgba(201,168,76,0.15);}
-
-/* Procédure arrivée */
 .proc-card{background:linear-gradient(135deg,#0a0800 0%,#141000 100%);border:1px solid var(--border-gold);border-radius:var(--radius);padding:24px;margin-bottom:12px;}
 .proc-title{font-family:var(--font-serif);font-size:16px;font-weight:700;color:var(--gold2);margin-bottom:14px;display:flex;align-items:center;gap:10px;}
 .proc-text{font-size:14px;line-height:1.7;color:var(--text);white-space:pre-line;}
-
-/* Galerie */
-.photo-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
-.photo-grid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;cursor:pointer;border:1px solid var(--border);}
-
-/* Urgences */
 .urg-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
 .urg-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;text-align:center;position:relative;overflow:hidden;}
 .urg-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,168,76,0.15),transparent);}
 .urg-num{font-family:var(--font-serif);font-size:32px;font-weight:700;background:linear-gradient(135deg,var(--gold2),var(--gold3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 .urg-lbl{font-size:10px;color:var(--muted2);font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-top:4px;}
-
-/* Contact */
 .voy-contact-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:28px;text-align:center;position:relative;overflow:hidden;}
 .voy-contact-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,#0d0b00 0%,transparent 60%);pointer-events:none;}
 .voy-av{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold2));margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:32px;box-shadow:0 8px 24px rgba(201,168,76,0.3);position:relative;z-index:1;}
 .voy-contact-name{font-family:var(--font-serif);font-size:20px;font-weight:700;margin-bottom:4px;position:relative;z-index:1;}
 .voy-contact-role{font-size:12px;color:var(--muted2);margin-bottom:22px;position:relative;z-index:1;letter-spacing:0.5px;}
 .voy-call-btn{display:flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#060606;border-radius:14px;padding:16px;text-decoration:none;font-weight:800;font-size:15px;font-family:var(--font-sans);margin-bottom:10px;position:relative;z-index:1;box-shadow:0 6px 20px rgba(201,168,76,0.35);}
-.voy-call-btn:hover{transform:translateY(-2px);}
 .voy-call-ico{width:20px;height:20px;}
 .voy-note{font-size:11px;color:var(--muted);margin-top:8px;position:relative;z-index:1;}
 .voy-mail{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--card);border:1px solid var(--border);color:var(--gold2);border-radius:14px;padding:14px;text-decoration:none;font-weight:600;font-size:13px;font-family:var(--font-sans);margin-bottom:12px;}
@@ -289,9 +250,7 @@ textarea.fi{resize:vertical;min-height:80px;}
 .review-stars{font-size:22px;letter-spacing:6px;margin-bottom:12px;}
 .review-title{font-family:var(--font-serif);font-size:18px;font-weight:700;margin-bottom:8px;}
 .review-sub{font-size:13px;color:var(--muted2);margin-bottom:20px;line-height:1.6;}
-.review-btn{width:100%;background:transparent;border:1px solid rgba(201,168,76,0.3);color:var(--gold2);border-radius:12px;padding:14px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-sans);}
-
-/* Nav bottom */
+.review-btn{width:100%;background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;color:#060606;border-radius:12px;padding:14px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-sans);box-shadow:0 4px 16px rgba(201,168,76,0.25);}
 .voy-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(6,6,6,0.95);backdrop-filter:blur(28px);border-top:1px solid rgba(201,168,76,0.08);display:flex;padding:10px 0 clamp(10px,3vh,22px);z-index:100;overflow-x:auto;}
 .voy-nav-btn{flex:1;min-width:60px;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;color:var(--muted);font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:4px 0;font-family:var(--font-sans);}
 .voy-nav-btn .ni{width:22px;height:22px;transition:transform 0.2s;}
@@ -300,16 +259,49 @@ textarea.fi{resize:vertical;min-height:80px;}
 .voy-panel{display:none;padding-bottom:100px;animation:fu 0.22s ease;}
 .voy-panel.active{display:block;}
 @keyframes fu{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-
 .toast{position:fixed;bottom:110px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--text);color:var(--bg);padding:12px 24px;border-radius:30px;font-size:12px;font-weight:800;opacity:0;transition:all 0.25s;pointer-events:none;z-index:999;white-space:nowrap;font-family:var(--font-sans);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 .loading{text-align:center;padding:60px;color:var(--muted);font-size:14px;font-family:var(--font-serif);}
-
-/* Stats modal */
 .stats-modal-content{max-width:520px;}
 .stats-row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);font-size:14px;}
 .stats-row:last-child{border:none;}
 .stats-row b{color:var(--gold2);}
+
+/* REVIEW MODAL */
+.review-stars-input{display:flex;justify-content:center;gap:8px;margin:20px 0 24px;}
+.review-star{font-size:42px;color:#444;cursor:pointer;transition:all 0.2s;line-height:1;}
+.review-star.active,.review-star:hover{color:var(--gold2);transform:scale(1.1);}
+.review-cta-list{display:flex;flex-direction:column;gap:10px;margin-top:20px;}
+.review-cta{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 18px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--font-sans);text-decoration:none;transition:all 0.2s;border:none;}
+.review-cta.primary{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#060606;box-shadow:0 4px 16px rgba(201,168,76,0.3);}
+.review-cta.primary:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(201,168,76,0.4);}
+.review-cta.secondary{background:var(--card);border:1px solid var(--border-gold);color:var(--gold2);}
+.review-cta.secondary:hover{background:var(--gold-dim);}
+.review-cta.tertiary{background:transparent;border:1px solid var(--border);color:var(--muted2);}
+.review-cta.tertiary:hover{border-color:var(--border-gold);color:var(--gold2);}
+.review-form-field{margin-bottom:14px;text-align:left;}
+.review-form-field label{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted2);margin-bottom:6px;display:block;}
+
+/* AVIS NEGATIFS LIST */
+.avis-item{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:12px;text-align:left;}
+.avis-item.lu{opacity:0.6;}
+.avis-item.traite{border-color:rgba(82,183,136,0.3);background:rgba(82,183,136,0.03);}
+.avis-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:10px;flex-wrap:wrap;}
+.avis-stars{color:var(--gold2);font-size:14px;letter-spacing:2px;}
+.avis-date{font-size:11px;color:var(--muted);}
+.avis-contact{font-size:12px;color:var(--muted2);margin-bottom:8px;}
+.avis-contact a{color:var(--gold2);text-decoration:none;}
+.avis-msg{font-size:13px;line-height:1.6;color:var(--text);margin:10px 0;padding:10px;background:var(--bg3);border-radius:8px;white-space:pre-line;}
+.avis-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.avis-mini-btn{background:transparent;border:1px solid var(--border);color:var(--muted2);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-sans);}
+.avis-mini-btn:hover{border-color:var(--border-gold);color:var(--gold2);}
+.avis-mini-btn.danger{color:var(--red);}
+.avis-empty{text-align:center;padding:40px 20px;color:var(--muted);font-style:italic;}
+
+/* VIDEO MODAL */
+.video-modal-content{max-width:900px;width:100%;padding:0;background:#000;border:1px solid var(--border-gold);}
+.video-modal-wrap{position:relative;padding-bottom:56.25%;height:0;}
+.video-modal-wrap iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0;}
 
 @media(max-width:768px){
   #login-screen{flex-direction:column;}
@@ -319,11 +311,17 @@ textarea.fi{resize:vertical;min-height:80px;}
   .adm-hero-stats{justify-content:center;}
   .ai-grid{grid-template-columns:1fr;}
 }
+
+/* HIDE GOOGLE TRANSLATE UI */
+.goog-te-banner-frame,.skiptranslate{display:none!important}
+body{top:0!important}
+.goog-tooltip,.goog-tooltip:hover{display:none!important}
+.goog-text-highlight{background:none!important;box-shadow:none!important}
 </style>
 </head>
 <body>
 
-<!-- ══════ LOGIN ══════ -->
+<!-- LOGIN -->
 <div id="login-screen">
   <div class="login-left">
     <div class="ll-grid"></div>
@@ -341,8 +339,8 @@ textarea.fi{resize:vertical;min-height:80px;}
       <div class="ll-pills">
         <div class="ll-pill"><div class="ll-pill-dot"></div>Multilingue</div>
         <div class="ll-pill"><div class="ll-pill-dot"></div>QR Code</div>
-        <div class="ll-pill"><div class="ll-pill-dot"></div>Vidéo + chapitres</div>
-        <div class="ll-pill"><div class="ll-pill-dot"></div>Statistiques</div>
+        <div class="ll-pill"><div class="ll-pill-dot"></div>Vidéo Vimeo</div>
+        <div class="ll-pill"><div class="ll-pill-dot"></div>Avis intelligents</div>
       </div>
     </div>
     <div class="ll-bottom">© 2026 · Mathemia · Tous droits réservés</div>
@@ -376,7 +374,7 @@ textarea.fi{resize:vertical;min-height:80px;}
   </div>
 </div>
 
-<!-- ══════ ADMIN ══════ -->
+<!-- ADMIN -->
 <div id="admin-screen">
   <nav class="adm-nav">
     <div class="adm-nav-left">
@@ -402,17 +400,22 @@ textarea.fi{resize:vertical;min-height:80px;}
     </div>
     <div class="adm-section-hdr">
       <div class="adm-section-title">Vos logements</div>
-      <button class="adm-add" onclick="openEditor(null)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Nouveau livret
-      </button>
+      <div class="adm-actions-hdr">
+        <button class="adm-add-s" onclick="showAllAvis()">
+          📨 Avis négatifs
+          <span class="badge" id="avis-badge" style="display:none">0</span>
+        </button>
+        <button class="adm-add" onclick="openEditor(null)">
+          + Nouveau livret
+        </button>
+      </div>
     </div>
-    <div id="livrets-loading" class="loading">Chargement de vos livrets…</div>
+    <div id="livrets-loading" class="loading">Chargement…</div>
     <div id="livrets-grid" class="livrets-grid" style="display:none"></div>
   </div>
 </div>
 
-<!-- ══════ EDITOR ══════ -->
+<!-- EDITOR -->
 <div id="editor-screen">
   <nav class="ed-nav">
     <button class="btn-s" style="padding:9px 18px;font-size:13px" onclick="showAdmin()">← Retour</button>
@@ -421,17 +424,16 @@ textarea.fi{resize:vertical;min-height:80px;}
   </nav>
   <div class="ed-body">
     <div id="editor-msg" class="ed-msg"></div>
+    <button class="btn-prefill" onclick="prefillCosyGreen()">✨ Charger l'exemple "Le Cosy Green"</button>
     <div class="tabs">
       <button class="tab active" onclick="switchTab(this,'tg')">Général</button>
       <button class="tab" onclick="switchTab(this,'tv')">Vidéo</button>
       <button class="tab" onclick="switchTab(this,'ti')">Infos</button>
       <button class="tab" onclick="switchTab(this,'teq')">Guide</button>
-      <button class="tab" onclick="switchTab(this,'tph')">Photos</button>
       <button class="tab" onclick="switchTab(this,'ta')">Adresses</button>
       <button class="tab" onclick="switchTab(this,'tc')">Contact</button>
     </div>
 
-    <!-- GÉNÉRAL -->
     <div id="tg">
       <div class="sc">
         <div class="sc-title">Informations générales</div>
@@ -442,32 +444,28 @@ textarea.fi{resize:vertical;min-height:80px;}
           <label class="fl2">Image de fond (page d'accueil)</label>
           <div class="img-uploader" id="upload-fond" onclick="document.getElementById('input-fond').click()">
             <input type="file" id="input-fond" accept="image/*" style="display:none" onchange="uploadImage(this,'fond')">
-            <div class="img-uploader-empty" id="empty-fond">
+            <div class="img-uploader-empty">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
               <p>Cliquez pour ajouter une image</p>
-              <small>JPG, PNG, WebP · Max 200 KO · Compressé automatiquement</small>
+              <small>Format paysage recommandé · Compressé en 16:9 · Max 200 KO</small>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- VIDÉO -->
     <div id="tv" style="display:none">
       <div class="sc">
-        <div class="sc-title">Vidéo de présentation</div>
-        <div class="fg"><label class="fl2">URL Vimeo (format player)</label><input class="fi" id="f-vimeo" placeholder="https://player.vimeo.com/video/123456789"></div>
-        <div class="fg"><label class="fl2">Procédure d'arrivée (affichée sous la vidéo)</label><textarea class="fi" id="f-procedure" placeholder="1. Récupérez les clés dans la boîte à code (code: 1234)&#10;2. L'entrée se trouve à droite du portail&#10;3. Le tableau électrique est dans l'entrée à gauche..." style="min-height:140px"></textarea></div>
-      </div>
-      <div class="sc">
-        <div class="sc-title">Chapitres de la vidéo</div>
-        <p style="font-size:12px;color:var(--muted2);margin-bottom:16px;line-height:1.6">Ajoutez des chapitres avec un timecode (en secondes ou MM:SS). Le voyageur pourra sauter directement à la section qui l'intéresse.</p>
-        <div id="chapitres-list"></div>
-        <button class="btn-add" onclick="addChapitre()">+ Ajouter un chapitre</button>
+        <div class="sc-title">Vidéo de présentation Vimeo</div>
+        <div class="fg">
+          <label class="fl2">Lien Vimeo (avec hash si vidéo privée)</label>
+          <input class="fi" id="f-vimeo" placeholder="https://vimeo.com/123456789/abcdef ou https://player.vimeo.com/video/123456789?h=abc">
+          <small style="display:block;margin-top:8px;color:var(--muted);font-size:11px">💡 Les chapitres configurés directement dans Vimeo seront affichés automatiquement dans le lecteur</small>
+        </div>
+        <div class="fg"><label class="fl2">Procédure d'arrivée (affichée sous la vidéo)</label><textarea class="fi" id="f-procedure" placeholder="1. Récupérez les clés dans la boîte à code (code: 1234)&#10;2. L'entrée se trouve à droite du portail..." style="min-height:140px"></textarea></div>
       </div>
     </div>
 
-    <!-- INFOS -->
     <div id="ti" style="display:none">
       <div class="sc">
         <div class="sc-title">Wifi</div>
@@ -481,33 +479,20 @@ textarea.fi{resize:vertical;min-height:80px;}
         <div class="fg"><label class="fl2">Parking</label><input class="fi" id="f-parking" placeholder="Ex: Gratuit dans la rue"></div>
       </div>
       <div class="sc">
-        <div class="sc-title">Règlement</div>
+        <div class="sc-title">Règlement (une règle par ligne)</div>
         <textarea class="fi" id="f-regles" placeholder="Ne pas fumer à l'intérieur&#10;Pas d'animaux&#10;Pas de soirées" style="min-height:130px"></textarea>
       </div>
     </div>
 
-    <!-- GUIDE / ÉQUIPEMENTS -->
     <div id="teq" style="display:none">
       <div class="sc">
         <div class="sc-title">Guide d'utilisation des équipements</div>
-        <p style="font-size:12px;color:var(--muted2);margin-bottom:16px;line-height:1.6">Ajoutez des équipements (machine à laver, télé, chauffage…) avec photo, description et chapitre vidéo associé.</p>
+        <p style="font-size:12px;color:var(--muted2);margin-bottom:16px;line-height:1.6">Pour chaque équipement : titre, icône, description, photo et un lien vidéo optionnel (YouTube, Vimeo, Loom...).</p>
         <div id="equipements-list"></div>
         <button class="btn-add" onclick="addEquipement()">+ Ajouter un équipement</button>
       </div>
     </div>
 
-    <!-- PHOTOS GALERIE -->
-    <div id="tph" style="display:none">
-      <div class="sc">
-        <div class="sc-title">Galerie photos du logement</div>
-        <p style="font-size:12px;color:var(--muted2);margin-bottom:16px;line-height:1.6">Les voyageurs verront vos photos avant l'arrivée. Max 200 KO par image, jusqu'à 12 photos.</p>
-        <div class="gal-grid" id="galerie-list"></div>
-        <input type="file" id="input-galerie" accept="image/*" style="display:none" onchange="uploadImage(this,'galerie')">
-        <button class="btn-add" onclick="document.getElementById('input-galerie').click()">+ Ajouter une photo</button>
-      </div>
-    </div>
-
-    <!-- ADRESSES -->
     <div id="ta" style="display:none">
       <div class="sc">
         <div class="sc-title">Bonnes adresses</div>
@@ -516,13 +501,19 @@ textarea.fi{resize:vertical;min-height:80px;}
       </div>
     </div>
 
-    <!-- CONTACT -->
     <div id="tc" style="display:none">
       <div class="sc">
         <div class="sc-title">Contact & Conciergerie</div>
         <div class="fg"><label class="fl2">Nom du contact</label><input class="fi" id="f-contact-nom" placeholder="Ex: Camille & Sophie"></div>
         <div class="fg"><label class="fl2">Téléphone</label><input class="fi" id="f-contact-tel" placeholder="Ex: +33744318931"></div>
         <div class="fg"><label class="fl2">Email</label><input class="fi" id="f-contact-email" placeholder="Ex: contact@email.fr"></div>
+      </div>
+      <div class="sc">
+        <div class="sc-title">Liens pour les avis ⭐</div>
+        <p style="font-size:12px;color:var(--muted2);margin-bottom:16px;line-height:1.6">Configurez où rediriger les voyageurs satisfaits. Laissez vide pour masquer le bouton.</p>
+        <div class="fg"><label class="fl2">Lien avis Google</label><input class="fi" id="f-lien-avis-google" placeholder="https://g.page/r/CXXXXXX/review"></div>
+        <div class="fg"><label class="fl2">Lien réservation directe</label><input class="fi" id="f-lien-reservation" placeholder="https://votre-site.com/reserver"></div>
+        <div class="fg"><label class="fl2">Lien tous vos logements</label><input class="fi" id="f-lien-autres" placeholder="https://votre-site.com"></div>
       </div>
     </div>
 
@@ -533,7 +524,7 @@ textarea.fi{resize:vertical;min-height:80px;}
   </div>
 </div>
 
-<!-- ══════ VOYAGEUR ══════ -->
+<!-- VOYAGEUR -->
 <div id="voyageur-screen">
   <div id="voy-loading" class="loading">Chargement du livret…</div>
   <div id="voy-content" style="display:none">
@@ -554,7 +545,6 @@ textarea.fi{resize:vertical;min-height:80px;}
       <p class="vh-sub" id="voy-bienvenue">Bienvenue !</p>
     </div>
 
-    <!-- ACCUEIL -->
     <div id="voy-panel-home" class="voy-panel active">
       <div class="vs">
         <div class="vs-label">Connexion rapide</div>
@@ -569,20 +559,13 @@ textarea.fi{resize:vertical;min-height:80px;}
             </div>
           </div>
         </div>
-
-        <!-- VIDEO + CHAPITRES -->
-        <div class="vc" id="voy-video-card" style="padding:0;overflow:hidden">
-          <div class="video-wrap">
-            <iframe id="voy-iframe" src="" allow="autoplay;fullscreen;picture-in-picture" allowfullscreen></iframe>
-          </div>
+        <div class="vc" id="voy-video-card" style="padding:0;overflow:hidden;display:none">
+          <div class="video-wrap"><iframe id="voy-iframe" src="" allow="autoplay;fullscreen;picture-in-picture" allowfullscreen></iframe></div>
           <div style="padding:14px 18px;border-top:1px solid var(--border)">
             <div style="font-family:var(--font-serif);font-size:15px;font-weight:600;color:var(--gold2)">Présentation du logement</div>
-            <div style="font-size:12px;color:var(--muted2);margin-top:3px">Découvrez votre logement avant d'arriver</div>
+            <div style="font-size:12px;color:var(--muted2);margin-top:3px">Découvrez votre logement en vidéo</div>
           </div>
-          <div id="voy-chapitres" class="chapitres-grid" style="display:none"></div>
         </div>
-
-        <!-- PROCÉDURE D'ARRIVÉE -->
         <div class="proc-card" id="voy-proc-card" style="display:none">
           <div class="proc-title">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
@@ -593,7 +576,6 @@ textarea.fi{resize:vertical;min-height:80px;}
       </div>
     </div>
 
-    <!-- INFOS -->
     <div id="voy-panel-infos" class="voy-panel">
       <div class="vs">
         <div class="vs-label">Séjour</div>
@@ -611,7 +593,6 @@ textarea.fi{resize:vertical;min-height:80px;}
       </div>
     </div>
 
-    <!-- GUIDE -->
     <div id="voy-panel-guide" class="voy-panel">
       <div class="vs">
         <div class="vs-label">Comment ça marche</div>
@@ -619,15 +600,6 @@ textarea.fi{resize:vertical;min-height:80px;}
       </div>
     </div>
 
-    <!-- GALERIE PHOTOS -->
-    <div id="voy-panel-photos" class="voy-panel">
-      <div class="vs">
-        <div class="vs-label">Le logement en images</div>
-        <div class="photo-grid" id="voy-photos"></div>
-      </div>
-    </div>
-
-    <!-- ADRESSES -->
     <div id="voy-panel-adresses" class="voy-panel">
       <div class="vs">
         <div class="vs-label">Nos recommandations</div>
@@ -635,7 +607,6 @@ textarea.fi{resize:vertical;min-height:80px;}
       </div>
     </div>
 
-    <!-- CONTACT -->
     <div id="voy-panel-contact" class="voy-panel">
       <div class="vs">
         <div class="vs-label">Urgences</div>
@@ -656,20 +627,17 @@ textarea.fi{resize:vertical;min-height:80px;}
           </a>
           <div class="voy-note">Uniquement par téléphone · SMS non pris en compte</div>
         </div>
-        <a id="voy-contact-email" class="voy-mail" href="#">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-          Envoyer un email
-        </a>
+        <a id="voy-contact-email" class="voy-mail" href="#"></a>
         <div class="review-card">
           <div class="review-stars">★★★★★</div>
           <div class="review-title serif">Vous avez aimé votre séjour ?</div>
-          <div class="review-sub">Votre avis est précieux et aide d'autres voyageurs à nous choisir.</div>
-          <button class="review-btn">Laisser un avis →</button>
+          <div class="review-sub">Votre avis est précieux et aide d'autres voyageurs.</div>
+          <button class="review-btn" onclick="openReviewModal()">Laisser un avis →</button>
         </div>
       </div>
     </div>
 
-    <nav class="voy-nav" id="voy-nav">
+    <nav class="voy-nav">
       <button class="voy-nav-btn active" onclick="svn(this,'home')">
         <svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
         Accueil
@@ -681,10 +649,6 @@ textarea.fi{resize:vertical;min-height:80px;}
       <button class="voy-nav-btn" onclick="svn(this,'guide')">
         <svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
         Guide
-      </button>
-      <button class="voy-nav-btn" onclick="svn(this,'photos')">
-        <svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-        Photos
       </button>
       <button class="voy-nav-btn" onclick="svn(this,'adresses')">
         <svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -698,9 +662,9 @@ textarea.fi{resize:vertical;min-height:80px;}
   </div>
 </div>
 
-<!-- ══════ MODALES ══════ -->
+<!-- MODALES -->
 <div class="modal-overlay" id="qr-modal">
-  <div class="modal-content" style="position:relative">
+  <div class="modal-content">
     <button class="modal-close" onclick="closeModal('qr-modal')">×</button>
     <div class="modal-title serif gold-text">QR Code du livret</div>
     <div class="modal-sub" id="qr-livret-nom">—</div>
@@ -714,7 +678,7 @@ textarea.fi{resize:vertical;min-height:80px;}
 </div>
 
 <div class="modal-overlay" id="stats-modal">
-  <div class="modal-content stats-modal-content" style="position:relative;text-align:left">
+  <div class="modal-content stats-modal-content" style="text-align:left">
     <button class="modal-close" onclick="closeModal('stats-modal')">×</button>
     <div class="modal-title serif gold-text" style="text-align:center">Statistiques</div>
     <div class="modal-sub" id="stats-livret-nom" style="text-align:center">—</div>
@@ -722,9 +686,65 @@ textarea.fi{resize:vertical;min-height:80px;}
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="modal-overlay" id="review-modal">
+  <div class="modal-content">
+    <button class="modal-close" onclick="closeReviewModal()">×</button>
+    <div id="review-step-1">
+      <div class="modal-title serif gold-text">Votre avis compte</div>
+      <div class="modal-sub">Comment avez-vous trouvé votre séjour ?</div>
+      <div class="review-stars-input" id="review-stars-input">
+        <span class="review-star" data-note="1" onclick="selectReviewStar(1)">★</span>
+        <span class="review-star" data-note="2" onclick="selectReviewStar(2)">★</span>
+        <span class="review-star" data-note="3" onclick="selectReviewStar(3)">★</span>
+        <span class="review-star" data-note="4" onclick="selectReviewStar(4)">★</span>
+        <span class="review-star" data-note="5" onclick="selectReviewStar(5)">★</span>
+      </div>
+    </div>
+    <div id="review-step-positive" style="display:none">
+      <div class="modal-title serif gold-text">Merci ! 🌟</div>
+      <div class="modal-sub">Aidez d'autres voyageurs en partageant votre expérience.</div>
+      <div class="review-cta-list" id="review-positive-ctas"></div>
+    </div>
+    <div id="review-step-negative" style="display:none">
+      <div class="modal-title serif" style="color:var(--gold2)">Nous sommes désolés</div>
+      <div class="modal-sub">Votre retour est précieux pour nous améliorer. Il restera 100% confidentiel.</div>
+      <div class="review-form-field">
+        <label>Votre nom (optionnel)</label>
+        <input class="fi" id="review-nom" placeholder="Jean Dupont">
+      </div>
+      <div class="review-form-field">
+        <label>Email (optionnel, pour vous recontacter)</label>
+        <input class="fi" id="review-email" type="email" placeholder="jean@email.com">
+      </div>
+      <div class="review-form-field">
+        <label>Téléphone (optionnel)</label>
+        <input class="fi" id="review-tel" placeholder="06...">
+      </div>
+      <div class="review-form-field">
+        <label>Que pourrions-nous améliorer ? *</label>
+        <textarea class="fi" id="review-message" placeholder="Partagez votre expérience..." style="min-height:100px"></textarea>
+      </div>
+      <button class="review-cta primary" onclick="submitNegativeReview()">Envoyer mon retour</button>
+    </div>
+    <div id="review-step-thanks" style="display:none">
+      <div style="font-size:48px;margin-bottom:16px">✓</div>
+      <div class="modal-title serif gold-text">Merci !</div>
+      <div class="modal-sub">Votre retour a bien été transmis. Nous vous recontacterons si nécessaire.</div>
+      <button class="review-cta primary" onclick="closeReviewModal()">Fermer</button>
+    </div>
+  </div>
+</div>
 
-<!-- Widget Google Translate : chargé UNIQUEMENT sur la page voyageur publique -->
+<div class="modal-overlay" id="avis-modal">
+  <div class="modal-content wide" style="text-align:left">
+    <button class="modal-close" onclick="closeModal('avis-modal')">×</button>
+    <div class="modal-title serif gold-text" style="text-align:center">Avis négatifs reçus</div>
+    <div class="modal-sub" id="avis-modal-sub" style="text-align:center">—</div>
+    <div id="avis-content" style="max-height:60vh;overflow-y:auto;padding:8px"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
 <div id="google_translate_element" style="display:none"></div>
 
 <script>
@@ -732,24 +752,24 @@ const SB='https://iduognfftslrcresthuu.supabase.co';
 const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlkdW9nbmZmdHNscmNyZXN0aHV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNzk5NTMsImV4cCI6MjA5NDg1NTk1M30.H_4GWP7nELp-OvhTugj7MtkSdwHiPugvoIcLDZsoszA';
 const API=`${SB}/rest/v1`,AUTH=`${SB}/auth/v1`,STORAGE=`${SB}/storage/v1`,BASE=window.location.origin;
 const BUCKET='livret-images';
-const MAX_IMG_SIZE=200*1024; // 200 KO
+const MAX_IMG_SIZE=200*1024;
 
 const LANGS=[
-  {code:'fr',flag:'🇫🇷',name:'FR',fullname:'Français'},
-  {code:'en',flag:'🇬🇧',name:'EN',fullname:'English'},
-  {code:'es',flag:'🇪🇸',name:'ES',fullname:'Español'},
-  {code:'it',flag:'🇮🇹',name:'IT',fullname:'Italiano'},
-  {code:'de',flag:'🇩🇪',name:'DE',fullname:'Deutsch'},
-  {code:'nl',flag:'🇳🇱',name:'NL',fullname:'Nederlands'},
-  {code:'pt',flag:'🇵🇹',name:'PT',fullname:'Português'},
-  {code:'zh-CN',flag:'🇨🇳',name:'ZH',fullname:'中文'},
-  {code:'ja',flag:'🇯🇵',name:'JA',fullname:'日本語'},
-  {code:'ru',flag:'🇷🇺',name:'RU',fullname:'Русский'},
+  {code:'fr',flag:'🇫🇷',name:'Français'},
+  {code:'en',flag:'🇬🇧',name:'English'},
+  {code:'es',flag:'🇪🇸',name:'Español'},
+  {code:'it',flag:'🇮🇹',name:'Italiano'},
+  {code:'de',flag:'🇩🇪',name:'Deutsch'},
+  {code:'nl',flag:'🇳🇱',name:'Nederlands'},
+  {code:'pt',flag:'🇵🇹',name:'Português'},
+  {code:'zh-CN',flag:'🇨🇳',name:'中文'},
+  {code:'ja',flag:'🇯🇵',name:'日本語'},
+  {code:'ru',flag:'🇷🇺',name:'Русский'},
 ];
 
-let cu=null,clid=null,adr=[],equip=[],chap=[],gal=[],imgFond='',currentVimeoPlayer=null,qrInstance=null;
+let cu=null,clid=null,adr=[],equip=[],imgFond='',currentLivretId=null,currentLivretData=null,selectedNote=0,qrInstance=null;
 
-const ss=u=>{localStorage.setItem('lv',JSON.stringify({u,t:Date.now()}));};
+const ss=u=>localStorage.setItem('lv',JSON.stringify({u,t:Date.now()}));
 const ls=()=>{try{const s=JSON.parse(localStorage.getItem('lv'));if(!s)return null;if(Date.now()-s.t>28800000){localStorage.removeItem('lv');return null;}return s.u;}catch{return null;}};
 const cs=()=>localStorage.removeItem('lv');
 const hd=()=>({'Content-Type':'application/json','apikey':KEY,'Authorization':`Bearer ${cu?.access_token||KEY}`});
@@ -763,7 +783,6 @@ window.addEventListener('DOMContentLoaded',()=>{
   else show('login-screen');
 });
 
-// ══════ AUTH ══════
 async function login(){
   const em=document.getElementById('login-email').value,pw=document.getElementById('login-password').value;
   const er=document.getElementById('login-error');er.style.display='none';
@@ -780,9 +799,17 @@ async function register(){
 }
 function logout(){cu=null;cs();show('login-screen');}
 function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen'].forEach(s=>document.getElementById(s).style.display=s===id?'block':'none');}
-function showAdmin(){show('admin-screen');ll();}
+function showAdmin(){show('admin-screen');ll();loadAvisBadge();}
 
-// ══════ LIST LIVRETS ══════
+async function loadAvisBadge(){
+  try{
+    const r=await axios.get(`${API}/avis_negatifs?lu=eq.false&select=id`,{headers:hd()});
+    const badge=document.getElementById('avis-badge');
+    if(r.data.length>0){badge.textContent=r.data.length;badge.style.display='flex';}
+    else{badge.style.display='none';}
+  }catch(e){}
+}
+
 async function ll(){
   document.getElementById('livrets-loading').style.display='block';
   document.getElementById('livrets-grid').style.display='none';
@@ -796,14 +823,11 @@ async function ll(){
     document.getElementById('stat-l').textContent=lr.data.length;
     document.getElementById('stat-a').textContent=ar.data.length;
     document.getElementById('stat-v').textContent=vr.data.length;
-    
-    // Compter les vues par livret
     const viewsByLivret={};
     const allViews=await axios.get(`${API}/consultations?select=livret_id&created_at=gte.${since}`,{headers:hd()}).catch(()=>({data:[]}));
     allViews.data.forEach(v=>viewsByLivret[v.livret_id]=(viewsByLivret[v.livret_id]||0)+1);
-    
     rl(lr.data,viewsByLivret);
-  }catch(e){console.error(e);document.getElementById('livrets-loading').textContent='Erreur de chargement.';}
+  }catch(e){console.error(e);document.getElementById('livrets-loading').textContent='Erreur.';}
 }
 
 function rl(livrets,views={}){
@@ -813,6 +837,7 @@ function rl(livrets,views={}){
     const pub=`${BASE}/livret/${l.slug}`;
     const vc=views[l.id]||0;
     const c=document.createElement('div');c.className='lv-card';
+    const safeNom=l.nom.replace(/'/g,"\\'");
     c.innerHTML=`
       <div class="lv-card-top">
         <div class="lv-card-tag"><div class="lv-card-tag-dot"></div>Actif</div>
@@ -820,21 +845,18 @@ function rl(livrets,views={}){
         <div class="lv-card-slug">/${l.slug}</div>
       </div>
       <div class="lv-card-body">
-        <div class="lv-stats-mini">
-          <div class="lv-stat-mini">👁 <b>${vc}</b> vues / 30j</div>
-        </div>
+        <div class="lv-stats-mini"><div class="lv-stat-mini">👁 <b>${vc}</b> vues / 30j</div></div>
         <div class="lv-pub" onclick="cpu('${pub}')">
           <svg class="lv-pub-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/></svg>
-          <span class="lv-pub-url">${pub}</span>
-          <span class="lv-pub-copy">Copier</span>
+          <span class="lv-pub-url">${pub}</span><span class="lv-pub-copy">Copier</span>
         </div>
         <div class="lv-actions">
           <button class="lv-btn" onclick="openEditor('${l.id}')">✏️ Modifier</button>
           <button class="lv-btn" onclick="lv('${l.id}')">👁 Voir</button>
-          <button class="lv-btn" onclick="showQR('${l.id}','${l.nom.replace(/'/g,"\\'")}','${pub}')">📱 QR Code</button>
-          <button class="lv-btn" onclick="showStats('${l.id}','${l.nom.replace(/'/g,"\\'")}')">📊 Stats</button>
-          <button class="lv-btn full" onclick="dup('${l.id}','${l.nom.replace(/'/g,"\\'")}')">📋 Dupliquer</button>
-          <button class="lv-btn danger full" onclick="del('${l.id}','${l.nom.replace(/'/g,"\\'")}')">🗑 Supprimer</button>
+          <button class="lv-btn" onclick="showQR('${l.id}','${safeNom}','${pub}')">📱 QR Code</button>
+          <button class="lv-btn" onclick="showStats('${l.id}','${safeNom}')">📊 Stats</button>
+          <button class="lv-btn full" onclick="dup('${l.id}','${safeNom}')">📋 Dupliquer</button>
+          <button class="lv-btn danger full" onclick="del('${l.id}','${safeNom}')">🗑 Supprimer</button>
         </div>
       </div>`;
     g.appendChild(c);
@@ -846,7 +868,6 @@ function rl(livrets,views={}){
 
 function cpu(u){navigator.clipboard.writeText(u).then(()=>toast('🔗 Lien copié !'));}
 
-// ══════ QR CODE ══════
 function showQR(id,nom,url){
   document.getElementById('qr-livret-nom').textContent=nom;
   document.getElementById('qr-url').textContent=url;
@@ -861,11 +882,10 @@ function downloadQR(){
   const src=img.src||img.toDataURL('image/png');
   const a=document.createElement('a');
   a.href=src;
-  a.download=`qr-livret-${document.getElementById('qr-livret-nom').textContent.replace(/\s+/g,'-')}.png`;
+  a.download=`qr-${document.getElementById('qr-livret-nom').textContent.replace(/\s+/g,'-')}.png`;
   a.click();
 }
 
-// ══════ STATS ══════
 async function showStats(id,nom){
   document.getElementById('stats-livret-nom').textContent=nom;
   document.getElementById('stats-content').innerHTML='<div class="loading">Chargement…</div>';
@@ -877,44 +897,36 @@ async function showStats(id,nom){
     const total=data.length;
     const last7=data.filter(d=>new Date(d.created_at)>new Date(Date.now()-7*86400000)).length;
     const today=data.filter(d=>new Date(d.created_at).toDateString()===new Date().toDateString()).length;
-    
     const byPage={};data.forEach(d=>byPage[d.page||'home']=(byPage[d.page||'home']||0)+1);
     const byLang={};data.forEach(d=>byLang[d.langue||'fr']=(byLang[d.langue||'fr']||0)+1);
-    
-    let h=`
-      <div class="stats-row"><span>📊 Total 30 jours</span><b>${total}</b></div>
+    let h=`<div class="stats-row"><span>📊 Total 30 jours</span><b>${total}</b></div>
       <div class="stats-row"><span>📅 7 derniers jours</span><b>${last7}</b></div>
       <div class="stats-row"><span>🕐 Aujourd'hui</span><b>${today}</b></div>
       <div style="margin:18px 0 8px;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted2)">Pages visitées</div>`;
-    Object.entries(byPage).sort((a,b)=>b[1]-a[1]).forEach(([k,v])=>{
-      h+=`<div class="stats-row"><span>${k}</span><b>${v}</b></div>`;
-    });
+    Object.entries(byPage).sort((a,b)=>b[1]-a[1]).forEach(([k,v])=>h+=`<div class="stats-row"><span>${k}</span><b>${v}</b></div>`);
     h+=`<div style="margin:18px 0 8px;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted2)">Langues</div>`;
     Object.entries(byLang).sort((a,b)=>b[1]-a[1]).forEach(([k,v])=>{
       const ll=LANGS.find(l=>l.code===k);
       h+=`<div class="stats-row"><span>${ll?ll.flag+' '+ll.name:k}</span><b>${v}</b></div>`;
     });
     document.getElementById('stats-content').innerHTML=h;
-  }catch(e){document.getElementById('stats-content').innerHTML='<div class="loading">Erreur de chargement.</div>';}
+  }catch(e){document.getElementById('stats-content').innerHTML='<div class="loading">Erreur.</div>';}
 }
 
-// ══════ DUPLIQUER / SUPPRIMER ══════
 async function dup(id,nom){
   const nn=prompt(`Nom du nouveau livret :`,`${nom} - Copie`);if(!nn)return;
   const ns=nn.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
   try{
-    const [lr,ar,er,cr]=await Promise.all([
+    const [lr,ar,er]=await Promise.all([
       axios.get(`${API}/livrets?id=eq.${id}&select=*`,{headers:hd()}),
       axios.get(`${API}/adresses?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}),
-      axios.get(`${API}/equipements?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]})),
-      axios.get(`${API}/chapitres_video?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]}))
+      axios.get(`${API}/equipements?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]}))
     ]);
     const l={...lr.data[0],nom:nn,slug:ns};delete l.id;delete l.created_at;
     const nr=await axios.post(`${API}/livrets`,l,{headers:{...hd(),'Prefer':'return=representation'}});
     const nid=nr.data[0].id;
-    if(ar.data.length){const na=ar.data.map(a=>{const x={...a};delete x.id;x.livret_id=nid;return x;});await axios.post(`${API}/adresses`,na,{headers:{...hd(),'Prefer':'return=minimal'}});}
-    if(er.data.length){const ne=er.data.map(e=>{const x={...e};delete x.id;x.livret_id=nid;return x;});await axios.post(`${API}/equipements`,ne,{headers:{...hd(),'Prefer':'return=minimal'}});}
-    if(cr.data.length){const nc=cr.data.map(c=>{const x={...c};delete x.id;x.livret_id=nid;return x;});await axios.post(`${API}/chapitres_video`,nc,{headers:{...hd(),'Prefer':'return=minimal'}});}
+    if(ar.data.length){const na=ar.data.map(a=>{const x=cleanRow(a);x.livret_id=nid;return x;});await axios.post(`${API}/adresses`,na,{headers:{...hd(),'Prefer':'return=minimal'}});}
+    if(er.data.length){const ne=er.data.map(e=>{const x=cleanRow(e);x.livret_id=nid;return x;});await axios.post(`${API}/equipements`,ne,{headers:{...hd(),'Prefer':'return=minimal'}});}
     toast('📋 Livret dupliqué !');ll();
   }catch(e){console.error(e);alert('Erreur. Le slug existe peut-être déjà.');}
 }
@@ -925,100 +937,125 @@ async function del(id,nom){
   ll();
 }
 
-// ══════ EDITOR ══════
 async function openEditor(id){
-  clid=id;adr=[];equip=[];chap=[];gal=[];imgFond='';
-  ['f-nom','f-slug','f-bienvenue','f-vimeo','f-procedure','f-wifi-nom','f-wifi-mdp','f-checkin','f-checkout','f-parking','f-regles','f-contact-nom','f-contact-tel','f-contact-email'].forEach(i=>document.getElementById(i).value='');
+  clid=id;adr=[];equip=[];imgFond='';
+  ['f-nom','f-slug','f-bienvenue','f-vimeo','f-procedure','f-wifi-nom','f-wifi-mdp','f-checkin','f-checkout','f-parking','f-regles','f-contact-nom','f-contact-tel','f-contact-email','f-lien-avis-google','f-lien-reservation','f-lien-autres'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
   switchTab(document.querySelector('.tab'),'tg');
   resetFondPreview();
   if(id){
     document.getElementById('editor-title').textContent='Modifier le livret';
-    const [lr,ar,er,cr]=await Promise.all([
+    const [lr,ar,er]=await Promise.all([
       axios.get(`${API}/livrets?id=eq.${id}&select=*`,{headers:hd()}),
       axios.get(`${API}/adresses?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}),
-      axios.get(`${API}/equipements?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]})),
-      axios.get(`${API}/chapitres_video?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]}))
+      axios.get(`${API}/equipements?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]}))
     ]);
     const l=lr.data[0];
-    document.getElementById('f-nom').value=l.nom||'';document.getElementById('f-slug').value=l.slug||'';
-    document.getElementById('f-bienvenue').value=l.bienvenue||'';document.getElementById('f-vimeo').value=l.vimeo_url||'';
+    document.getElementById('f-nom').value=l.nom||'';
+    document.getElementById('f-slug').value=l.slug||'';
+    document.getElementById('f-bienvenue').value=l.bienvenue||'';
+    document.getElementById('f-vimeo').value=l.vimeo_url||'';
     document.getElementById('f-procedure').value=l.procedure_arrivee||'';
-    document.getElementById('f-wifi-nom').value=l.wifi_nom||'';document.getElementById('f-wifi-mdp').value=l.wifi_mdp||'';
-    document.getElementById('f-checkin').value=l.checkin||'';document.getElementById('f-checkout').value=l.checkout||'';
-    document.getElementById('f-parking').value=l.parking||'';document.getElementById('f-regles').value=(l.regles||[]).join('\n');
-    document.getElementById('f-contact-nom').value=l.contact_nom||'';document.getElementById('f-contact-tel').value=l.contact_tel||'';document.getElementById('f-contact-email').value=l.contact_email||'';
+    document.getElementById('f-wifi-nom').value=l.wifi_nom||'';
+    document.getElementById('f-wifi-mdp').value=l.wifi_mdp||'';
+    document.getElementById('f-checkin').value=l.checkin||'';
+    document.getElementById('f-checkout').value=l.checkout||'';
+    document.getElementById('f-parking').value=l.parking||'';
+    document.getElementById('f-regles').value=(l.regles||[]).join('\n');
+    document.getElementById('f-contact-nom').value=l.contact_nom||'';
+    document.getElementById('f-contact-tel').value=l.contact_tel||'';
+    document.getElementById('f-contact-email').value=l.contact_email||'';
+    document.getElementById('f-lien-avis-google').value=l.lien_avis_google||'';
+    document.getElementById('f-lien-reservation').value=l.lien_reservation_directe||'';
+    document.getElementById('f-lien-autres').value=l.lien_autres_logements||'';
     imgFond=l.image_fond||'';
     if(imgFond)showFondPreview(imgFond);
-    gal=l.photos_galerie||[];
     adr=ar.data;
     equip=er.data;
-    chap=cr.data;
   }else{document.getElementById('editor-title').textContent='Nouveau livret';}
-  ra();re();rch();rg();show('editor-screen');
+  ra();re();show('editor-screen');
 }
 
-// ══════ UPLOAD IMAGE ══════
+function prefillCosyGreen(){
+  if(!confirm('Cela va remplacer le contenu actuel par l\'exemple "Le Cosy Green". Continuer ?'))return;
+  document.getElementById('f-nom').value='Le Cosy Green';
+  document.getElementById('f-slug').value='cosy-green';
+  document.getElementById('f-bienvenue').value='Bonjour et bienvenue à Nevers ! Vous trouverez toutes les informations d\'arrivée et le livret d\'accueil en vidéo ci-après. Vous pouvez nous contacter par téléphone en cas d\'urgence.';
+  document.getElementById('f-vimeo').value='https://player.vimeo.com/video/1150383065?h=33843a3c0a';
+  document.getElementById('f-procedure').value='1. Récupérez les clés dans la boîte à code à droite de l\'entrée\n   Code communiqué 24h avant votre arrivée\n\n2. Entrez dans le logement par la porte principale\n\n3. Le tableau électrique se trouve dans l\'entrée à gauche\n   Tous les disjoncteurs sont déjà activés\n\n4. Le wifi se connecte automatiquement (voir onglet "Infos")\n\n5. Profitez de votre séjour à Nevers !';
+  document.getElementById('f-wifi-nom').value='SFR_E04F';
+  document.getElementById('f-wifi-mdp').value='ksmf34kxiswzpqlsjps1';
+  document.getElementById('f-checkin').value='À partir de 16h';
+  document.getElementById('f-checkout').value='Avant 11h';
+  document.getElementById('f-parking').value='Stationnement possible dans la rue';
+  document.getElementById('f-regles').value='Ne pas fumer à l\'intérieur\nPas d\'animaux\nPas de soirées\nPoubelles à mettre dans les conteneurs à l\'entrée : jaune (carton) noir (ordures ménagères)';
+  document.getElementById('f-contact-nom').value='Camille & Sophie';
+  document.getElementById('f-contact-tel').value='+33744318931';
+  document.getElementById('f-contact-email').value='nevers@primoconciergerie.fr';
+  adr=[
+    {nom:'Le Bengy',categorie:'Restaurant',description:'Restaurant semi-gastronomique',url:'https://www.le-bengy-restaurant.com',ordre:0},
+    {nom:'Café Vélo',categorie:'Restaurant',description:'Caffé & British Restaurant',url:'https://www.cafevelonevers.fr',ordre:1},
+    {nom:'O Wok 58',categorie:'Restaurant',description:'Restaurant asiatique, chinois, vietnamien',url:'https://o-wok58.fr',ordre:2},
+    {nom:'L\'Envie',categorie:'Restaurant',description:'Restaurant / Pizzeria',url:'https://www.tripadvisor.fr/Restaurant_Review-g196542-d3237793-Reviews-Restaurant_L_envie-Nevers_Nievre_Bourgogne_Franche_Comte.html',ordre:3},
+    {nom:'La Simplicité',categorie:'Restaurant',description:'Restaurant',url:'https://www.tripadvisor.fr/Restaurant_Review-g196542-d3721591-Reviews-La_Simplicite-Nevers_Nievre_Bourgogne_Franche_Comte.html',ordre:4},
+    {nom:'La Fontaine Cavalier',categorie:'Restaurant',description:'Restaurant semi-gastronomique',url:'https://www.fontaine-cavalier.com',ordre:5},
+    {nom:'La Gabare',categorie:'Restaurant',description:'Restaurant traditionnel',url:'https://www.restaurant-challuy.fr/restaurant-traditionnel',ordre:6},
+    {nom:'Couleur Café',categorie:'Café',description:'Pâtisseries et brunchs',url:'https://www.facebook.com/Couleur.Cafe.Nevers',ordre:7},
+    {nom:'Une Note de Vin',categorie:'Cave',description:'Dégustation de vins et planches apéro',url:'https://laboutique-unenotedevin.com',ordre:8},
+    {nom:'Les Nougatines de Nevers',categorie:'Spécialité',description:'Spécialité locale',url:'https://www.nougatines-nevers.fr',ordre:9},
+    {nom:'Faïencerie Georges',categorie:'Boutique',description:'Boutique pour faire les petits cadeaux',url:'https://www.faienceriegeorges.com',ordre:10},
+    {nom:'Parc floral d\'Apremont-sur-Allier',categorie:'À visiter',description:'Pour vous promener',url:'http://www.apremont-sur-allier.com/fr/parc-floral/',ordre:11}
+  ];
+  equip=[
+    {icone:'📺',nom:'Télévision',description:'1. Allumez avec la télécommande Samsung\n2. Accès à Netflix, Prime Video et YouTube\n3. Connectez-vous avec vos propres identifiants\n4. Pour le son : utilisez la télécommande de la barre de son',video_url:'',ordre:0},
+    {icone:'🧺',nom:'Machine à laver',description:'1. Ouvrez le hublot et chargez le linge\n2. Lessive dans le bac de gauche (fournie)\n3. Programme recommandé : Coton 40°C - 1h30\n4. Appuyez sur "Start"\n5. À la fin, n\'oubliez pas de vider le filtre',video_url:'',ordre:1},
+    {icone:'🔥',nom:'Chauffage',description:'1. Thermostat dans le couloir\n2. Tournez la molette pour régler la température (recommandé : 19-20°C)\n3. Chaque radiateur a son propre robinet thermostatique\n4. Merci de baisser le chauffage en quittant le logement',video_url:'',ordre:2},
+    {icone:'☕',nom:'Cafetière & bouilloire',description:'1. Nespresso : capsules fournies dans le tiroir de droite\n2. Bouilloire : versez l\'eau, appuyez sur le bouton\n3. Thés et infusions dans la boîte en bois sur le plan de travail',video_url:'',ordre:3}
+  ];
+  ra();re();
+  toast('✨ Exemple Cosy Green chargé !');
+}
+
 async function uploadImage(input,type){
   const file=input.files[0];if(!file)return;
   if(!cu){alert('Connectez-vous d\'abord.');return;}
-  
   try{
-    // Compression côté client si > 200KO
     let blob=file;
-    if(file.size>MAX_IMG_SIZE){
-      toast('🔄 Compression de l\'image…');
-      blob=await compressImage(file);
-      if(blob.size>MAX_IMG_SIZE){
-        alert(`Image trop lourde même après compression (${Math.round(blob.size/1024)} KO). Choisissez une image plus petite.`);
-        input.value='';
-        return;
-      }
+    const ratio=type==='fond'?{w:1600,h:900}:{w:800,h:600};
+    blob=await compressImage(file,ratio);
+    if(blob.size>MAX_IMG_SIZE){
+      alert(`Image trop lourde même après compression (${Math.round(blob.size/1024)} KO).`);
+      input.value='';return;
     }
-    
-    const ext=blob.type==='image/webp'?'webp':(file.name.split('.').pop()||'jpg');
-    const fname=`${cu.user.id}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+    const fname=`${cu.user.id}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.webp`;
     const url=`${STORAGE}/object/${BUCKET}/${fname}`;
-    
-    await axios.post(url,blob,{headers:{...hdf(),'Content-Type':blob.type,'x-upsert':'true'}});
+    await axios.post(url,blob,{headers:{...hdf(),'Content-Type':'image/webp','x-upsert':'true'}});
     const publicUrl=`${STORAGE}/object/public/${BUCKET}/${fname}`;
-    
-    if(type==='fond'){
-      imgFond=publicUrl;
-      showFondPreview(publicUrl);
-      toast('✓ Image de fond ajoutée');
-    }else if(type==='galerie'){
-      if(gal.length>=12){alert('Maximum 12 photos.');return;}
-      gal.push(publicUrl);
-      rg();
-      toast('✓ Photo ajoutée');
-    }else if(type.startsWith('equip-')){
+    if(type==='fond'){imgFond=publicUrl;showFondPreview(publicUrl);toast('✓ Image ajoutée');}
+    else if(type.startsWith('equip-')){
       const idx=parseInt(type.split('-')[1]);
-      equip[idx].image_url=publicUrl;
-      re();
-      toast('✓ Image ajoutée');
+      equip[idx].image_url=publicUrl;re();toast('✓ Photo ajoutée');
     }
     input.value='';
-  }catch(e){console.error(e);alert('Erreur lors de l\'upload. Vérifiez que le bucket "livret-images" existe et est public.');}
+  }catch(e){console.error(e);alert('Erreur upload.');}
 }
 
-function compressImage(file){
+function compressImage(file,target){
   return new Promise((resolve,reject)=>{
     const img=new Image();
     img.onload=()=>{
       const canvas=document.createElement('canvas');
-      let w=img.width,h=img.height;
-      const MAX=1600;
-      if(w>MAX||h>MAX){
-        if(w>h){h=h*(MAX/w);w=MAX;}else{w=w*(MAX/h);h=MAX;}
-      }
-      canvas.width=w;canvas.height=h;
+      const tw=target.w,th=target.h,tr=tw/th;
+      const sr=img.width/img.height;
+      let sx=0,sy=0,sw=img.width,sh=img.height;
+      if(sr>tr){sw=img.height*tr;sx=(img.width-sw)/2;}
+      else if(sr<tr){sh=img.width/tr;sy=(img.height-sh)/2;}
+      canvas.width=tw;canvas.height=th;
       const ctx=canvas.getContext('2d');
-      ctx.drawImage(img,0,0,w,h);
-      // Essayer plusieurs qualités jusqu'à passer sous 200 KO
+      ctx.drawImage(img,sx,sy,sw,sh,0,0,tw,th);
       let q=0.85;
       const tryQ=()=>{
         canvas.toBlob(b=>{
-          if(b.size<=MAX_IMG_SIZE||q<=0.4){resolve(b);}
+          if(b.size<=MAX_IMG_SIZE||q<=0.4)resolve(b);
           else{q-=0.1;tryQ();}
         },'image/webp',q);
       };
@@ -1032,98 +1069,68 @@ function compressImage(file){
 function showFondPreview(url){
   const el=document.getElementById('upload-fond');
   el.classList.add('has-image');
-  el.innerHTML=`
-    <img src="${url}" class="img-uploader-preview">
-    <div class="img-uploader-info">
-      <span>✓ Image active</span>
-      <button class="img-remove" onclick="event.stopPropagation();removeFond()">Supprimer</button>
-    </div>
-    <input type="file" id="input-fond" accept="image/*" style="display:none" onchange="uploadImage(this,'fond')">`;
+  el.innerHTML=`<img src="${url}" class="img-uploader-preview"><div class="img-uploader-info"><span>✓ Image active</span><button class="img-remove" onclick="event.stopPropagation();removeFond()">Supprimer</button></div><input type="file" id="input-fond" accept="image/*" style="display:none" onchange="uploadImage(this,'fond')">`;
   el.onclick=()=>document.getElementById('input-fond').click();
 }
 function resetFondPreview(){
   const el=document.getElementById('upload-fond');
   el.classList.remove('has-image');
-  el.innerHTML=`
-    <input type="file" id="input-fond" accept="image/*" style="display:none" onchange="uploadImage(this,'fond')">
-    <div class="img-uploader-empty" id="empty-fond">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-      <p>Cliquez pour ajouter une image</p>
-      <small>JPG, PNG, WebP · Max 200 KO · Compressé automatiquement</small>
-    </div>`;
+  el.innerHTML=`<input type="file" id="input-fond" accept="image/*" style="display:none" onchange="uploadImage(this,'fond')"><div class="img-uploader-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><p>Cliquez pour ajouter une image</p><small>Format paysage recommandé · Compressé en 16:9 · Max 200 KO</small></div>`;
   el.onclick=()=>document.getElementById('input-fond').click();
 }
 function removeFond(){imgFond='';resetFondPreview();}
 
-// ══════ ADRESSES ══════
 function addAdresse(){adr.push({nom:'',description:'',url:'',categorie:'Recommandation',ordre:adr.length});ra();}
 function removeAdresse(i){adr.splice(i,1);ra();}
 function ra(){
   const list=document.getElementById('adresses-list');list.innerHTML='';
   adr.forEach((a,i)=>{
     const d=document.createElement('div');d.className='ai';
-    d.innerHTML=`<div class="ai-grid"><div class="fg" style="margin-bottom:0"><label class="fl2">Nom</label><input class="fi" value="${a.nom||''}" onchange="adr[${i}].nom=this.value" placeholder="Ex: Le Bengy"></div><div class="fg" style="margin-bottom:0"><label class="fl2">Catégorie</label><input class="fi" value="${a.categorie||''}" onchange="adr[${i}].categorie=this.value" placeholder="Restaurant"></div></div><div class="fg" style="margin:10px 0 0"><label class="fl2">Description</label><input class="fi" value="${a.description||''}" onchange="adr[${i}].description=this.value" placeholder="Ex: Semi-gastronomique"></div><div class="fg" style="margin:10px 0"><label class="fl2">Lien</label><input class="fi" value="${a.url||''}" onchange="adr[${i}].url=this.value" placeholder="https://..."></div><button class="btn-d" onclick="removeAdresse(${i})">Supprimer</button>`;
+    d.innerHTML=`<div class="ai-grid"><div class="fg" style="margin-bottom:0"><label class="fl2">Nom</label><input class="fi" value="${(a.nom||'').replace(/"/g,'&quot;')}" onchange="adr[${i}].nom=this.value" placeholder="Le Bengy"></div><div class="fg" style="margin-bottom:0"><label class="fl2">Catégorie</label><input class="fi" value="${(a.categorie||'').replace(/"/g,'&quot;')}" onchange="adr[${i}].categorie=this.value" placeholder="Restaurant"></div></div><div class="fg" style="margin:10px 0 0"><label class="fl2">Description</label><input class="fi" value="${(a.description||'').replace(/"/g,'&quot;')}" onchange="adr[${i}].description=this.value" placeholder="Semi-gastronomique"></div><div class="fg" style="margin:10px 0"><label class="fl2">Lien</label><input class="fi" value="${(a.url||'').replace(/"/g,'&quot;')}" onchange="adr[${i}].url=this.value" placeholder="https://..."></div><button class="btn-d" onclick="removeAdresse(${i})">Supprimer</button>`;
     list.appendChild(d);
   });
 }
 
-// ══════ ÉQUIPEMENTS ══════
-function addEquipement(){equip.push({nom:'',description:'',image_url:'',icone:'⚙️',chapitre_timecode:null,ordre:equip.length});re();}
+function addEquipement(){equip.push({nom:'',description:'',image_url:'',icone:'⚙️',video_url:'',ordre:equip.length});re();}
 function removeEquipement(i){equip.splice(i,1);re();}
 function re(){
   const list=document.getElementById('equipements-list');list.innerHTML='';
   equip.forEach((e,i)=>{
     const d=document.createElement('div');d.className='ai';
     const hasImg=e.image_url?`<img src="${e.image_url}" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;margin-bottom:8px">`:'';
-    d.innerHTML=`
-      ${hasImg}
-      <div class="ai-grid">
-        <div class="fg" style="margin-bottom:0"><label class="fl2">Icône</label><input class="fi" value="${e.icone||'⚙️'}" onchange="equip[${i}].icone=this.value" placeholder="🧺"></div>
-        <div class="fg" style="margin-bottom:0"><label class="fl2">Nom</label><input class="fi" value="${e.nom||''}" onchange="equip[${i}].nom=this.value" placeholder="Machine à laver"></div>
-      </div>
-      <div class="fg" style="margin:10px 0 0"><label class="fl2">Description / mode d'emploi</label><textarea class="fi" onchange="equip[${i}].description=this.value" placeholder="1. Ouvrir le hublot&#10;2. Mettre la lessive...">${e.description||''}</textarea></div>
-      <div class="fg" style="margin:10px 0"><label class="fl2">Saut vidéo (en secondes, optionnel)</label><input class="fi" type="number" value="${e.chapitre_timecode||''}" onchange="equip[${i}].chapitre_timecode=this.value?parseInt(this.value):null" placeholder="125"></div>
-      <input type="file" id="input-equip-${i}" accept="image/*" style="display:none" onchange="uploadImage(this,'equip-${i}')">
-      <div style="display:flex;gap:8px">
-        <button class="btn-add" style="margin-top:0;flex:1" onclick="document.getElementById('input-equip-${i}').click()">${e.image_url?'🔄 Changer photo':'📷 Ajouter photo'}</button>
-        <button class="btn-d" onclick="removeEquipement(${i})">Supprimer</button>
-      </div>`;
+    d.innerHTML=`${hasImg}<div class="ai-grid"><div class="fg" style="margin-bottom:0"><label class="fl2">Icône</label><input class="fi" value="${(e.icone||'⚙️').replace(/"/g,'&quot;')}" onchange="equip[${i}].icone=this.value" placeholder="🧺"></div><div class="fg" style="margin-bottom:0"><label class="fl2">Nom</label><input class="fi" value="${(e.nom||'').replace(/"/g,'&quot;')}" onchange="equip[${i}].nom=this.value" placeholder="Machine à laver"></div></div><div class="fg" style="margin:10px 0 0"><label class="fl2">Description / mode d'emploi</label><textarea class="fi" onchange="equip[${i}].description=this.value" placeholder="1. Ouvrir le hublot...">${e.description||''}</textarea></div><div class="fg" style="margin:10px 0"><label class="fl2">Lien vidéo (optionnel - YouTube, Vimeo, Loom...)</label><input class="fi" value="${(e.video_url||'').replace(/"/g,'&quot;')}" onchange="equip[${i}].video_url=this.value" placeholder="https://..."></div><input type="file" id="input-equip-${i}" accept="image/*" style="display:none" onchange="uploadImage(this,'equip-${i}')"><div style="display:flex;gap:8px"><button class="btn-add" style="margin-top:0;flex:1" onclick="document.getElementById('input-equip-${i}').click()">${e.image_url?'🔄 Changer photo':'📷 Ajouter photo'}</button><button class="btn-d" onclick="removeEquipement(${i})">Supprimer</button></div>`;
     list.appendChild(d);
   });
 }
 
-// ══════ CHAPITRES ══════
-function addChapitre(){chap.push({titre:'',timecode:0,ordre:chap.length});rch();}
-function removeChapitre(i){chap.splice(i,1);rch();}
-function rch(){
-  const list=document.getElementById('chapitres-list');list.innerHTML='';
-  chap.forEach((c,i)=>{
-    const d=document.createElement('div');d.className='ai';
-    d.innerHTML=`<div class="ai-grid"><div class="fg" style="margin-bottom:0"><label class="fl2">Titre</label><input class="fi" value="${c.titre||''}" onchange="chap[${i}].titre=this.value" placeholder="Ex: Entrée"></div><div class="fg" style="margin-bottom:0"><label class="fl2">Timecode (sec)</label><input class="fi" type="number" value="${c.timecode||0}" onchange="chap[${i}].timecode=parseInt(this.value)||0" placeholder="45"></div></div><button class="btn-d" style="margin-top:10px" onclick="removeChapitre(${i})">Supprimer</button>`;
-    list.appendChild(d);
+function cleanRow(row){
+  const {id,created_at,updated_at,...clean}=row;
+  Object.keys(clean).forEach(k=>{
+    if(clean[k]===undefined||(typeof clean[k]==='number'&&isNaN(clean[k])))clean[k]=null;
   });
+  return clean;
 }
 
-// ══════ GALERIE ══════
-function rg(){
-  const list=document.getElementById('galerie-list');list.innerHTML='';
-  gal.forEach((url,i)=>{
-    const d=document.createElement('div');d.className='gal-item';
-    d.innerHTML=`<img src="${url}"><button class="gal-remove" onclick="removeGal(${i})">×</button>`;
-    list.appendChild(d);
-  });
+function normalizeVimeoUrl(url){
+  if(!url||!url.trim())return null;
+  url=url.trim();
+  if(url.includes('player.vimeo.com'))return url;
+  let m=url.match(/vimeo\.com\/(\d+)\/([a-z0-9]+)/i);
+  if(m)return `https://player.vimeo.com/video/${m[1]}?h=${m[2]}`;
+  m=url.match(/vimeo\.com\/(\d+)/);
+  if(m)return `https://player.vimeo.com/video/${m[1]}`;
+  return url;
 }
-function removeGal(i){gal.splice(i,1);rg();}
 
-// ══════ SAVE ══════
 async function saveLivret(){
   const msg=document.getElementById('editor-msg');
+  msg.style.display='none';
   const data={
-    nom:document.getElementById('f-nom').value,
-    slug:document.getElementById('f-slug').value.toLowerCase().replace(/\s+/g,'-'),
+    nom:document.getElementById('f-nom').value.trim(),
+    slug:document.getElementById('f-slug').value.toLowerCase().trim().replace(/\s+/g,'-'),
     bienvenue:document.getElementById('f-bienvenue').value,
-    vimeo_url:document.getElementById('f-vimeo').value,
-    procedure_arrivee:document.getElementById('f-procedure').value,
+    vimeo_url:normalizeVimeoUrl(document.getElementById('f-vimeo').value),
+    procedure_arrivee:document.getElementById('f-procedure').value||null,
     wifi_nom:document.getElementById('f-wifi-nom').value,
     wifi_mdp:document.getElementById('f-wifi-mdp').value,
     checkin:document.getElementById('f-checkin').value,
@@ -1134,47 +1141,73 @@ async function saveLivret(){
     contact_tel:document.getElementById('f-contact-tel').value,
     contact_email:document.getElementById('f-contact-email').value,
     image_fond:imgFond||null,
-    photos_galerie:gal
+    lien_avis_google:document.getElementById('f-lien-avis-google').value||null,
+    lien_reservation_directe:document.getElementById('f-lien-reservation').value||null,
+    lien_autres_logements:document.getElementById('f-lien-autres').value||null
   };
-  if(!data.nom||!data.slug){msg.className='ed-msg err';msg.style.display='block';msg.textContent='Le nom et le slug sont obligatoires.';return;}
+  if(!data.nom||!data.slug){return showErr(msg,'Le nom et le slug sont obligatoires.');}
+  if(!cu||!cu.access_token){return showErr(msg,'Session expirée. Reconnectez-vous.');}
+  console.log('[SAVE] Payload livret:',data);
   try{
     let lid=clid;
-    if(lid){await axios.patch(`${API}/livrets?id=eq.${lid}`,data,{headers:{...hd(),'Prefer':'return=minimal'}});}
-    else{const r=await axios.post(`${API}/livrets`,data,{headers:{...hd(),'Prefer':'return=representation'}});lid=r.data[0].id;clid=lid;}
-    
-    // Supprimer puis recréer (simple et efficace)
-    await Promise.all([
+    if(lid){
+      await axios.patch(`${API}/livrets?id=eq.${lid}`,data,{headers:{...hd(),'Prefer':'return=minimal'}});
+    }else{
+      const r=await axios.post(`${API}/livrets`,data,{headers:{...hd(),'Prefer':'return=representation'}});
+      lid=r.data[0].id;clid=lid;
+    }
+    await Promise.allSettled([
       axios.delete(`${API}/adresses?livret_id=eq.${lid}`,{headers:{...hd(),'Prefer':'return=minimal'}}),
-      axios.delete(`${API}/equipements?livret_id=eq.${lid}`,{headers:{...hd(),'Prefer':'return=minimal'}}),
-      axios.delete(`${API}/chapitres_video?livret_id=eq.${lid}`,{headers:{...hd(),'Prefer':'return=minimal'}})
+      axios.delete(`${API}/equipements?livret_id=eq.${lid}`,{headers:{...hd(),'Prefer':'return=minimal'}})
     ]);
-    
-    const inserts=[];
-    if(adr.length)inserts.push(axios.post(`${API}/adresses`,adr.map((a,i)=>({...a,livret_id:lid,ordre:i})),{headers:{...hd(),'Prefer':'return=minimal'}}));
-    if(equip.length)inserts.push(axios.post(`${API}/equipements`,equip.map((e,i)=>({...e,livret_id:lid,ordre:i})),{headers:{...hd(),'Prefer':'return=minimal'}}));
-    if(chap.length)inserts.push(axios.post(`${API}/chapitres_video`,chap.map((c,i)=>({...c,livret_id:lid,ordre:i})),{headers:{...hd(),'Prefer':'return=minimal'}}));
-    await Promise.all(inserts);
-    
-    msg.className='ed-msg ok';msg.style.display='block';msg.textContent='✓ Livret sauvegardé avec succès';
+    if(adr.length){
+      const payloadAdr=adr.map((a,i)=>cleanRow({...a,livret_id:lid,ordre:i}));
+      try{await axios.post(`${API}/adresses`,payloadAdr,{headers:{...hd(),'Prefer':'return=minimal'}});}
+      catch(e){return logAndShowErr(msg,'adresses',e);}
+    }
+    if(equip.length){
+      const payloadEq=equip.map((e,i)=>cleanRow({...e,livret_id:lid,ordre:i}));
+      try{await axios.post(`${API}/equipements`,payloadEq,{headers:{...hd(),'Prefer':'return=minimal'}});}
+      catch(e){return logAndShowErr(msg,'equipements',e);}
+    }
+    msg.className='ed-msg ok';
+    msg.style.display='block';
+    msg.textContent='✓ Livret sauvegardé avec succès';
     setTimeout(()=>msg.style.display='none',3000);
-  }catch(e){console.error(e);msg.className='ed-msg err';msg.style.display='block';msg.textContent='Erreur. Vérifiez que le slug est unique et que les tables Supabase sont créées.';}
+  }catch(e){logAndShowErr(msg,'livret',e);}
 }
+
+function logAndShowErr(msg,context,e){
+  const status=e?.response?.status;
+  const supabaseErr=e?.response?.data;
+  const code=supabaseErr?.code;
+  const message=supabaseErr?.message||e?.message||'Erreur inconnue';
+  console.error(`[SAVE ERR ${context}]`,{status,code,message,fullError:e});
+  let userMsg=`Erreur sur "${context}" : `;
+  if(status===401)userMsg+='Non autorisé. Reconnectez-vous.';
+  else if(status===403)userMsg+='Permission refusée. Vérifiez les RLS Supabase.';
+  else if(status===409)userMsg+='Conflit (slug déjà utilisé ou doublon).';
+  else if(code==='PGRST204'||message.includes('column'))userMsg+=`Colonne manquante : ${message}`;
+  else if(code==='23505')userMsg+='Doublon détecté (clé unique).';
+  else if(code==='23503')userMsg+='Référence cassée (foreign key).';
+  else userMsg+=message;
+  showErr(msg,userMsg);
+}
+function showErr(msg,text){msg.className='ed-msg err';msg.style.display='block';msg.textContent=text;}
 
 async function previewLivret(){if(!clid){alert('Sauvegardez d\'abord.');return;}await lv(clid);}
 
-// ══════ VOYAGEUR : RENDER ══════
 async function lv(id){
   show('voyageur-screen');
   document.getElementById('voy-loading').style.display='block';
   document.getElementById('voy-content').style.display='none';
   try{
-    const [lr,ar,er,cr]=await Promise.all([
+    const [lr,ar,er]=await Promise.all([
       axios.get(`${API}/livrets?id=eq.${id}&select=*`,{headers:hd()}),
       axios.get(`${API}/adresses?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}),
-      axios.get(`${API}/equipements?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]})),
-      axios.get(`${API}/chapitres_video?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]}))
+      axios.get(`${API}/equipements?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]}))
     ]);
-    rv(lr.data[0],ar.data,er.data,cr.data,true);
+    rv(lr.data[0],ar.data,er.data,true);
   }catch(e){console.error(e);document.getElementById('voy-loading').textContent='Erreur.';}
 }
 
@@ -1186,21 +1219,18 @@ async function lbs(slug){
     const lr=await axios.get(`${API}/livrets?slug=eq.${slug}&select=*`,{headers:{'apikey':KEY}});
     if(!lr.data.length){document.getElementById('voy-loading').textContent='Livret introuvable.';return;}
     const l=lr.data[0];
-    const [ar,er,cr]=await Promise.all([
+    const [ar,er]=await Promise.all([
       axios.get(`${API}/adresses?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}),
-      axios.get(`${API}/equipements?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
-      axios.get(`${API}/chapitres_video?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]}))
+      axios.get(`${API}/equipements?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]}))
     ]);
-    rv(l,ar.data,er.data,cr.data,false);
-    // Tracking consultation
+    rv(l,ar.data,er.data,false);
     trackView(l.id,'home');
   }catch(e){console.error(e);document.getElementById('voy-loading').textContent='Erreur.';}
 }
 
-let currentLivretId=null;
-
-function rv(l,adresses,equipements,chapitres,back){
+function rv(l,adresses,equipements,back){
   currentLivretId=l.id;
+  currentLivretData=l;
   document.getElementById('voy-loading').style.display='none';
   document.getElementById('voy-content').style.display='block';
   document.getElementById('voy-nom').textContent=l.nom;
@@ -1214,72 +1244,23 @@ function rv(l,adresses,equipements,chapitres,back){
   document.getElementById('voy-contact-tel').href='tel:'+(l.contact_tel||'');
   document.getElementById('voy-contact-email').href='mailto:'+(l.contact_email||'');
   document.getElementById('voy-contact-email').innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> ${l.contact_email||'Envoyer un email'}`;
-  
-  // Image de fond
-  if(l.image_fond){document.getElementById('voy-bg').style.backgroundImage=`url('${l.image_fond}')`;}
-  
-  // Vidéo
+  if(l.image_fond)document.getElementById('voy-bg').style.backgroundImage=`url('${l.image_fond}')`;
   if(l.vimeo_url){
     const playerUrl=normalizeVimeoUrl(l.vimeo_url);
     if(playerUrl){
       document.getElementById('voy-iframe').src=playerUrl;
       document.getElementById('voy-video-card').style.display='block';
-      // Setup Vimeo Player pour les chapitres
-      setTimeout(()=>{
-        try{
-          currentVimeoPlayer=new Vimeo.Player(document.getElementById('voy-iframe'));
-        }catch(e){console.warn('Vimeo player init failed',e);}
-      },500);
-    }else{
-      document.getElementById('voy-video-card').style.display='none';
     }
-  }else{document.getElementById('voy-video-card').style.display='none';}
-  
-  // Chapitres
-  const chapEl=document.getElementById('voy-chapitres');
-  if(chapitres&&chapitres.length){
-    chapEl.style.display='grid';
-    chapEl.innerHTML=chapitres.map(c=>`<button class="chap-btn" onclick="jumpToChapter(${c.timecode})"><span class="chap-time notranslate">${formatTime(c.timecode)}</span><span class="chap-title">${c.titre}</span></button>`).join('');
-  }else{chapEl.style.display='none';}
-  
-  // Procédure d'arrivée
+  }
   if(l.procedure_arrivee){
     document.getElementById('voy-proc-card').style.display='block';
     document.getElementById('voy-procedure').textContent=l.procedure_arrivee;
-  }else{document.getElementById('voy-proc-card').style.display='none';}
-  
-  // Règlement
+  }
   const ic=['🚭','🐾','🎉','🗑️','🔇','💡','🛏️','🪟'];
   document.getElementById('voy-regles').innerHTML=(l.regles||[]).map((r,i)=>`<div class="vr2"><div class="vr2-ico">${ic[i]||'·'}</div><span>${r}</span></div>`).join('');
-  
-  // Équipements
-  document.getElementById('voy-equipements').innerHTML=equipements&&equipements.length?equipements.map(e=>`
-    <div class="eq-card">
-      ${e.image_url?`<img src="${e.image_url}" class="eq-img">`:''}
-      <div class="eq-body">
-        <div class="eq-header">
-          <span class="eq-ico">${e.icone||'⚙️'}</span>
-          <div class="eq-nom">${e.nom}</div>
-        </div>
-        <div class="eq-desc">${e.description||''}</div>
-        ${e.chapitre_timecode?`<button class="eq-vid-btn" onclick="jumpToChapterFromGuide(${e.chapitre_timecode})">▶ Voir dans la vidéo (${formatTime(e.chapitre_timecode)})</button>`:''}
-      </div>
-    </div>`).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun équipement renseigné.</div>';
-  
-  // Galerie
-  document.getElementById('voy-photos').innerHTML=(l.photos_galerie||[]).length?(l.photos_galerie||[]).map(p=>`<img src="${p}" onclick="window.open('${p}','_blank')">`).join(''):'<div style="grid-column:span 2;text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucune photo disponible.</div>';
-  
-  // Adresses
-  document.getElementById('voy-adresses').innerHTML=adresses.length?adresses.map(a=>`
-    <a class="va" href="${a.url||'#'}" target="_blank">
-      <div class="va-left"><h4>${a.nom}</h4><p>${a.description||''}${a.categorie?` · <span style="color:var(--gold2);font-size:10px;letter-spacing:0.5px">${a.categorie}</span>`:''}</p></div>
-      <div class="va-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
-    </a>`).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucune adresse renseignée.</div>';
-  
-  // Sélecteur de langue
+  document.getElementById('voy-equipements').innerHTML=equipements&&equipements.length?equipements.map(e=>`<div class="eq-card">${e.image_url?`<img src="${e.image_url}" class="eq-img">`:''}<div class="eq-body"><div class="eq-header"><span class="eq-ico">${e.icone||'⚙️'}</span><div class="eq-nom">${e.nom||''}</div></div><div class="eq-desc">${e.description||''}</div>${e.video_url?`<a class="eq-vid-btn" href="${e.video_url}" target="_blank">▶ Voir la démo</a>`:''}</div></div>`).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun équipement renseigné.</div>';
+  document.getElementById('voy-adresses').innerHTML=adresses.length?adresses.map(a=>`<a class="va" href="${a.url||'#'}" target="_blank"><div class="va-left"><h4>${a.nom}</h4><p>${a.description||''}${a.categorie?` · <span style="color:var(--gold2);font-size:10px;letter-spacing:0.5px">${a.categorie}</span>`:''}</p></div><div class="va-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div></a>`).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucune adresse renseignée.</div>';
   renderLangBar();
-  
-  // Bouton admin
   const ex=document.getElementById('bk');if(ex)ex.remove();
   if(back){
     const bd=document.createElement('div');bd.id='bk';bd.style.cssText='position:fixed;top:16px;left:16px;z-index:200';
@@ -1289,60 +1270,12 @@ function rv(l,adresses,equipements,chapitres,back){
   svn(document.querySelector('.voy-nav-btn'),'home');
 }
 
-// ══════ VIDEO CHAPTERS ══════
-function normalizeVimeoUrl(url){
-  if(!url)return null;
-  url=url.trim();
-  // Format déjà player.vimeo.com → on garde
-  if(url.includes('player.vimeo.com/video/'))return url;
-  // Format vimeo.com/123456789 ou vimeo.com/123456789/abcdef (avec hash privé)
-  const m1=url.match(/vimeo\.com\/(?:manage\/videos\/|video\/)?(\d+)(?:\/([a-f0-9]+))?/i);
-  if(m1){
-    const id=m1[1];
-    const hash=m1[2];
-    return `https://player.vimeo.com/video/${id}${hash?'?h='+hash:''}`;
-  }
-  // Si c'est juste un ID numérique
-  if(/^\d+$/.test(url))return `https://player.vimeo.com/video/${url}`;
-  // Sinon on retourne tel quel et on tente
-  return url;
-}
-
-function formatTime(sec){
-  const m=Math.floor(sec/60),s=sec%60;
-  return `${m}:${s.toString().padStart(2,'0')}`;
-}
-async function jumpToChapter(sec){
-  if(!currentVimeoPlayer)return;
-  try{
-    await currentVimeoPlayer.setCurrentTime(sec);
-    await currentVimeoPlayer.play();
-    // Scroll vers la vidéo
-    document.getElementById('voy-video-card').scrollIntoView({behavior:'smooth',block:'center'});
-  }catch(e){console.warn(e);}
-}
-async function jumpToChapterFromGuide(sec){
-  // Aller sur accueil + jump
-  document.querySelectorAll('.voy-nav-btn').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('.voy-nav-btn')[0].classList.add('active');
-  document.querySelectorAll('.voy-panel').forEach(p=>p.classList.remove('active'));
-  document.getElementById('voy-panel-home').classList.add('active');
-  await new Promise(r=>setTimeout(r,200));
-  await jumpToChapter(sec);
-}
-
-// ══════ LANGUE (menu déroulant + chargement à la demande) ══════
 let googleTranslateLoaded=false;
-
 function loadGoogleTranslate(){
   if(googleTranslateLoaded)return;
   googleTranslateLoaded=true;
   window.googleTranslateElementInit=function(){
-    new google.translate.TranslateElement({
-      pageLanguage:'fr',
-      includedLanguages:'en,es,it,de,nl,pt,zh-CN,ja,ru',
-      autoDisplay:false
-    },'google_translate_element');
+    new google.translate.TranslateElement({pageLanguage:'fr',includedLanguages:'en,es,it,de,nl,pt,zh-CN,ja,ru',autoDisplay:false},'google_translate_element');
   };
   const s=document.createElement('script');
   s.src='//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
@@ -1351,14 +1284,12 @@ function loadGoogleTranslate(){
 
 function renderLangBar(){
   const menu=document.getElementById('lang-menu');
-  menu.innerHTML=LANGS.map(l=>`<div class="lang-item ${l.code==='fr'?'active':''}" data-lang="${l.code}" onclick="changeLang('${l.code}','${l.flag}','${l.name}',this)"><span class="lang-flag">${l.flag}</span><span>${l.fullname||l.name}</span></div>`).join('');
+  menu.innerHTML=LANGS.map(l=>`<div class="lang-item ${l.code==='fr'?'active':''}" data-lang="${l.code}" onclick="changeLang('${l.code}','${l.flag}','${l.name}',this)"><span class="lang-flag">${l.flag}</span><span>${l.name}</span></div>`).join('');
 }
 
 function toggleLangMenu(e){
   e.stopPropagation();
-  const dd=document.getElementById('lang-dropdown');
-  dd.classList.toggle('open');
-  // Charge Google Translate au 1er clic
+  document.getElementById('lang-dropdown').classList.toggle('open');
   loadGoogleTranslate();
 }
 
@@ -1366,57 +1297,45 @@ function changeLang(code,flag,name,el){
   document.querySelectorAll('.lang-item').forEach(b=>b.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('lang-current-flag').textContent=flag;
-  document.getElementById('lang-current-name').textContent=el.querySelector('span:last-child').textContent;
+  document.getElementById('lang-current-name').textContent=name;
   document.getElementById('lang-dropdown').classList.remove('open');
-  
-  // Active Google Translate
-  const trySetLang=(attempts=0)=>{
+  if(code==='fr'){
+    const cookies=['googtrans','googtrans=/fr/fr'];
+    document.cookie='googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie='googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain='+window.location.hostname+';';
     const select=document.querySelector('.goog-te-combo');
-    if(select){
-      select.value=code==='fr'?'':code;
-      select.dispatchEvent(new Event('change'));
-    }else if(attempts<10){
-      setTimeout(()=>trySetLang(attempts+1),300);
-    }else{
-      setTranslateCookie(code);
-    }
-  };
-  trySetLang();
-  
+    if(select){select.value='';select.dispatchEvent(new Event('change'));}
+    setTimeout(()=>location.reload(),100);
+  }else{
+    const trySetLang=(attempts=0)=>{
+      const select=document.querySelector('.goog-te-combo');
+      if(select){select.value=code;select.dispatchEvent(new Event('change'));}
+      else if(attempts<10)setTimeout(()=>trySetLang(attempts+1),300);
+      else{document.cookie=`googtrans=/fr/${code}; path=/;`;location.reload();}
+    };
+    trySetLang();
+  }
   if(currentLivretId)trackView(currentLivretId,'lang_'+code);
 }
 
-// Fermer le menu si clic en dehors
 document.addEventListener('click',e=>{
   const dd=document.getElementById('lang-dropdown');
   if(dd&&!dd.contains(e.target))dd.classList.remove('open');
 });
 
-function setTranslateCookie(lang){
-  if(lang==='fr'){
-    document.cookie='googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-  }else{
-    document.cookie=`googtrans=/fr/${lang}; path=/;`;
-  }
-  location.reload();
-}
-
-// ══════ TRACKING ══════
 async function trackView(livretId,page){
   try{
     await axios.post(`${API}/consultations`,{
-      livret_id:livretId,
-      page:page,
+      livret_id:livretId,page:page,
       langue:document.cookie.match(/googtrans=\/fr\/([^;]+)/)?.[1]||'fr',
       user_agent:navigator.userAgent.slice(0,200)
     },{headers:{'apikey':KEY,'Content-Type':'application/json'}});
-  }catch(e){console.warn('Track failed',e);}
+  }catch(e){}
 }
 
-// ══════ NAVIGATION ══════
 function switchTab(btn,tabId){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');
-  ['tg','tv','ti','teq','tph','ta','tc'].forEach(t=>document.getElementById(t).style.display=t===tabId?'block':'none');
+  ['tg','tv','ti','teq','ta','tc'].forEach(t=>{const el=document.getElementById(t);if(el)el.style.display=t===tabId?'block':'none';});
 }
 function svn(btn,panel){
   document.querySelectorAll('.voy-nav-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
@@ -1430,12 +1349,129 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
 function openModal(id){document.getElementById(id).classList.add('show');}
 function closeModal(id){document.getElementById(id).classList.remove('show');}
 
-document.getElementById('login-password').addEventListener('keypress',e=>{if(e.key==='Enter')login();});
+function openReviewModal(){
+  selectedNote=0;
+  document.querySelectorAll('.review-star').forEach(s=>s.classList.remove('active'));
+  document.getElementById('review-step-1').style.display='block';
+  document.getElementById('review-step-positive').style.display='none';
+  document.getElementById('review-step-negative').style.display='none';
+  document.getElementById('review-step-thanks').style.display='none';
+  openModal('review-modal');
+}
+function closeReviewModal(){closeModal('review-modal');}
 
-// Masquer la barre Google Translate en haut
-const style=document.createElement('style');
-style.textContent=`.goog-te-banner-frame,.skiptranslate{display:none!important}body{top:0!important}.goog-tooltip,.goog-tooltip:hover{display:none!important}.goog-text-highlight{background:none!important;box-shadow:none!important}`;
-document.head.appendChild(style);
+function selectReviewStar(note){
+  selectedNote=note;
+  document.querySelectorAll('.review-star').forEach(s=>{
+    const sn=parseInt(s.dataset.note);
+    s.classList.toggle('active',sn<=note);
+  });
+  setTimeout(()=>{
+    if(note>=4)showPositiveReview();
+    else showNegativeReview();
+  },500);
+}
+
+function showPositiveReview(){
+  document.getElementById('review-step-1').style.display='none';
+  document.getElementById('review-step-positive').style.display='block';
+  const ctas=document.getElementById('review-positive-ctas');
+  let h='';
+  if(currentLivretData?.lien_avis_google){
+    h+=`<a class="review-cta primary" href="${currentLivretData.lien_avis_google}" target="_blank">⭐ Laisser un avis Google</a>`;
+  }
+  if(currentLivretData?.lien_reservation_directe){
+    h+=`<a class="review-cta secondary" href="${currentLivretData.lien_reservation_directe}" target="_blank">🏠 Louer ce logement au meilleur prix la prochaine fois</a>`;
+  }
+  if(currentLivretData?.lien_autres_logements){
+    h+=`<a class="review-cta tertiary" href="${currentLivretData.lien_autres_logements}" target="_blank">🗺️ Voir tous nos autres logements</a>`;
+  }
+  if(!h)h='<div style="color:var(--muted);font-style:italic">Merci infiniment !</div>';
+  ctas.innerHTML=h;
+}
+
+function showNegativeReview(){
+  document.getElementById('review-step-1').style.display='none';
+  document.getElementById('review-step-negative').style.display='block';
+}
+
+async function submitNegativeReview(){
+  const message=document.getElementById('review-message').value.trim();
+  if(!message){alert('Veuillez décrire ce qui pourrait être amélioré.');return;}
+  try{
+    await axios.post(`${API}/avis_negatifs`,{
+      livret_id:currentLivretId,
+      note:selectedNote,
+      nom:document.getElementById('review-nom').value||null,
+      email:document.getElementById('review-email').value||null,
+      telephone:document.getElementById('review-tel').value||null,
+      message:message
+    },{headers:{'apikey':KEY,'Content-Type':'application/json'}});
+    document.getElementById('review-step-negative').style.display='none';
+    document.getElementById('review-step-thanks').style.display='block';
+  }catch(e){console.error(e);alert('Erreur lors de l\'envoi. Réessayez.');}
+}
+
+async function showAllAvis(){
+  document.getElementById('avis-modal-sub').textContent='Tous les avis négatifs reçus';
+  document.getElementById('avis-content').innerHTML='<div class="loading">Chargement…</div>';
+  openModal('avis-modal');
+  try{
+    const r=await axios.get(`${API}/avis_negatifs?select=*,livrets(nom)&order=created_at.desc`,{headers:hd()});
+    renderAvisList(r.data);
+  }catch(e){
+    console.error(e);
+    document.getElementById('avis-content').innerHTML='<div class="avis-empty">Erreur de chargement.</div>';
+  }
+}
+
+function renderAvisList(avis){
+  const c=document.getElementById('avis-content');
+  if(!avis||!avis.length){c.innerHTML='<div class="avis-empty">Aucun avis négatif pour le moment. 🎉</div>';return;}
+  c.innerHTML=avis.map(a=>{
+    const date=new Date(a.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    const stars='★'.repeat(a.note)+'☆'.repeat(5-a.note);
+    const livretNom=a.livrets?.nom||'Livret inconnu';
+    return `<div class="avis-item ${a.lu?'lu':''} ${a.traite?'traite':''}">
+      <div class="avis-head">
+        <div>
+          <div class="avis-stars">${stars}</div>
+          <div style="font-size:11px;color:var(--gold2);margin-top:4px">${livretNom}</div>
+        </div>
+        <div class="avis-date">${date}</div>
+      </div>
+      ${(a.nom||a.email||a.telephone)?`<div class="avis-contact">${a.nom?`👤 ${a.nom}`:''} ${a.email?`· <a href="mailto:${a.email}">${a.email}</a>`:''} ${a.telephone?`· <a href="tel:${a.telephone}">${a.telephone}</a>`:''}</div>`:''}
+      <div class="avis-msg">${a.message}</div>
+      <div class="avis-actions">
+        ${!a.lu?`<button class="avis-mini-btn" onclick="markAvisLu('${a.id}')">Marquer comme lu</button>`:''}
+        ${!a.traite?`<button class="avis-mini-btn" onclick="markAvisTraite('${a.id}')">Marquer comme traité</button>`:''}
+        <button class="avis-mini-btn danger" onclick="deleteAvis('${a.id}')">Supprimer</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function markAvisLu(id){
+  try{
+    await axios.patch(`${API}/avis_negatifs?id=eq.${id}`,{lu:true},{headers:{...hd(),'Prefer':'return=minimal'}});
+    showAllAvis();loadAvisBadge();
+  }catch(e){alert('Erreur.');}
+}
+async function markAvisTraite(id){
+  try{
+    await axios.patch(`${API}/avis_negatifs?id=eq.${id}`,{traite:true,lu:true},{headers:{...hd(),'Prefer':'return=minimal'}});
+    showAllAvis();loadAvisBadge();
+  }catch(e){alert('Erreur.');}
+}
+async function deleteAvis(id){
+  if(!confirm('Supprimer cet avis définitivement ?'))return;
+  try{
+    await axios.delete(`${API}/avis_negatifs?id=eq.${id}`,{headers:{...hd(),'Prefer':'return=minimal'}});
+    showAllAvis();loadAvisBadge();
+  }catch(e){alert('Erreur.');}
+}
+
+document.getElementById('login-password').addEventListener('keypress',e=>{if(e.key==='Enter')login();});
 </script>
 </body>
 </html>
