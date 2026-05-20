@@ -8,6 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@vimeo/player@2.20.1/dist/player.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root {
   --gold:#c9a84c;--gold2:#e2c06e;--gold3:#f5e4a8;--gold-dim:rgba(201,168,76,0.12);
@@ -431,6 +432,7 @@ body{top:0!important}
       <button class="tab" onclick="switchTab(this,'ti')">Infos</button>
       <button class="tab" onclick="switchTab(this,'teq')">Guide</button>
       <button class="tab" onclick="switchTab(this,'ta')">Adresses</button>
+      <button class="tab" onclick="switchTab(this,'tsv')">Services +</button>
       <button class="tab" onclick="switchTab(this,'tc')">Contact</button>
     </div>
 
@@ -468,6 +470,16 @@ body{top:0!important}
 
     <div id="ti" style="display:none">
       <div class="sc">
+        <div class="sc-title">Logement (fiche d'accueil)</div>
+        <div class="fg"><label class="fl2">Adresse complète</label><textarea class="fi" id="f-adresse" placeholder="Ex: 61 route de Nevers, 18320 Jouet sur l'Aubois"></textarea></div>
+        <div class="fg"><label class="fl2">Hôte / Propriétaire</label><input class="fi" id="f-hote" placeholder="Ex: Sophie & Pierre"></div>
+        <div class="ai-grid">
+          <div class="fg" style="margin-bottom:0"><label class="fl2">Latitude (optionnel)</label><input class="fi" id="f-lat" placeholder="Ex: 47.0833"></div>
+          <div class="fg" style="margin-bottom:0"><label class="fl2">Longitude (optionnel)</label><input class="fi" id="f-lng" placeholder="Ex: 3.0667"></div>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.6">💡 Coordonnées GPS pour une localisation précise sur Maps/Waze. Sur Google Maps : clic droit sur le point exact → cliquez sur les chiffres affichés pour les copier. Laissez vide pour utiliser l'adresse texte.</p>
+      </div>
+      <div class="sc">
         <div class="sc-title">Wifi</div>
         <div class="fg"><label class="fl2">Nom du réseau</label><input class="fi" id="f-wifi-nom" placeholder="Ex: SFR_E04F"></div>
         <div class="fg"><label class="fl2">Mot de passe</label><input class="fi" id="f-wifi-mdp" placeholder="Ex: motdepasse123"></div>
@@ -481,6 +493,11 @@ body{top:0!important}
       <div class="sc">
         <div class="sc-title">Règlement (une règle par ligne)</div>
         <textarea class="fi" id="f-regles" placeholder="Ne pas fumer à l'intérieur&#10;Pas d'animaux&#10;Pas de soirées" style="min-height:130px"></textarea>
+      </div>
+      <div class="sc">
+        <div class="sc-title">Poubelles (jours de collecte)</div>
+        <p style="font-size:12px;color:var(--muted2);margin-bottom:12px;line-height:1.6">Les 3 bacs (jaune / noir / vert) s'affichent toujours sur la fiche. Précisez ici les jours ou consignes propres au logement.</p>
+        <textarea class="fi" id="f-poubelles" placeholder="Ex: À mettre dans les conteneurs à l'entrée vers le portail. Collecte le mardi (jaune) et vendredi (noir)." style="min-height:90px"></textarea>
       </div>
     </div>
 
@@ -501,6 +518,15 @@ body{top:0!important}
       </div>
     </div>
 
+    <div id="tsv" style="display:none">
+      <div class="sc">
+        <div class="sc-title">Services + (payants)</div>
+        <p style="font-size:12px;color:var(--muted2);margin-bottom:16px;line-height:1.6">Proposez des services payants (ménage, panier d'accueil, late check-out…). Pour chacun : une image, un titre, une description, un prix indicatif et votre lien de paiement Stripe. Le voyageur clique et paie directement.</p>
+        <div id="services-list"></div>
+        <button class="btn-add" onclick="addService()">+ Ajouter un service</button>
+      </div>
+    </div>
+
     <div id="tc" style="display:none">
       <div class="sc">
         <div class="sc-title">Contact & Conciergerie</div>
@@ -509,11 +535,14 @@ body{top:0!important}
         <div class="fg"><label class="fl2">Email</label><input class="fi" id="f-contact-email" placeholder="Ex: contact@email.fr"></div>
       </div>
       <div class="sc">
-        <div class="sc-title">Liens pour les avis ⭐</div>
-        <p style="font-size:12px;color:var(--muted2);margin-bottom:16px;line-height:1.6">Configurez où rediriger les voyageurs satisfaits. Laissez vide pour masquer le bouton.</p>
-        <div class="fg"><label class="fl2">Lien avis Google</label><input class="fi" id="f-lien-avis-google" placeholder="https://g.page/r/CXXXXXX/review"></div>
-        <div class="fg"><label class="fl2">Lien réservation directe</label><input class="fi" id="f-lien-reservation" placeholder="https://votre-site.com/reserver"></div>
-        <div class="fg"><label class="fl2">Lien tous vos logements</label><input class="fi" id="f-lien-autres" placeholder="https://votre-site.com"></div>
+        <div class="sc-title">Boutons satisfaction ⭐</div>
+        <p style="font-size:12px;color:var(--muted2);margin-bottom:16px;line-height:1.6">Ces boutons s'affichent dans la page Contact du livret. Pour chacun : un texte (ce qui est écrit sur le bouton) et un lien. Laissez le lien vide pour masquer le bouton.</p>
+        <div class="fg"><label class="fl2">Bouton 1 — Texte</label><input class="fi" id="f-cta1-texte" placeholder="Ex: ⭐ Laisser un avis Google"></div>
+        <div class="fg"><label class="fl2">Bouton 1 — Lien</label><input class="fi" id="f-lien-avis-google" placeholder="https://g.page/r/CXXXXXX/review"></div>
+        <div class="fg"><label class="fl2">Bouton 2 — Texte</label><input class="fi" id="f-cta2-texte" placeholder="Ex: 🏠 Réserver au meilleur prix"></div>
+        <div class="fg"><label class="fl2">Bouton 2 — Lien</label><input class="fi" id="f-lien-reservation" placeholder="https://votre-site.com/reserver"></div>
+        <div class="fg"><label class="fl2">Bouton 3 — Texte</label><input class="fi" id="f-cta3-texte" placeholder="Ex: 🗺️ Voir tous nos logements"></div>
+        <div class="fg"><label class="fl2">Bouton 3 — Lien</label><input class="fi" id="f-lien-autres" placeholder="https://votre-site.com"></div>
       </div>
     </div>
 
@@ -547,6 +576,15 @@ body{top:0!important}
 
     <div id="voy-panel-home" class="voy-panel active">
       <div class="vs">
+        <div class="vs-label" id="voy-loc-label" style="display:none">Localisation</div>
+        <div class="vc" id="voy-loc-card" style="display:none">
+          <div class="vc-title">Adresse</div>
+          <div class="vr"><span class="vl" id="voy-adresse" style="text-align:left;line-height:1.5">—</span></div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <a id="voy-maps-btn" class="copy-btn" href="#" target="_blank" rel="noopener" style="flex:1;text-align:center;text-decoration:none;padding:10px">🗺️ Google Maps</a>
+            <a id="voy-waze-btn" class="copy-btn" href="#" target="_blank" rel="noopener" style="flex:1;text-align:center;text-decoration:none;padding:10px">🚗 Waze</a>
+          </div>
+        </div>
         <div class="vs-label">Connexion rapide</div>
         <div class="vc">
           <div class="vc-title">Wifi</div>
@@ -585,6 +623,10 @@ body{top:0!important}
           <div class="vr"><span class="lb">Départ</span><span class="vl" id="voy-checkout" style="color:#c08030">—</span></div>
           <div class="vr"><span class="lb">Parking</span><span class="vl" id="voy-parking">—</span></div>
         </div>
+        <div class="vc" id="voy-poubelles-card" style="display:none">
+          <div class="vc-title">Poubelles</div>
+          <div class="vr"><span class="vl" id="voy-poubelles" style="text-align:left">—</span></div>
+        </div>
         <div class="vs-label">Règlement</div>
         <div class="vc">
           <div class="vc-title">À respecter</div>
@@ -604,6 +646,14 @@ body{top:0!important}
       <div class="vs">
         <div class="vs-label">Nos recommandations</div>
         <div id="voy-adresses"></div>
+      </div>
+    </div>
+
+    <div id="voy-panel-services" class="voy-panel">
+      <div class="vs">
+        <div class="vs-label">Services à la carte</div>
+        <div id="voy-services"></div>
+        <a id="voy-autre-demande" class="voy-mail" href="#" style="margin-top:16px">✉️ Une autre demande ? Écrivez-nous</a>
       </div>
     </div>
 
@@ -634,6 +684,10 @@ body{top:0!important}
           <div class="review-sub">Votre avis est précieux et aide d'autres voyageurs.</div>
           <button class="review-btn" onclick="openReviewModal()">Laisser un avis →</button>
         </div>
+        <div id="voy-cta-zone" style="display:none">
+          <div class="vs-label">Avant de partir</div>
+          <div class="review-cta-list" id="voy-cta-list"></div>
+        </div>
       </div>
     </div>
 
@@ -653,6 +707,10 @@ body{top:0!important}
       <button class="voy-nav-btn" onclick="svn(this,'adresses')">
         <svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
         Adresses
+      </button>
+      <button class="voy-nav-btn" onclick="svn(this,'services')">
+        <svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12V8H6a2 2 0 01-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>
+        Services
       </button>
       <button class="voy-nav-btn" onclick="svn(this,'contact')">
         <svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14z"/></svg>
@@ -767,7 +825,7 @@ const LANGS=[
   {code:'ru',flag:'🇷🇺',name:'Русский'},
 ];
 
-let cu=null,clid=null,adr=[],equip=[],imgFond='',currentLivretId=null,currentLivretData=null,selectedNote=0,qrInstance=null;
+let cu=null,clid=null,adr=[],equip=[],serv=[],imgFond='',currentLivretId=null,currentLivretData=null,selectedNote=0,qrInstance=null;
 
 const ss=u=>localStorage.setItem('lv',JSON.stringify({u,t:Date.now()}));
 const ls=()=>{try{const s=JSON.parse(localStorage.getItem('lv'));if(!s)return null;if(Date.now()-s.t>28800000){localStorage.removeItem('lv');return null;}return s.u;}catch{return null;}};
@@ -854,6 +912,7 @@ function rl(livrets,views={}){
           <button class="lv-btn" onclick="openEditor('${l.id}')">✏️ Modifier</button>
           <button class="lv-btn" onclick="lv('${l.id}')">👁 Voir</button>
           <button class="lv-btn" onclick="showQR('${l.id}','${safeNom}','${pub}')">📱 QR Code</button>
+          <button class="lv-btn" onclick="downloadFiche('${l.id}','${safeNom}')">📄 Fiche PDF</button>
           <button class="lv-btn" onclick="showStats('${l.id}','${safeNom}')">📊 Stats</button>
           <button class="lv-btn full" onclick="dup('${l.id}','${safeNom}')">📋 Dupliquer</button>
           <button class="lv-btn danger full" onclick="del('${l.id}','${safeNom}')">🗑 Supprimer</button>
@@ -884,6 +943,203 @@ function downloadQR(){
   a.href=src;
   a.download=`qr-${document.getElementById('qr-livret-nom').textContent.replace(/\s+/g,'-')}.png`;
   a.click();
+}
+
+// ---------- FICHE D'ACCUEIL PDF ----------
+// Génère un QR code en dataURL PNG (via la lib QRCode déjà chargée)
+function makeQRDataURL(text,size){
+  return new Promise(resolve=>{
+    const tmp=document.createElement('div');
+    tmp.style.position='absolute';tmp.style.left='-9999px';tmp.style.top='0';
+    document.body.appendChild(tmp);
+    new QRCode(tmp,{text:text,width:size,height:size,colorDark:'#1a1a1a',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.H});
+    const grab=()=>{
+      const canvas=tmp.querySelector('canvas');
+      const img=tmp.querySelector('img');
+      let url='';
+      if(canvas){try{url=canvas.toDataURL('image/png');}catch(e){}}
+      if(!url && img && img.src){url=img.src;}
+      document.body.removeChild(tmp);
+      resolve(url);
+    };
+    // laisser le temps au rendu (canvas ou img)
+    const img=tmp.querySelector('img');
+    if(img && !img.complete){img.onload=()=>setTimeout(grab,30);}
+    else{setTimeout(grab,150);}
+  });
+}
+// Échappe le texte pour le format WIFI du QR code
+function wifiEscape(s){return String(s||'').replace(/([\\;,:"])/g,'\\$1');}
+
+async function downloadFiche(id,nom){
+  toast('📄 Génération de la fiche…');
+  let l;
+  try{
+    const r=await axios.get(`${API}/livrets?id=eq.${id}&select=*`,{headers:hd()});
+    l=r.data[0];
+    if(!l){toast('Livret introuvable.');return;}
+  }catch(e){toast('Erreur de chargement.');return;}
+
+  const pub=`${BASE}/livret/${l.slug}`;
+  // QR livret + QR wifi (si infos présentes)
+  const qrLivret=await makeQRDataURL(pub,300);
+  let qrWifi=null;
+  if(l.wifi_nom){
+    const wifiStr=`WIFI:T:WPA;S:${wifiEscape(l.wifi_nom)};P:${wifiEscape(l.wifi_mdp)};;`;
+    qrWifi=await makeQRDataURL(wifiStr,300);
+  }
+
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const W=210,H=297,M=14;
+  const GOLD=[201,168,76], DARK=[26,26,26], GREY=[120,120,120], LIGHT=[150,150,150];
+  const colGap=8;
+  const colW=(W-2*M-colGap)/2;
+  const xL=M, xR=M+colW+colGap;
+
+  // Helper texte FR (noir) + EN (doré) sous chaque ligne
+  function bil(x,y,fr,en,maxw,opt={}){
+    const size=opt.size||9;
+    doc.setFont('helvetica',opt.bold?'bold':'normal');
+    doc.setFontSize(size);
+    doc.setTextColor(...(opt.color||DARK));
+    const frLines=doc.splitTextToSize(fr,maxw);
+    doc.text(frLines,x,y);
+    let yy=y+frLines.length*(size*0.42);
+    if(en){
+      doc.setFont('helvetica','italic');
+      doc.setFontSize(size-1);
+      doc.setTextColor(...GOLD);
+      const enLines=doc.splitTextToSize(en,maxw);
+      doc.text(enLines,x,yy);
+      yy+=enLines.length*((size-1)*0.42);
+    }
+    return yy;
+  }
+  // Titre de section avec petit repère doré
+  function sectionTitle(x,y,fr,en){
+    doc.setFillColor(...GOLD);
+    doc.triangle(x,y-3.2,x,y+0.2,x+3,y-1.5,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...DARK);
+    doc.text(fr.toUpperCase(),x+5,y);
+    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...GOLD);
+    doc.text(en.toLowerCase(),x+5,y+3.6);
+    // ligne de séparation fine
+    doc.setDrawColor(...GOLD);doc.setLineWidth(0.3);
+    doc.line(x,y+5.5,x+ (x===xL?colW:colW),y+5.5);
+    return y+11;
+  }
+
+  // ===== EN-TÊTE =====
+  doc.setFont('helvetica','bold');doc.setFontSize(34);doc.setTextColor(...DARK);
+  doc.text('WELCOME',M,26);
+  // bandeau hôte/contact à droite
+  doc.setFillColor(44,48,54);
+  doc.roundedRect(xR-2,14,colW+2,18,2,2,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(255,255,255);
+  if(l.hote)doc.text(`HOST : ${l.hote}`,xR+2,21);
+  if(l.contact_nom)doc.text(`CONTACT : ${l.contact_nom}`,xR+2,27);
+  // nom + adresse
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(...DARK);
+  doc.text((l.nom||'').toUpperCase(),M,36);
+  doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(...GREY);
+  if(l.adresse){
+    const adrLines=doc.splitTextToSize(l.adresse,colW);
+    doc.text(adrLines,M,42);
+  }
+
+  let yL=58, yR=44;
+
+  // ===== COLONNE GAUCHE =====
+  // Règles
+  yL=sectionTitle(xL,yL,'Rappel des règles','house rules');
+  // règle fixe non-fumeur + picto rouge
+  doc.setDrawColor(224,85,85);doc.setLineWidth(0.8);
+  doc.circle(xL+3,yL+1.5,3,'S');
+  doc.line(xL+0.9,yL+3.6,xL+5.1,yL-0.6);
+  yL=bil(xL+8,yL,'1 / Ne pas fumer à l\'intérieur','no smoking inside',colW-8)+3;
+  let rnum=2;
+  (l.regles||[]).forEach(r=>{
+    if(/fum/i.test(r))return; // évite doublon non-fumeur
+    yL=bil(xL,yL,`${rnum} / ${r}`,'',colW)+2.5;
+    rnum++;
+  });
+  yL+=4;
+
+  // Poubelles
+  yL=sectionTitle(xL,yL,'Jours des poubelles','trash days');
+  if(l.poubelles){yL=bil(xL,yL,l.poubelles,'',colW)+2;}
+  const bins=[[ '#e9c84a','Jaune (carton/plastique)'],['#2b2b2b','Noir (ordures ménagères)'],['#3bbf6f','Vert (verre)']];
+  bins.forEach(b=>{
+    const col=b[0];
+    doc.setFillColor(parseInt(col.slice(1,3),16),parseInt(col.slice(3,5),16),parseInt(col.slice(5,7),16));
+    doc.circle(xL+2.5,yL-1,2.5,'F');
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...DARK);
+    doc.text(b[1],xL+7,yL);
+    yL+=6;
+  });
+  yL+=3;
+
+  // Parking
+  if(l.parking){
+    yL=sectionTitle(xL,yL,'Parking','parking');
+    yL=bil(xL,yL,l.parking,'',colW)+5;
+  }
+
+  // Urgences (fixe)
+  yL=sectionTitle(xL,yL,'Urgences','emergency infos');
+  doc.setDrawColor(...GOLD);doc.setLineWidth(0.5);doc.circle(xL+6,yL+3,6,'S');
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...DARK);
+  doc.text('112',xL+6,yL+4.5,{align:'center'});
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...DARK);
+  doc.text('Police 17',xL+16,yL+1);
+  doc.setTextColor(...GOLD);doc.text('Pompier 18',xL+16,yL+5);
+  doc.setTextColor(...DARK);doc.text('SAMU 15',xL+16,yL+9);
+
+  // ===== COLONNE DROITE =====
+  // Wifi
+  yR=sectionTitle(xR,yR,'Wifi','network');
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(...GOLD);
+  doc.text('NETWORK',xR,yR);yR+=5;
+  yR=bil(xR,yR,`Réseau : ${l.wifi_nom||'—'}`,'',colW)+1;
+  yR=bil(xR,yR,`Mot de passe : ${l.wifi_mdp||'—'}`,'',colW)+3;
+  // QR wifi
+  if(qrWifi){
+    doc.addImage(qrWifi,'PNG',xR,yR,26,26);
+    doc.setFont('helvetica','italic');doc.setFontSize(8);doc.setTextColor(...DARK);
+    doc.text('Scannez pour vous',xR+30,yR+10);
+    doc.setTextColor(...GOLD);doc.text('connecter au wifi',xR+30,yR+14);
+    yR+=30;
+  }
+  yR+=4;
+
+  // Check-out
+  yR=sectionTitle(xR,yR,'Check out','check out');
+  if(l.checkout){yR=bil(xR,yR,`Départ : ${l.checkout}`,'check out time',colW)+3;}
+  const coSteps=[
+    ['Éteignez les lumières et la clim','Turn off lights and air conditioning'],
+    ['Videz et sortez les poubelles','Empty and take out the garbage'],
+    ['Fermez les portes et les fenêtres','Close doors and windows'],
+    ['Remettez les clés dans la boîte à clés','Put the keys back in the key box'],
+  ];
+  coSteps.forEach(s=>{yR=bil(xR,yR,s[0],s[1],colW)+2.5;});
+  yR+=4;
+
+  // QR livret « Scan me »
+  doc.setFont('helvetica','italic');doc.setFontSize(13);doc.setTextColor(...DARK);
+  doc.text('Scan me',xR,yR+8);
+  doc.setDrawColor(...GOLD);doc.setLineWidth(0.4);
+  doc.roundedRect(xR+colW-34,yR-2,34,34,2,2,'S');
+  doc.addImage(qrLivret,'PNG',xR+colW-32,yR,30,30);
+
+  // ===== PIED DE PAGE =====
+  doc.setFillColor(44,48,54);
+  doc.rect(0,H-16,W,16,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...GOLD);
+  doc.text('DES SERVICES ADAPTÉS À VOS BESOINS !',W/2,H-6,{align:'center'});
+
+  doc.save(`fiche-accueil-${(l.slug||nom||'livret').replace(/\s+/g,'-')}.pdf`);
+  toast('✅ Fiche téléchargée !');
 }
 
 async function showStats(id,nom){
@@ -917,16 +1173,18 @@ async function dup(id,nom){
   const nn=prompt(`Nom du nouveau livret :`,`${nom} - Copie`);if(!nn)return;
   const ns=nn.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
   try{
-    const [lr,ar,er]=await Promise.all([
+    const [lr,ar,er,sr]=await Promise.all([
       axios.get(`${API}/livrets?id=eq.${id}&select=*`,{headers:hd()}),
       axios.get(`${API}/adresses?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}),
-      axios.get(`${API}/equipements?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]}))
+      axios.get(`${API}/equipements?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]})),
+      axios.get(`${API}/services?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]}))
     ]);
     const l={...lr.data[0],nom:nn,slug:ns};delete l.id;delete l.created_at;
     const nr=await axios.post(`${API}/livrets`,l,{headers:{...hd(),'Prefer':'return=representation'}});
     const nid=nr.data[0].id;
     if(ar.data.length){const na=ar.data.map(a=>{const x=cleanRow(a);x.livret_id=nid;return x;});await axios.post(`${API}/adresses`,na,{headers:{...hd(),'Prefer':'return=minimal'}});}
     if(er.data.length){const ne=er.data.map(e=>{const x=cleanRow(e);x.livret_id=nid;return x;});await axios.post(`${API}/equipements`,ne,{headers:{...hd(),'Prefer':'return=minimal'}});}
+    if(sr.data.length){const nsv=sr.data.map(s=>{const x=cleanRow(s);x.livret_id=nid;return x;});await axios.post(`${API}/services`,nsv,{headers:{...hd(),'Prefer':'return=minimal'}});}
     toast('📋 Livret dupliqué !');ll();
   }catch(e){console.error(e);alert('Erreur. Le slug existe peut-être déjà.');}
 }
@@ -938,16 +1196,17 @@ async function del(id,nom){
 }
 
 async function openEditor(id){
-  clid=id;adr=[];equip=[];imgFond='';
-  ['f-nom','f-slug','f-bienvenue','f-vimeo','f-procedure','f-wifi-nom','f-wifi-mdp','f-checkin','f-checkout','f-parking','f-regles','f-contact-nom','f-contact-tel','f-contact-email','f-lien-avis-google','f-lien-reservation','f-lien-autres'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
+  clid=id;adr=[];equip=[];serv=[];imgFond='';
+  ['f-nom','f-slug','f-bienvenue','f-vimeo','f-procedure','f-adresse','f-hote','f-lat','f-lng','f-wifi-nom','f-wifi-mdp','f-checkin','f-checkout','f-parking','f-regles','f-poubelles','f-contact-nom','f-contact-tel','f-contact-email','f-cta1-texte','f-cta2-texte','f-cta3-texte','f-lien-avis-google','f-lien-reservation','f-lien-autres'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
   switchTab(document.querySelector('.tab'),'tg');
   resetFondPreview();
   if(id){
     document.getElementById('editor-title').textContent='Modifier le livret';
-    const [lr,ar,er]=await Promise.all([
+    const [lr,ar,er,sr]=await Promise.all([
       axios.get(`${API}/livrets?id=eq.${id}&select=*`,{headers:hd()}),
       axios.get(`${API}/adresses?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}),
-      axios.get(`${API}/equipements?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]}))
+      axios.get(`${API}/equipements?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]})),
+      axios.get(`${API}/services?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]}))
     ]);
     const l=lr.data[0];
     document.getElementById('f-nom').value=l.nom||'';
@@ -955,11 +1214,16 @@ async function openEditor(id){
     document.getElementById('f-bienvenue').value=l.bienvenue||'';
     document.getElementById('f-vimeo').value=l.vimeo_url||'';
     document.getElementById('f-procedure').value=l.procedure_arrivee||'';
+    document.getElementById('f-adresse').value=l.adresse||'';
+    document.getElementById('f-hote').value=l.hote||'';
+    document.getElementById('f-lat').value=l.latitude||'';
+    document.getElementById('f-lng').value=l.longitude||'';
     document.getElementById('f-wifi-nom').value=l.wifi_nom||'';
     document.getElementById('f-wifi-mdp').value=l.wifi_mdp||'';
     document.getElementById('f-checkin').value=l.checkin||'';
     document.getElementById('f-checkout').value=l.checkout||'';
     document.getElementById('f-parking').value=l.parking||'';
+    document.getElementById('f-poubelles').value=l.poubelles||'';
     document.getElementById('f-regles').value=(l.regles||[]).join('\n');
     document.getElementById('f-contact-nom').value=l.contact_nom||'';
     document.getElementById('f-contact-tel').value=l.contact_tel||'';
@@ -967,12 +1231,16 @@ async function openEditor(id){
     document.getElementById('f-lien-avis-google').value=l.lien_avis_google||'';
     document.getElementById('f-lien-reservation').value=l.lien_reservation_directe||'';
     document.getElementById('f-lien-autres').value=l.lien_autres_logements||'';
+    document.getElementById('f-cta1-texte').value=l.cta1_texte||'';
+    document.getElementById('f-cta2-texte').value=l.cta2_texte||'';
+    document.getElementById('f-cta3-texte').value=l.cta3_texte||'';
     imgFond=l.image_fond||'';
     if(imgFond)showFondPreview(imgFond);
     adr=ar.data;
     equip=er.data;
+    serv=sr.data;
   }else{document.getElementById('editor-title').textContent='Nouveau livret';}
-  ra();re();show('editor-screen');
+  ra();re();rs();show('editor-screen');
 }
 
 function prefillCosyGreen(){
@@ -984,6 +1252,9 @@ function prefillCosyGreen(){
   document.getElementById('f-procedure').value='1. Récupérez les clés dans la boîte à code à droite de l\'entrée\n   Code communiqué 24h avant votre arrivée\n\n2. Entrez dans le logement par la porte principale\n\n3. Le tableau électrique se trouve dans l\'entrée à gauche\n   Tous les disjoncteurs sont déjà activés\n\n4. Le wifi se connecte automatiquement (voir onglet "Infos")\n\n5. Profitez de votre séjour à Nevers !';
   document.getElementById('f-wifi-nom').value='SFR_E04F';
   document.getElementById('f-wifi-mdp').value='ksmf34kxiswzpqlsjps1';
+  document.getElementById('f-adresse')&&(document.getElementById('f-adresse').value='12 rue de la Préfecture, 58000 Nevers');
+  document.getElementById('f-hote')&&(document.getElementById('f-hote').value='Camille & Sophie');
+  document.getElementById('f-poubelles')&&(document.getElementById('f-poubelles').value='À mettre dans les conteneurs à l\'entrée. Collecte le mardi (jaune) et le vendredi (noir).');
   document.getElementById('f-checkin').value='À partir de 16h';
   document.getElementById('f-checkout').value='Avant 11h';
   document.getElementById('f-parking').value='Stationnement possible dans la rue';
@@ -1011,7 +1282,8 @@ function prefillCosyGreen(){
     {icone:'🔥',nom:'Chauffage',description:'1. Thermostat dans le couloir\n2. Tournez la molette pour régler la température (recommandé : 19-20°C)\n3. Chaque radiateur a son propre robinet thermostatique\n4. Merci de baisser le chauffage en quittant le logement',video_url:'',ordre:2},
     {icone:'☕',nom:'Cafetière & bouilloire',description:'1. Nespresso : capsules fournies dans le tiroir de droite\n2. Bouilloire : versez l\'eau, appuyez sur le bouton\n3. Thés et infusions dans la boîte en bois sur le plan de travail',video_url:'',ordre:3}
   ];
-  ra();re();
+  serv=[];
+  ra();re();rs();
   toast('✨ Exemple Cosy Green chargé !');
 }
 
@@ -1034,6 +1306,10 @@ async function uploadImage(input,type){
     else if(type.startsWith('equip-')){
       const idx=parseInt(type.split('-')[1]);
       equip[idx].image_url=publicUrl;re();toast('✓ Photo ajoutée');
+    }
+    else if(type.startsWith('service-')){
+      const idx=parseInt(type.split('-')[1]);
+      serv[idx].image_url=publicUrl;rs();toast('✓ Photo ajoutée');
     }
     input.value='';
   }catch(e){console.error(e);alert('Erreur upload.');}
@@ -1103,6 +1379,18 @@ function re(){
   });
 }
 
+function addService(){serv.push({titre:'',description:'',image_url:'',prix:'',lien_paiement:'',ordre:serv.length});rs();}
+function removeService(i){serv.splice(i,1);rs();}
+function rs(){
+  const list=document.getElementById('services-list');if(!list)return;list.innerHTML='';
+  serv.forEach((s,i)=>{
+    const d=document.createElement('div');d.className='ai';
+    const hasImg=s.image_url?`<img src="${s.image_url}" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;margin-bottom:8px">`:'';
+    d.innerHTML=`${hasImg}<div class="ai-grid"><div class="fg" style="margin-bottom:0"><label class="fl2">Titre</label><input class="fi" value="${(s.titre||'').replace(/"/g,'&quot;')}" onchange="serv[${i}].titre=this.value" placeholder="Ménage supplémentaire"></div><div class="fg" style="margin-bottom:0"><label class="fl2">Prix (indicatif)</label><input class="fi" value="${(s.prix||'').replace(/"/g,'&quot;')}" onchange="serv[${i}].prix=this.value" placeholder="Ex: 35€"></div></div><div class="fg" style="margin:10px 0 0"><label class="fl2">Description</label><textarea class="fi" onchange="serv[${i}].description=this.value" placeholder="Ce que comprend le service...">${s.description||''}</textarea></div><div class="fg" style="margin:10px 0"><label class="fl2">Lien de paiement Stripe</label><input class="fi" value="${(s.lien_paiement||'').replace(/"/g,'&quot;')}" onchange="serv[${i}].lien_paiement=this.value" placeholder="https://buy.stripe.com/..."></div><input type="file" id="input-service-${i}" accept="image/*" style="display:none" onchange="uploadImage(this,'service-${i}')"><div style="display:flex;gap:8px"><button class="btn-add" style="margin-top:0;flex:1" onclick="document.getElementById('input-service-${i}').click()">${s.image_url?'🔄 Changer photo':'📷 Ajouter photo'}</button><button class="btn-d" onclick="removeService(${i})">Supprimer</button></div>`;
+    list.appendChild(d);
+  });
+}
+
 function cleanRow(row){
   const {id,created_at,updated_at,...clean}=row;
   Object.keys(clean).forEach(k=>{
@@ -1131,11 +1419,16 @@ async function saveLivret(){
     bienvenue:document.getElementById('f-bienvenue').value,
     vimeo_url:normalizeVimeoUrl(document.getElementById('f-vimeo').value),
     procedure_arrivee:document.getElementById('f-procedure').value||null,
+    adresse:document.getElementById('f-adresse').value||null,
+    hote:document.getElementById('f-hote').value||null,
+    latitude:document.getElementById('f-lat').value.trim()||null,
+    longitude:document.getElementById('f-lng').value.trim()||null,
     wifi_nom:document.getElementById('f-wifi-nom').value,
     wifi_mdp:document.getElementById('f-wifi-mdp').value,
     checkin:document.getElementById('f-checkin').value,
     checkout:document.getElementById('f-checkout').value,
     parking:document.getElementById('f-parking').value,
+    poubelles:document.getElementById('f-poubelles').value||null,
     regles:document.getElementById('f-regles').value.split('\n').filter(r=>r.trim()),
     contact_nom:document.getElementById('f-contact-nom').value,
     contact_tel:document.getElementById('f-contact-tel').value,
@@ -1143,7 +1436,10 @@ async function saveLivret(){
     image_fond:imgFond||null,
     lien_avis_google:document.getElementById('f-lien-avis-google').value||null,
     lien_reservation_directe:document.getElementById('f-lien-reservation').value||null,
-    lien_autres_logements:document.getElementById('f-lien-autres').value||null
+    lien_autres_logements:document.getElementById('f-lien-autres').value||null,
+    cta1_texte:document.getElementById('f-cta1-texte').value||null,
+    cta2_texte:document.getElementById('f-cta2-texte').value||null,
+    cta3_texte:document.getElementById('f-cta3-texte').value||null
   };
   if(!data.nom||!data.slug){return showErr(msg,'Le nom et le slug sont obligatoires.');}
   if(!cu||!cu.access_token){return showErr(msg,'Session expirée. Reconnectez-vous.');}
@@ -1158,7 +1454,8 @@ async function saveLivret(){
     }
     await Promise.allSettled([
       axios.delete(`${API}/adresses?livret_id=eq.${lid}`,{headers:{...hd(),'Prefer':'return=minimal'}}),
-      axios.delete(`${API}/equipements?livret_id=eq.${lid}`,{headers:{...hd(),'Prefer':'return=minimal'}})
+      axios.delete(`${API}/equipements?livret_id=eq.${lid}`,{headers:{...hd(),'Prefer':'return=minimal'}}),
+      axios.delete(`${API}/services?livret_id=eq.${lid}`,{headers:{...hd(),'Prefer':'return=minimal'}})
     ]);
     if(adr.length){
       const payloadAdr=adr.map((a,i)=>cleanRow({...a,livret_id:lid,ordre:i}));
@@ -1169,6 +1466,11 @@ async function saveLivret(){
       const payloadEq=equip.map((e,i)=>cleanRow({...e,livret_id:lid,ordre:i}));
       try{await axios.post(`${API}/equipements`,payloadEq,{headers:{...hd(),'Prefer':'return=minimal'}});}
       catch(e){return logAndShowErr(msg,'equipements',e);}
+    }
+    if(serv.length){
+      const payloadSv=serv.map((s,i)=>cleanRow({...s,livret_id:lid,ordre:i}));
+      try{await axios.post(`${API}/services`,payloadSv,{headers:{...hd(),'Prefer':'return=minimal'}});}
+      catch(e){return logAndShowErr(msg,'services',e);}
     }
     msg.className='ed-msg ok';
     msg.style.display='block';
@@ -1200,12 +1502,13 @@ async function lv(id){
   document.getElementById('voy-loading').style.display='block';
   document.getElementById('voy-content').style.display='none';
   try{
-    const [lr,ar,er]=await Promise.all([
+    const [lr,ar,er,sr]=await Promise.all([
       axios.get(`${API}/livrets?id=eq.${id}&select=*`,{headers:hd()}),
       axios.get(`${API}/adresses?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}),
-      axios.get(`${API}/equipements?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]}))
+      axios.get(`${API}/equipements?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]})),
+      axios.get(`${API}/services?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]}))
     ]);
-    rv(lr.data[0],ar.data,er.data,true);
+    rv(lr.data[0],ar.data,er.data,true,sr.data);
   }catch(e){console.error(e);document.getElementById('voy-loading').textContent='Erreur.';}
 }
 
@@ -1217,31 +1520,70 @@ async function lbs(slug){
     const lr=await axios.get(`${API}/livrets?slug=eq.${slug}&select=*`,{headers:{'apikey':KEY}});
     if(!lr.data.length){document.getElementById('voy-loading').textContent='Livret introuvable.';return;}
     const l=lr.data[0];
-    const [ar,er]=await Promise.all([
+    const [ar,er,sr]=await Promise.all([
       axios.get(`${API}/adresses?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}),
-      axios.get(`${API}/equipements?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]}))
+      axios.get(`${API}/equipements?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
+      axios.get(`${API}/services?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]}))
     ]);
-    rv(l,ar.data,er.data,false);
+    rv(l,ar.data,er.data,false,sr.data);
     trackView(l.id,'home');
   }catch(e){console.error(e);document.getElementById('voy-loading').textContent='Erreur.';}
 }
 
-function rv(l,adresses,equipements,back){
+function rv(l,adresses,equipements,back,services){
   currentLivretId=l.id;
   currentLivretData=l;
   document.getElementById('voy-loading').style.display='none';
   document.getElementById('voy-content').style.display='block';
   document.getElementById('voy-nom').textContent=l.nom;
   document.getElementById('voy-bienvenue').textContent=l.bienvenue||'Bienvenue dans votre logement.';
+  // Localisation sur la page d'accueil + boutons navigation
+  const aLat=(l.latitude||'').toString().trim();
+  const aLng=(l.longitude||'').toString().trim();
+  const hasGPS=aLat&&aLng;
+  if((l.adresse&&l.adresse.trim())||hasGPS){
+    document.getElementById('voy-adresse').textContent=l.adresse||`${aLat}, ${aLng}`;
+    let mapsHref,wazeHref;
+    if(hasGPS){
+      mapsHref=`https://www.google.com/maps/search/?api=1&query=${aLat},${aLng}`;
+      wazeHref=`https://waze.com/ul?ll=${aLat},${aLng}&navigate=yes`;
+    }else{
+      const q=encodeURIComponent(l.adresse);
+      mapsHref=`https://www.google.com/maps/search/?api=1&query=${q}`;
+      wazeHref=`https://waze.com/ul?q=${q}`;
+    }
+    document.getElementById('voy-maps-btn').href=mapsHref;
+    document.getElementById('voy-waze-btn').href=wazeHref;
+    document.getElementById('voy-loc-card').style.display='';
+    document.getElementById('voy-loc-label').style.display='';
+  }else{
+    document.getElementById('voy-loc-card').style.display='none';
+    document.getElementById('voy-loc-label').style.display='none';
+  }
   document.getElementById('voy-wifi-nom').textContent=l.wifi_nom||'—';
   document.getElementById('voy-wifi-mdp').textContent=l.wifi_mdp||'—';
   document.getElementById('voy-checkin').textContent=l.checkin||'—';
   document.getElementById('voy-checkout').textContent=l.checkout||'—';
   document.getElementById('voy-parking').textContent=l.parking||'—';
+  if(l.poubelles){document.getElementById('voy-poubelles').textContent=l.poubelles;document.getElementById('voy-poubelles-card').style.display='';}
   document.getElementById('voy-contact-nom').textContent=l.contact_nom||'—';
   document.getElementById('voy-contact-tel').href='tel:'+(l.contact_tel||'');
   document.getElementById('voy-contact-email').href='mailto:'+(l.contact_email||'');
   document.getElementById('voy-contact-email').innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> ${l.contact_email||'Envoyer un email'}`;
+  // Boutons satisfaction personnalisés (texte + lien), affichés dans Contact
+  const ctaDefs=[
+    [l.cta1_texte,l.lien_avis_google,'⭐ Laisser un avis Google','primary'],
+    [l.cta2_texte,l.lien_reservation_directe,'🏠 Réserver au meilleur prix','secondary'],
+    [l.cta3_texte,l.lien_autres_logements,'🗺️ Voir tous nos logements','tertiary']
+  ];
+  let ctaH='';
+  ctaDefs.forEach(c=>{
+    const txt=(c[0]&&c[0].trim())?c[0]:c[2];
+    const url=c[1];
+    if(url&&url.trim())ctaH+=`<a class="review-cta ${c[3]}" href="${url}" target="_blank" rel="noopener">${txt}</a>`;
+  });
+  if(ctaH){document.getElementById('voy-cta-list').innerHTML=ctaH;document.getElementById('voy-cta-zone').style.display='';}
+  else{document.getElementById('voy-cta-zone').style.display='none';}
   if(l.image_fond)document.getElementById('voy-bg').style.backgroundImage=`url('${l.image_fond}')`;
   if(l.vimeo_url){
     const playerUrl=normalizeVimeoUrl(l.vimeo_url);
@@ -1258,6 +1600,13 @@ function rv(l,adresses,equipements,back){
   document.getElementById('voy-regles').innerHTML=(l.regles||[]).map((r,i)=>`<div class="vr2"><div class="vr2-ico">${ic[i]||'·'}</div><span>${r}</span></div>`).join('');
   document.getElementById('voy-equipements').innerHTML=equipements&&equipements.length?equipements.map(e=>`<div class="eq-card">${e.image_url?`<img src="${e.image_url}" class="eq-img">`:''}<div class="eq-body"><div class="eq-header"><span class="eq-ico">${e.icone||'⚙️'}</span><div class="eq-nom">${e.nom||''}</div></div><div class="eq-desc">${e.description||''}</div>${e.video_url?`<a class="eq-vid-btn" href="${e.video_url}" target="_blank">▶ Voir la démo</a>`:''}</div></div>`).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun équipement renseigné.</div>';
   document.getElementById('voy-adresses').innerHTML=adresses.length?adresses.map(a=>`<a class="va" href="${a.url||'#'}" target="_blank"><div class="va-left"><h4>${a.nom}</h4><p>${a.description||''}${a.categorie?` · <span style="color:var(--gold2);font-size:10px;letter-spacing:0.5px">${a.categorie}</span>`:''}</p></div><div class="va-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div></a>`).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucune adresse renseignée.</div>';
+  // Services payants
+  const sv=services||[];
+  document.getElementById('voy-services').innerHTML=sv.length?sv.map(s=>`<div class="eq-card">${s.image_url?`<img src="${s.image_url}" class="eq-img">`:''}<div class="eq-body"><div class="eq-header"><div class="eq-nom">${s.titre||''}</div>${s.prix?`<span style="margin-left:auto;color:var(--gold2);font-weight:700;font-size:14px">${s.prix}</span>`:''}</div><div class="eq-desc">${s.description||''}</div>${s.lien_paiement?`<a class="eq-vid-btn" href="${s.lien_paiement}" target="_blank" rel="noopener">💳 Réserver / Payer</a>`:''}</div></div>`).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun service proposé pour le moment.</div>';
+  // Lien « autre demande » → mail
+  const mailTo=l.contact_email||'primoconciergerie58@gmail.com';
+  const sujet=encodeURIComponent(`Demande depuis le livret ${l.nom||''}`);
+  document.getElementById('voy-autre-demande').href=`mailto:${mailTo}?subject=${sujet}`;
   renderLangBar();
   const ex=document.getElementById('bk');if(ex)ex.remove();
   if(back){
@@ -1333,7 +1682,7 @@ async function trackView(livretId,page){
 
 function switchTab(btn,tabId){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');
-  ['tg','tv','ti','teq','ta','tc'].forEach(t=>{const el=document.getElementById(t);if(el)el.style.display=t===tabId?'block':'none';});
+  ['tg','tv','ti','teq','ta','tsv','tc'].forEach(t=>{const el=document.getElementById(t);if(el)el.style.display=t===tabId?'block':'none';});
 }
 function svn(btn,panel){
   document.querySelectorAll('.voy-nav-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
@@ -1374,18 +1723,7 @@ function showPositiveReview(){
   document.getElementById('review-step-1').style.display='none';
   document.getElementById('review-step-positive').style.display='block';
   const ctas=document.getElementById('review-positive-ctas');
-  let h='';
-  if(currentLivretData?.lien_avis_google){
-    h+=`<a class="review-cta primary" href="${currentLivretData.lien_avis_google}" target="_blank">⭐ Laisser un avis Google</a>`;
-  }
-  if(currentLivretData?.lien_reservation_directe){
-    h+=`<a class="review-cta secondary" href="${currentLivretData.lien_reservation_directe}" target="_blank">🏠 Louer ce logement au meilleur prix la prochaine fois</a>`;
-  }
-  if(currentLivretData?.lien_autres_logements){
-    h+=`<a class="review-cta tertiary" href="${currentLivretData.lien_autres_logements}" target="_blank">🗺️ Voir tous nos autres logements</a>`;
-  }
-  if(!h)h='<div style="color:var(--muted);font-style:italic">Merci infiniment !</div>';
-  ctas.innerHTML=h;
+  ctas.innerHTML='<div style="color:var(--muted2);font-style:italic;line-height:1.6">Merci infiniment pour votre retour ! 🙏<br>Retrouvez nos liens dans l\'onglet Contact.</div>';
 }
 
 function showNegativeReview(){
