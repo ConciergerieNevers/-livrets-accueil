@@ -222,6 +222,7 @@ textarea.fi{resize:vertical;min-height:80px;}
 .vr2-ico{width:28px;height:28px;border-radius:8px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;}
 .eq-card{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:12px;}
 .eq-img{width:100%;height:160px;object-fit:cover;display:block;background:var(--bg3);}
+.sv-img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;background:var(--bg3);}
 .eq-body{padding:16px 18px;}
 .eq-header{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
 .eq-ico{font-size:20px;}
@@ -576,15 +577,6 @@ body{top:0!important}
 
     <div id="voy-panel-home" class="voy-panel active">
       <div class="vs">
-        <div class="vs-label" id="voy-loc-label" style="display:none">Localisation</div>
-        <div class="vc" id="voy-loc-card" style="display:none">
-          <div class="vc-title">Adresse</div>
-          <div class="vr"><span class="vl" id="voy-adresse" style="text-align:left;line-height:1.5">—</span></div>
-          <div style="display:flex;gap:8px;margin-top:12px">
-            <a id="voy-maps-btn" class="copy-btn" href="#" target="_blank" rel="noopener" style="flex:1;text-align:center;text-decoration:none;padding:10px">🗺️ Google Maps</a>
-            <a id="voy-waze-btn" class="copy-btn" href="#" target="_blank" rel="noopener" style="flex:1;text-align:center;text-decoration:none;padding:10px">🚗 Waze</a>
-          </div>
-        </div>
         <div class="vs-label">Connexion rapide</div>
         <div class="vc">
           <div class="vc-title">Wifi</div>
@@ -603,6 +595,12 @@ body{top:0!important}
             <div style="font-family:var(--font-serif);font-size:15px;font-weight:600;color:var(--gold2)">Présentation du logement</div>
             <div style="font-size:12px;color:var(--muted2);margin-top:3px">Découvrez votre logement en vidéo</div>
           </div>
+        </div>
+        <div class="vs-label" id="voy-loc-label" style="display:none">Localisation</div>
+        <div class="vc" id="voy-loc-card" style="display:none">
+          <div class="vc-title">Adresse</div>
+          <div class="vr"><span class="vl" id="voy-adresse" style="text-align:left;line-height:1.5">—</span></div>
+          <button class="copy-btn" onclick="openLocChoice()" style="width:100%;margin-top:12px;padding:12px;font-size:14px">📍 S'y rendre</button>
         </div>
         <div class="proc-card" id="voy-proc-card" style="display:none">
           <div class="proc-title">
@@ -721,6 +719,38 @@ body{top:0!important}
 </div>
 
 <!-- MODALES -->
+<div class="modal-overlay" id="loc-modal">
+  <div class="modal-content" style="max-width:380px">
+    <button class="modal-close" onclick="closeModal('loc-modal')">×</button>
+    <div class="modal-title serif gold-text">S'y rendre</div>
+    <div class="modal-sub" id="loc-modal-adresse">—</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:18px">
+      <a id="loc-maps" class="btn-p" href="#" target="_blank" rel="noopener" style="text-decoration:none;text-align:center;padding:14px">🗺️ Ouvrir dans Google Maps</a>
+      <a id="loc-waze" class="btn-p" href="#" target="_blank" rel="noopener" style="text-decoration:none;text-align:center;padding:14px">🚗 Ouvrir dans Waze</a>
+      <button class="btn-s" onclick="copyAdresse()" style="padding:14px">📋 Copier l'adresse</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="crop-modal">
+  <div class="modal-content" style="max-width:420px">
+    <button class="modal-close" onclick="cancelCrop()">×</button>
+    <div class="modal-title serif gold-text">Cadrer l'image</div>
+    <div class="modal-sub">Glissez pour déplacer · curseur pour zoomer</div>
+    <div id="crop-stage" style="position:relative;width:320px;height:320px;max-width:100%;margin:8px auto 16px;border-radius:14px;overflow:hidden;background:#000;touch-action:none;cursor:grab;border:1px solid var(--border-gold)">
+      <img id="crop-img" style="position:absolute;left:0;top:0;transform-origin:0 0;user-select:none;pointer-events:none;-webkit-user-drag:none" alt="">
+      <div style="position:absolute;inset:0;box-shadow:0 0 0 1px rgba(201,168,76,0.4) inset;pointer-events:none"></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+      <span style="font-size:16px">🔍</span>
+      <input type="range" id="crop-zoom" min="1" max="3" step="0.01" value="1" style="flex:1">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-s" style="flex:1" onclick="cancelCrop()">Annuler</button>
+      <button class="btn-p" style="flex:1" onclick="applyCrop()">Valider</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="qr-modal">
   <div class="modal-content">
     <button class="modal-close" onclick="closeModal('qr-modal')">×</button>
@@ -810,7 +840,7 @@ const SB='https://iduognfftslrcresthuu.supabase.co';
 const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlkdW9nbmZmdHNscmNyZXN0aHV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNzk5NTMsImV4cCI6MjA5NDg1NTk1M30.H_4GWP7nELp-OvhTugj7MtkSdwHiPugvoIcLDZsoszA';
 const API=`${SB}/rest/v1`,AUTH=`${SB}/auth/v1`,STORAGE=`${SB}/storage/v1`,BASE=window.location.origin;
 const BUCKET='livret-images';
-const MAX_IMG_SIZE=200*1024;
+const MAX_IMG_SIZE=800*1024;
 
 const LANGS=[
   {code:'fr',flag:'🇫🇷',name:'Français'},
@@ -825,7 +855,7 @@ const LANGS=[
   {code:'ru',flag:'🇷🇺',name:'Русский'},
 ];
 
-let cu=null,clid=null,adr=[],equip=[],serv=[],imgFond='',currentLivretId=null,currentLivretData=null,selectedNote=0,qrInstance=null;
+let cu=null,clid=null,adr=[],equip=[],serv=[],imgFond='',currentLivretId=null,currentLivretData=null,selectedNote=0,qrInstance=null,locData=null;
 
 const ss=u=>localStorage.setItem('lv',JSON.stringify({u,t:Date.now()}));
 const ls=()=>{try{const s=JSON.parse(localStorage.getItem('lv'));if(!s)return null;if(Date.now()-s.t>28800000){localStorage.removeItem('lv');return null;}return s.u;}catch{return null;}};
@@ -834,6 +864,7 @@ const hd=()=>({'Content-Type':'application/json','apikey':KEY,'Authorization':`B
 const hdf=()=>({'apikey':KEY,'Authorization':`Bearer ${cu?.access_token||KEY}`});
 
 window.addEventListener('DOMContentLoaded',()=>{
+  setupCropEvents();
   const p=window.location.pathname;
   if(p.startsWith('/livret/')){lbs(p.replace('/livret/',''));return;}
   const sv=ls();
@@ -981,7 +1012,6 @@ async function downloadFiche(id,nom){
   }catch(e){toast('Erreur de chargement.');return;}
 
   const pub=`${BASE}/livret/${l.slug}`;
-  // QR livret + QR wifi (si infos présentes)
   const qrLivret=await makeQRDataURL(pub,300);
   let qrWifi=null;
   if(l.wifi_nom){
@@ -991,92 +1021,102 @@ async function downloadFiche(id,nom){
 
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({unit:'mm',format:'a4'});
-  const W=210,H=297,M=14;
-  const GOLD=[201,168,76], DARK=[26,26,26], GREY=[120,120,120], LIGHT=[150,150,150];
-  const colGap=8;
+  const W=210,H=297,M=15;
+  // Identité de l'app sur fond BLANC
+  const GOLD=[201,168,76], GOLD_D=[176,138,52];     // doré (accents) / doré foncé lisible
+  const DARK=[26,26,26], BODY=[40,40,40], MUTED=[120,120,120];
+  const HAIR=[222,216,200];                          // filets dorés clairs
+  const colGap=11;
   const colW=(W-2*M-colGap)/2;
   const xL=M, xR=M+colW+colGap;
 
-  // Helper texte FR (noir) + EN (doré) sous chaque ligne
+  // Fond blanc
+  doc.setFillColor(255,255,255);doc.rect(0,0,W,H,'F');
+
+  // Helper bilingue : FR noir (dominant) + EN doré plus petit dessous
   function bil(x,y,fr,en,maxw,opt={}){
-    const size=opt.size||9;
+    const size=opt.size||9.5;
     doc.setFont('helvetica',opt.bold?'bold':'normal');
     doc.setFontSize(size);
-    doc.setTextColor(...(opt.color||DARK));
+    doc.setTextColor(...(opt.color||BODY));
     const frLines=doc.splitTextToSize(fr,maxw);
     doc.text(frLines,x,y);
-    let yy=y+frLines.length*(size*0.42);
+    let yy=y+frLines.length*(size*0.43);
     if(en){
       doc.setFont('helvetica','italic');
-      doc.setFontSize(size-1);
-      doc.setTextColor(...GOLD);
+      doc.setFontSize(size-1.5);
+      doc.setTextColor(...GOLD_D);
       const enLines=doc.splitTextToSize(en,maxw);
-      doc.text(enLines,x,yy);
-      yy+=enLines.length*((size-1)*0.42);
+      doc.text(enLines,x,yy+0.4);
+      yy+=enLines.length*((size-1.5)*0.43)+0.4;
     }
     return yy;
   }
-  // Titre de section avec petit repère doré
+  // Titre de section : serif foncé + sous-titre EN doré + filet doré
   function sectionTitle(x,y,fr,en){
     doc.setFillColor(...GOLD);
-    doc.triangle(x,y-3.2,x,y+0.2,x+3,y-1.5,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...DARK);
-    doc.text(fr.toUpperCase(),x+5,y);
-    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...GOLD);
-    doc.text(en.toLowerCase(),x+5,y+3.6);
-    // ligne de séparation fine
+    doc.triangle(x,y-3.4,x,y+0.4,x+3.2,y-1.5,'F');
+    doc.setFont('times','bold');doc.setFontSize(13);doc.setTextColor(...DARK);
+    doc.text(fr,x+5.5,y);
+    doc.setFont('helvetica','normal');doc.setFontSize(6.8);doc.setTextColor(...GOLD_D);
+    doc.text(en.toLowerCase(),x+5.5,y+3.3);
     doc.setDrawColor(...GOLD);doc.setLineWidth(0.3);
-    doc.line(x,y+5.5,x+ (x===xL?colW:colW),y+5.5);
-    return y+11;
+    doc.line(x,y+5.2,x+colW,y+5.2);
+    return y+10.5;
   }
 
   // ===== EN-TÊTE =====
-  doc.setFont('helvetica','bold');doc.setFontSize(34);doc.setTextColor(...DARK);
-  doc.text('WELCOME',M,26);
-  // bandeau hôte/contact à droite
-  doc.setFillColor(44,48,54);
-  doc.roundedRect(xR-2,14,colW+2,18,2,2,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(255,255,255);
-  if(l.hote)doc.text(`HOST : ${l.hote}`,xR+2,21);
-  if(l.contact_nom)doc.text(`CONTACT : ${l.contact_nom}`,xR+2,27);
+  doc.setFont('times','bold');doc.setFontSize(42);doc.setTextColor(...DARK);
+  doc.text('Welcome',M,29);
+  // Carte hôte/contact à droite (cadre doré sur blanc)
+  doc.setDrawColor(...GOLD);doc.setLineWidth(0.4);
+  doc.roundedRect(xR,13,colW,19,2.5,2.5,'S');
+  let hcY=20;
+  doc.setFontSize(8.5);
+  if(l.hote){doc.setFont('helvetica','bold');doc.setTextColor(...GOLD_D);doc.text('HÔTE / HOST',xR+4,hcY);doc.setTextColor(...DARK);doc.text(l.hote,xR+27,hcY);hcY+=6.5;}
+  if(l.contact_nom){doc.setFont('helvetica','bold');doc.setTextColor(...GOLD_D);doc.text('CONTACT',xR+4,hcY);doc.setTextColor(...DARK);doc.text(l.contact_nom,xR+27,hcY);}
   // nom + adresse
-  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(...DARK);
-  doc.text((l.nom||'').toUpperCase(),M,36);
-  doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(...GREY);
+  doc.setFont('times','bold');doc.setFontSize(16);doc.setTextColor(...DARK);
+  doc.text((l.nom||''),M,39.5);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...MUTED);
   if(l.adresse){
-    const adrLines=doc.splitTextToSize(l.adresse,colW);
-    doc.text(adrLines,M,42);
+    const adrLines=doc.splitTextToSize(l.adresse,colW+10);
+    doc.text(adrLines,M,45);
   }
+  // filet doré sous l'en-tête
+  doc.setDrawColor(...GOLD);doc.setLineWidth(0.5);doc.line(M,50,W-M,50);
 
-  let yL=58, yR=44;
+  let yL=60, yR=60;
 
   // ===== COLONNE GAUCHE =====
   // Règles
   yL=sectionTitle(xL,yL,'Rappel des règles','house rules');
-  // règle fixe non-fumeur + picto rouge
-  doc.setDrawColor(224,85,85);doc.setLineWidth(0.8);
-  doc.circle(xL+3,yL+1.5,3,'S');
-  doc.line(xL+0.9,yL+3.6,xL+5.1,yL-0.6);
-  yL=bil(xL+8,yL,'1 / Ne pas fumer à l\'intérieur','no smoking inside',colW-8)+3;
+  doc.setDrawColor(224,85,85);doc.setLineWidth(0.9);
+  doc.circle(xL+3,yL+1,3,'S');
+  doc.line(xL+1,yL+3,xL+5,yL-1);
+  yL=bil(xL+9,yL,'1 / Ne pas fumer à l\'intérieur','no smoking inside',colW-9)+3.5;
   let rnum=2;
   (l.regles||[]).forEach(r=>{
-    if(/fum/i.test(r))return; // évite doublon non-fumeur
-    yL=bil(xL,yL,`${rnum} / ${r}`,'',colW)+2.5;
+    if(/fum/i.test(r))return;
+    yL=bil(xL,yL,`${rnum} / ${r}`,'',colW)+3;
     rnum++;
   });
   yL+=4;
 
   // Poubelles
   yL=sectionTitle(xL,yL,'Jours des poubelles','trash days');
-  if(l.poubelles){yL=bil(xL,yL,l.poubelles,'',colW)+2;}
-  const bins=[[ '#e9c84a','Jaune (carton/plastique)'],['#2b2b2b','Noir (ordures ménagères)'],['#3bbf6f','Vert (verre)']];
+  if(l.poubelles){yL=bil(xL,yL,l.poubelles,'',colW,{color:MUTED,size:8.5})+3;}
+  const bins=[['#e9c84a','Jaune (carton / plastique)','Yellow (cardboard / plastic)'],['#3a3a3a','Noir (ordures ménagères)','Black (household waste)'],['#3bbf6f','Vert (verre)','Green (glass)']];
   bins.forEach(b=>{
     const col=b[0];
     doc.setFillColor(parseInt(col.slice(1,3),16),parseInt(col.slice(3,5),16),parseInt(col.slice(5,7),16));
-    doc.circle(xL+2.5,yL-1,2.5,'F');
-    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...DARK);
-    doc.text(b[1],xL+7,yL);
-    yL+=6;
+    doc.circle(xL+2.8,yL-1,2.6,'F');
+    doc.setDrawColor(...HAIR);doc.setLineWidth(0.2);doc.circle(xL+2.8,yL-1,2.6,'S');
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...BODY);
+    doc.text(b[1],xL+8,yL-1.5);
+    doc.setFont('helvetica','italic');doc.setFontSize(7);doc.setTextColor(...GOLD_D);
+    doc.text(b[2],xL+8,yL+1.5);
+    yL+=7.5;
   });
   yL+=3;
 
@@ -1088,55 +1128,57 @@ async function downloadFiche(id,nom){
 
   // Urgences (fixe)
   yL=sectionTitle(xL,yL,'Urgences','emergency infos');
-  doc.setDrawColor(...GOLD);doc.setLineWidth(0.5);doc.circle(xL+6,yL+3,6,'S');
-  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...DARK);
-  doc.text('112',xL+6,yL+4.5,{align:'center'});
-  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...DARK);
-  doc.text('Police 17',xL+16,yL+1);
-  doc.setTextColor(...GOLD);doc.text('Pompier 18',xL+16,yL+5);
-  doc.setTextColor(...DARK);doc.text('SAMU 15',xL+16,yL+9);
+  doc.setDrawColor(...GOLD);doc.setLineWidth(0.6);doc.circle(xL+6,yL+3,6.2,'S');
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(...DARK);
+  doc.text('112',xL+6,yL+4.8,{align:'center'});
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica','normal');doc.setTextColor(...DARK);doc.text('Police : 17',xL+17,yL+1);
+  doc.setTextColor(...GOLD_D);doc.text('Pompiers : 18',xL+17,yL+5.5);
+  doc.setTextColor(...DARK);doc.text('SAMU : 15',xL+17,yL+10);
 
   // ===== COLONNE DROITE =====
   // Wifi
   yR=sectionTitle(xR,yR,'Wifi','network');
-  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(...GOLD);
-  doc.text('NETWORK',xR,yR);yR+=5;
-  yR=bil(xR,yR,`Réseau : ${l.wifi_nom||'—'}`,'',colW)+1;
-  yR=bil(xR,yR,`Mot de passe : ${l.wifi_mdp||'—'}`,'',colW)+3;
-  // QR wifi
+  yR=bil(xR,yR,`Réseau : ${l.wifi_nom||'—'}`,'',colW,{bold:true})+1.5;
+  yR=bil(xR,yR,`Mot de passe : ${l.wifi_mdp||'—'}`,'',colW,{bold:true})+3.5;
   if(qrWifi){
-    doc.addImage(qrWifi,'PNG',xR,yR,26,26);
-    doc.setFont('helvetica','italic');doc.setFontSize(8);doc.setTextColor(...DARK);
-    doc.text('Scannez pour vous',xR+30,yR+10);
-    doc.setTextColor(...GOLD);doc.text('connecter au wifi',xR+30,yR+14);
-    yR+=30;
+    doc.setDrawColor(...GOLD);doc.setLineWidth(0.3);doc.roundedRect(xR,yR,28,28,2,2,'S');
+    doc.addImage(qrWifi,'PNG',xR+1.5,yR+1.5,25,25);
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...DARK);
+    doc.text('Connexion automatique',xR+32,yR+11);
+    doc.setFont('helvetica','italic');doc.setFontSize(7.5);doc.setTextColor(...GOLD_D);
+    doc.text('Scan to connect to the wifi',xR+32,yR+15.5);
+    yR+=32;
   }
-  yR+=4;
+  yR+=3;
 
   // Check-out
-  yR=sectionTitle(xR,yR,'Check out','check out');
-  if(l.checkout){yR=bil(xR,yR,`Départ : ${l.checkout}`,'check out time',colW)+3;}
+  yR=sectionTitle(xR,yR,'Check-out','check out');
+  if(l.checkout){yR=bil(xR,yR,`Départ : ${l.checkout}`,'departure time',colW,{bold:true})+3;}
   const coSteps=[
     ['Éteignez les lumières et la clim','Turn off lights and air conditioning'],
     ['Videz et sortez les poubelles','Empty and take out the garbage'],
     ['Fermez les portes et les fenêtres','Close doors and windows'],
     ['Remettez les clés dans la boîte à clés','Put the keys back in the key box'],
   ];
-  coSteps.forEach(s=>{yR=bil(xR,yR,s[0],s[1],colW)+2.5;});
-  yR+=4;
+  coSteps.forEach(s=>{yR=bil(xR,yR,s[0],s[1],colW)+3;});
+  yR+=5;
 
   // QR livret « Scan me »
-  doc.setFont('helvetica','italic');doc.setFontSize(13);doc.setTextColor(...DARK);
-  doc.text('Scan me',xR,yR+8);
+  doc.setFont('times','bolditalic');doc.setFontSize(15);doc.setTextColor(...DARK);
+  doc.text('Scan me',xR,yR+10);
+  doc.setFont('helvetica','italic');doc.setFontSize(7.5);doc.setTextColor(...GOLD_D);
+  doc.text('toutes les infos du logement',xR,yR+15);
+  doc.text('all the property info',xR,yR+19);
   doc.setDrawColor(...GOLD);doc.setLineWidth(0.4);
-  doc.roundedRect(xR+colW-34,yR-2,34,34,2,2,'S');
-  doc.addImage(qrLivret,'PNG',xR+colW-32,yR,30,30);
+  doc.roundedRect(xR+colW-36,yR-1,36,36,2.5,2.5,'S');
+  doc.addImage(qrLivret,'PNG',xR+colW-34,yR+1,32,32);
 
   // ===== PIED DE PAGE =====
-  doc.setFillColor(44,48,54);
-  doc.rect(0,H-16,W,16,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...GOLD);
-  doc.text('DES SERVICES ADAPTÉS À VOS BESOINS !',W/2,H-6,{align:'center'});
+  doc.setFillColor(...DARK);
+  doc.rect(0,H-15,W,15,'F');
+  doc.setFont('times','bold');doc.setFontSize(12);doc.setTextColor(...GOLD);
+  doc.text('Des services adaptés à vos besoins',W/2,H-6.5,{align:'center'});
 
   doc.save(`fiche-accueil-${(l.slug||nom||'livret').replace(/\s+/g,'-')}.pdf`);
   toast('✅ Fiche téléchargée !');
@@ -1290,6 +1332,12 @@ function prefillCosyGreen(){
 async function uploadImage(input,type){
   const file=input.files[0];if(!file)return;
   if(!cu){alert('Connectez-vous d\'abord.');return;}
+  // Les images de services passent par l'outil de recadrage carré (1:1)
+  if(type.startsWith('service-')){
+    openCropper(file,type);
+    input.value='';
+    return;
+  }
   try{
     let blob=file;
     const ratio=type==='fond'?{w:1600,h:900}:{w:800,h:600};
@@ -1315,23 +1363,139 @@ async function uploadImage(input,type){
   }catch(e){console.error(e);alert('Erreur upload.');}
 }
 
+// ===== RECADRAGE CARRÉ (services) =====
+let cropState={type:null,img:null,natW:0,natH:0,baseScale:1,zoom:1,minX:0,minY:0,x:0,y:0,dragging:false,startX:0,startY:0,startPX:0,startPY:0};
+const CROP_BOX=320; // taille du cadre à l'écran (px)
+
+function openCropper(file,type){
+  const url=URL.createObjectURL(file);
+  const im=new Image();
+  im.onload=()=>{
+    cropState.type=type;cropState.img=im;cropState.natW=im.naturalWidth;cropState.natH=im.naturalHeight;
+    // échelle de base : l'image couvre tout le cadre (cover)
+    cropState.baseScale=Math.max(CROP_BOX/im.naturalWidth,CROP_BOX/im.naturalHeight);
+    cropState.zoom=1;
+    document.getElementById('crop-zoom').value=1;
+    const el=document.getElementById('crop-img');
+    el.src=url;
+    // centrer
+    centerCrop();
+    openModal('crop-modal');
+  };
+  im.onerror=()=>alert('Image illisible.');
+  im.src=url;
+}
+
+function curScale(){return cropState.baseScale*cropState.zoom;}
+
+function centerCrop(){
+  const s=curScale();
+  const dispW=cropState.natW*s, dispH=cropState.natH*s;
+  cropState.x=(CROP_BOX-dispW)/2;
+  cropState.y=(CROP_BOX-dispH)/2;
+  clampCrop();applyCropTransform();
+}
+
+function clampCrop(){
+  const s=curScale();
+  const dispW=cropState.natW*s, dispH=cropState.natH*s;
+  // l'image doit toujours couvrir le cadre
+  cropState.minX=CROP_BOX-dispW; cropState.minY=CROP_BOX-dispH;
+  if(cropState.x>0)cropState.x=0;
+  if(cropState.y>0)cropState.y=0;
+  if(cropState.x<cropState.minX)cropState.x=cropState.minX;
+  if(cropState.y<cropState.minY)cropState.y=cropState.minY;
+}
+
+function applyCropTransform(){
+  const el=document.getElementById('crop-img');
+  const s=curScale();
+  el.style.width=(cropState.natW*s)+'px';
+  el.style.height=(cropState.natH*s)+'px';
+  el.style.transform=`translate(${cropState.x}px,${cropState.y}px)`;
+}
+
+function setupCropEvents(){
+  const stage=document.getElementById('crop-stage');
+  const zoom=document.getElementById('crop-zoom');
+  if(!stage||stage.dataset.bound)return;
+  stage.dataset.bound='1';
+  const down=(px,py)=>{cropState.dragging=true;cropState.startX=px;cropState.startY=py;cropState.startPX=cropState.x;cropState.startPY=cropState.y;stage.style.cursor='grabbing';};
+  const move=(px,py)=>{if(!cropState.dragging)return;cropState.x=cropState.startPX+(px-cropState.startX);cropState.y=cropState.startPY+(py-cropState.startY);clampCrop();applyCropTransform();};
+  const up=()=>{cropState.dragging=false;stage.style.cursor='grab';};
+  stage.addEventListener('mousedown',e=>{e.preventDefault();down(e.clientX,e.clientY);});
+  window.addEventListener('mousemove',e=>move(e.clientX,e.clientY));
+  window.addEventListener('mouseup',up);
+  stage.addEventListener('touchstart',e=>{const t=e.touches[0];down(t.clientX,t.clientY);},{passive:true});
+  stage.addEventListener('touchmove',e=>{const t=e.touches[0];move(t.clientX,t.clientY);},{passive:true});
+  stage.addEventListener('touchend',up);
+  zoom.addEventListener('input',()=>{
+    // zoom centré sur le milieu du cadre
+    const old=curScale();
+    cropState.zoom=parseFloat(zoom.value);
+    const ns=curScale();
+    const cx=CROP_BOX/2,cy=CROP_BOX/2;
+    cropState.x=cx-((cx-cropState.x)*(ns/old));
+    cropState.y=cy-((cy-cropState.y)*(ns/old));
+    clampCrop();applyCropTransform();
+  });
+}
+
+function cancelCrop(){closeModal('crop-modal');cropState.img=null;}
+
+async function applyCrop(){
+  if(!cropState.img){closeModal('crop-modal');return;}
+  // taille de sortie carrée
+  const OUT=600;
+  const s=curScale();
+  // portion de l'image source visible dans le cadre
+  const sx=(-cropState.x)/s, sy=(-cropState.y)/s, sSize=CROP_BOX/s;
+  const canvas=document.createElement('canvas');
+  canvas.width=OUT;canvas.height=OUT;
+  const ctx=canvas.getContext('2d');
+  ctx.drawImage(cropState.img,sx,sy,sSize,sSize,0,0,OUT,OUT);
+  const type=cropState.type;
+  closeModal('crop-modal');
+  // compression qualité décroissante
+  const toBlobQ=(q)=>new Promise(res=>canvas.toBlob(res,'image/webp',q));
+  let q=0.85,blob=await toBlobQ(q);
+  while(blob.size>MAX_IMG_SIZE&&q>0.3){q-=0.1;blob=await toBlobQ(q);}
+  await uploadBlob(blob,type);
+  cropState.img=null;
+}
+
+async function uploadBlob(blob,type){
+  try{
+    if(blob.size>MAX_IMG_SIZE){alert(`Image trop lourde (${Math.round(blob.size/1024)} KO).`);return;}
+    const fname=`${cu.user.id}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.webp`;
+    const url=`${STORAGE}/object/${BUCKET}/${fname}`;
+    await axios.post(url,blob,{headers:{...hdf(),'Content-Type':'image/webp','x-upsert':'true'}});
+    const publicUrl=`${STORAGE}/object/public/${BUCKET}/${fname}`;
+    if(type.startsWith('service-')){const idx=parseInt(type.split('-')[1]);serv[idx].image_url=publicUrl;rs();toast('✓ Photo ajoutée');}
+  }catch(e){console.error(e);alert('Erreur upload.');}
+}
+
 function compressImage(file,target){
   return new Promise((resolve,reject)=>{
     const img=new Image();
     img.onload=()=>{
-      const canvas=document.createElement('canvas');
-      const tw=target.w,th=target.h,tr=tw/th;
+      const tr=target.w/target.h;
       const sr=img.width/img.height;
+      // zone source recadrée au bon ratio
       let sx=0,sy=0,sw=img.width,sh=img.height;
       if(sr>tr){sw=img.height*tr;sx=(img.width-sw)/2;}
       else if(sr<tr){sh=img.width/tr;sy=(img.height-sh)/2;}
+      // dimension de sortie = on ne dépasse JAMAIS la taille réelle de la source (pas d'agrandissement)
+      let tw=Math.min(target.w,Math.round(sw));
+      let th=Math.round(tw/tr);
+      const canvas=document.createElement('canvas');
       canvas.width=tw;canvas.height=th;
       const ctx=canvas.getContext('2d');
       ctx.drawImage(img,sx,sy,sw,sh,0,0,tw,th);
       let q=0.85;
       const tryQ=()=>{
         canvas.toBlob(b=>{
-          if(b.size<=MAX_IMG_SIZE||q<=0.4)resolve(b);
+          if(b.size<=MAX_IMG_SIZE||q<=0.3)resolve(b);
           else{q-=0.1;tryQ();}
         },'image/webp',q);
       };
@@ -1385,7 +1549,7 @@ function rs(){
   const list=document.getElementById('services-list');if(!list)return;list.innerHTML='';
   serv.forEach((s,i)=>{
     const d=document.createElement('div');d.className='ai';
-    const hasImg=s.image_url?`<img src="${s.image_url}" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;margin-bottom:8px">`:'';
+    const hasImg=s.image_url?`<img src="${s.image_url}" style="width:140px;height:140px;object-fit:cover;border-radius:10px;margin-bottom:8px;display:block">`:'';
     d.innerHTML=`${hasImg}<div class="ai-grid"><div class="fg" style="margin-bottom:0"><label class="fl2">Titre</label><input class="fi" value="${(s.titre||'').replace(/"/g,'&quot;')}" onchange="serv[${i}].titre=this.value" placeholder="Ménage supplémentaire"></div><div class="fg" style="margin-bottom:0"><label class="fl2">Prix (indicatif)</label><input class="fi" value="${(s.prix||'').replace(/"/g,'&quot;')}" onchange="serv[${i}].prix=this.value" placeholder="Ex: 35€"></div></div><div class="fg" style="margin:10px 0 0"><label class="fl2">Description</label><textarea class="fi" onchange="serv[${i}].description=this.value" placeholder="Ce que comprend le service...">${s.description||''}</textarea></div><div class="fg" style="margin:10px 0"><label class="fl2">Lien de paiement Stripe</label><input class="fi" value="${(s.lien_paiement||'').replace(/"/g,'&quot;')}" onchange="serv[${i}].lien_paiement=this.value" placeholder="https://buy.stripe.com/..."></div><input type="file" id="input-service-${i}" accept="image/*" style="display:none" onchange="uploadImage(this,'service-${i}')"><div style="display:flex;gap:8px"><button class="btn-add" style="margin-top:0;flex:1" onclick="document.getElementById('input-service-${i}').click()">${s.image_url?'🔄 Changer photo':'📷 Ajouter photo'}</button><button class="btn-d" onclick="removeService(${i})">Supprimer</button></div>`;
     list.appendChild(d);
   });
@@ -1537,12 +1701,13 @@ function rv(l,adresses,equipements,back,services){
   document.getElementById('voy-content').style.display='block';
   document.getElementById('voy-nom').textContent=l.nom;
   document.getElementById('voy-bienvenue').textContent=l.bienvenue||'Bienvenue dans votre logement.';
-  // Localisation sur la page d'accueil + boutons navigation
+  // Localisation sur la page d'accueil (sous la vidéo) → popup "S'y rendre"
   const aLat=(l.latitude||'').toString().trim();
   const aLng=(l.longitude||'').toString().trim();
   const hasGPS=aLat&&aLng;
   if((l.adresse&&l.adresse.trim())||hasGPS){
-    document.getElementById('voy-adresse').textContent=l.adresse||`${aLat}, ${aLng}`;
+    const adrTxt=l.adresse||`${aLat}, ${aLng}`;
+    document.getElementById('voy-adresse').textContent=adrTxt;
     let mapsHref,wazeHref;
     if(hasGPS){
       mapsHref=`https://www.google.com/maps/search/?api=1&query=${aLat},${aLng}`;
@@ -1552,11 +1717,11 @@ function rv(l,adresses,equipements,back,services){
       mapsHref=`https://www.google.com/maps/search/?api=1&query=${q}`;
       wazeHref=`https://waze.com/ul?q=${q}`;
     }
-    document.getElementById('voy-maps-btn').href=mapsHref;
-    document.getElementById('voy-waze-btn').href=wazeHref;
+    locData={adresse:adrTxt,maps:mapsHref,waze:wazeHref};
     document.getElementById('voy-loc-card').style.display='';
     document.getElementById('voy-loc-label').style.display='';
   }else{
+    locData=null;
     document.getElementById('voy-loc-card').style.display='none';
     document.getElementById('voy-loc-label').style.display='none';
   }
@@ -1602,7 +1767,7 @@ function rv(l,adresses,equipements,back,services){
   document.getElementById('voy-adresses').innerHTML=adresses.length?adresses.map(a=>`<a class="va" href="${a.url||'#'}" target="_blank"><div class="va-left"><h4>${a.nom}</h4><p>${a.description||''}${a.categorie?` · <span style="color:var(--gold2);font-size:10px;letter-spacing:0.5px">${a.categorie}</span>`:''}</p></div><div class="va-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div></a>`).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucune adresse renseignée.</div>';
   // Services payants
   const sv=services||[];
-  document.getElementById('voy-services').innerHTML=sv.length?sv.map(s=>`<div class="eq-card">${s.image_url?`<img src="${s.image_url}" class="eq-img">`:''}<div class="eq-body"><div class="eq-header"><div class="eq-nom">${s.titre||''}</div>${s.prix?`<span style="margin-left:auto;color:var(--gold2);font-weight:700;font-size:14px">${s.prix}</span>`:''}</div><div class="eq-desc">${s.description||''}</div>${s.lien_paiement?`<a class="eq-vid-btn" href="${s.lien_paiement}" target="_blank" rel="noopener">💳 Réserver / Payer</a>`:''}</div></div>`).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun service proposé pour le moment.</div>';
+  document.getElementById('voy-services').innerHTML=sv.length?sv.map(s=>`<div class="eq-card">${s.image_url?`<img src="${s.image_url}" class="sv-img">`:''}<div class="eq-body"><div class="eq-header"><div class="eq-nom">${s.titre||''}</div>${s.prix?`<span style="margin-left:auto;color:var(--gold2);font-weight:700;font-size:14px">${s.prix}</span>`:''}</div><div class="eq-desc">${s.description||''}</div>${s.lien_paiement?`<a class="eq-vid-btn" href="${s.lien_paiement}" target="_blank" rel="noopener">💳 Réserver / Payer</a>`:''}</div></div>`).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun service proposé pour le moment.</div>';
   // Lien « autre demande » → mail
   const mailTo=l.contact_email||'primoconciergerie58@gmail.com';
   const sujet=encodeURIComponent(`Demande depuis le livret ${l.nom||''}`);
@@ -1692,6 +1857,17 @@ function svn(btn,panel){
   if(currentLivretId)trackView(currentLivretId,panel);
 }
 function copyWifi(){navigator.clipboard.writeText(document.getElementById('voy-wifi-mdp').textContent).then(()=>toast('Mot de passe copié'));}
+function openLocChoice(){
+  if(!locData)return;
+  document.getElementById('loc-modal-adresse').textContent=locData.adresse;
+  document.getElementById('loc-maps').href=locData.maps;
+  document.getElementById('loc-waze').href=locData.waze;
+  openModal('loc-modal');
+}
+function copyAdresse(){
+  if(!locData)return;
+  navigator.clipboard.writeText(locData.adresse).then(()=>{toast('📋 Adresse copiée !');closeModal('loc-modal');});
+}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 function openModal(id){document.getElementById(id).classList.add('show');}
 function closeModal(id){document.getElementById(id).classList.remove('show');}
