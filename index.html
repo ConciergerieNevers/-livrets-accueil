@@ -1182,16 +1182,14 @@ function logAndShowErr(msg,context,e){
   const supabaseErr=e?.response?.data;
   const code=supabaseErr?.code;
   const message=supabaseErr?.message||e?.message||'Erreur inconnue';
-  console.error(`[SAVE ERR ${context}]`,{status,code,message,fullError:e});
-  let userMsg=`Erreur sur "${context}" : `;
-  if(status===401)userMsg+='Non autorisé. Reconnectez-vous.';
-  else if(status===403)userMsg+='Permission refusée. Vérifiez les RLS Supabase.';
-  else if(status===409)userMsg+='Conflit (slug déjà utilisé ou doublon).';
-  else if(code==='PGRST204'||message.includes('column'))userMsg+=`Colonne manquante : ${message}`;
-  else if(code==='23505')userMsg+='Doublon détecté (clé unique).';
-  else if(code==='23503')userMsg+='Référence cassée (foreign key).';
-  else userMsg+=message;
-  showErr(msg,userMsg);
+  const details=supabaseErr?.details||'';
+  const hint=supabaseErr?.hint||'';
+  console.error(`[SAVE ERR ${context}]`,{status,code,message,details,hint,fullError:e});
+  const raw=`[${context}] status=${status} code=${code}\nmessage: ${message}\ndetails: ${details}\nhint: ${hint}`;
+  msg.className='ed-msg err';
+  msg.style.display='block';
+  msg.style.whiteSpace='pre-wrap';
+  msg.textContent=raw;
 }
 function showErr(msg,text){msg.className='ed-msg err';msg.style.display='block';msg.textContent=text;}
 
