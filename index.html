@@ -1626,9 +1626,6 @@ async function importVimeoChapters(){
   const playerUrl=normalizeVimeoUrl(url);
   if(!playerUrl){alert('Lien Vimeo invalide.');return;}
   if(!window.Vimeo||!window.Vimeo.Player){alert('Lecteur Vimeo non chargé. Recharge la page.');return;}
-  if(btnv.length>0){
-    if(!confirm(`Cela va remplacer les ${btnv.length} bouton(s) existant(s) par les chapitres de la vidéo. Continuer ?`))return;
-  }
   toast('🎬 Récupération des chapitres…');
   // iframe Vimeo temporaire caché
   const tmp=document.createElement('iframe');
@@ -1645,14 +1642,18 @@ async function importVimeoChapters(){
       toast('Aucun chapitre trouvé sur cette vidéo Vimeo.');
       return;
     }
-    btnv=chapters.map((c,i)=>({
-      icone:'',
-      texte:c.title||`Chapitre ${i+1}`,
-      url:formatTimecode(c.startTime),
-      ordre:i
-    }));
+    // Ajoute les chapitres à la suite des boutons existants (sans supprimer ce qui est déjà là)
+    const base=btnv.length;
+    chapters.forEach((c,i)=>{
+      btnv.push({
+        icone:'',
+        texte:c.title||`Chapitre ${i+1}`,
+        url:formatTimecode(c.startTime),
+        ordre:base+i
+      });
+    });
     rbv();
-    toast(`✅ ${chapters.length} chapitre${chapters.length>1?'s':''} importé${chapters.length>1?'s':''} !`);
+    toast(`✅ ${chapters.length} chapitre${chapters.length>1?'s':''} ajouté${chapters.length>1?'s':''} !`);
   }catch(e){
     console.error(e);
     alert('Erreur de chargement des chapitres : '+(e&&e.message?e.message:'inconnue.'));
@@ -1704,9 +1705,6 @@ async function importVimeoChaptersToEquip(){
   const playerUrl=normalizeVimeoUrl(url);
   if(!playerUrl){alert('Lien Vimeo invalide.');return;}
   if(!window.Vimeo||!window.Vimeo.Player){alert('Lecteur Vimeo non chargé. Recharge la page.');return;}
-  if(equip.length>0){
-    if(!confirm(`Cela va remplacer les ${equip.length} équipement(s) existant(s) par les chapitres de la vidéo. Continuer ?`))return;
-  }
   toast('🎬 Récupération des chapitres…');
   const tmp=document.createElement('iframe');
   tmp.src=playerUrl;
@@ -1719,16 +1717,20 @@ async function importVimeoChaptersToEquip(){
     await player.ready();
     const chapters=await player.getChapters();
     if(!chapters||!chapters.length){toast('Aucun chapitre trouvé sur cette vidéo Vimeo.');return;}
-    equip=chapters.map((c,i)=>({
-      icone:'🎬',
-      nom:c.title||`Chapitre ${i+1}`,
-      description:'',
-      image_url:'',
-      video_url:`${playerUrl}#t=${Math.round(c.startTime||0)}s`,
-      ordre:i
-    }));
+    // Ajoute les chapitres à la suite des équipements existants (sans supprimer ce qui est déjà là)
+    const base=equip.length;
+    chapters.forEach((c,i)=>{
+      equip.push({
+        icone:'🎬',
+        nom:c.title||`Chapitre ${i+1}`,
+        description:'',
+        image_url:'',
+        video_url:`${playerUrl}#t=${Math.round(c.startTime||0)}s`,
+        ordre:base+i
+      });
+    });
     re();
-    toast(`✅ ${chapters.length} chapitre${chapters.length>1?'s':''} importé${chapters.length>1?'s':''} en équipements !`);
+    toast(`✅ ${chapters.length} chapitre${chapters.length>1?'s':''} ajouté${chapters.length>1?'s':''} en équipement${chapters.length>1?'s':''} !`);
   }catch(e){
     console.error(e);
     alert('Erreur de chargement des chapitres : '+(e&&e.message?e.message:'inconnue.'));
