@@ -476,7 +476,7 @@ body{top:0!important}
       </div>
       <div class="sc">
         <div class="sc-title">Boutons sous la vidéo (optionnel)</div>
-        <p style="font-size:12px;color:var(--muted2);margin-bottom:16px;line-height:1.6">Petits boutons rapides affichés sous la vidéo de la page d'accueil (ex : « ▶ Visite », « 📍 Plan du quartier », « 🍳 Petit-déjeuner »…). Pour chacun : une icône / emoji + un texte + un lien.</p>
+        <p style="font-size:12px;color:var(--muted2);margin-bottom:16px;line-height:1.6">Petits boutons rapides affichés sous la vidéo de la page d'accueil. Tu peux mettre :<br>• un <b>timecode</b> (ex : <code>1:30</code> ou <code>0:45</code>) → la vidéo saute à ce moment sans changer de page (idéal pour les chapitres)<br>• une <b>URL</b> (ex : <code>https://maps.google.com/…</code>) → ouvre dans un nouvel onglet</p>
         <div id="boutons-video-list"></div>
         <button class="btn-add" onclick="addBoutonVideo()">+ Ajouter un bouton</button>
       </div>
@@ -869,7 +869,7 @@ const LANGS=[
   {code:'ru',flag:'🇷🇺',name:'Русский'},
 ];
 
-let cu=null,clid=null,adr=[],equip=[],serv=[],btnv=[],imgFond='',currentLivretId=null,currentLivretData=null,selectedNote=0,qrInstance=null,locData=null;
+let cu=null,clid=null,adr=[],equip=[],serv=[],btnv=[],imgFond='',currentLivretId=null,currentLivretData=null,selectedNote=0,qrInstance=null,locData=null,voyVimeoPlayer=null;
 
 const ss=u=>localStorage.setItem('lv',JSON.stringify({u,t:Date.now()}));
 const ls=()=>{try{const s=JSON.parse(localStorage.getItem('lv'));if(!s)return null;if(Date.now()-s.t>28800000){localStorage.removeItem('lv');return null;}return s.u;}catch{return null;}};
@@ -1579,13 +1579,32 @@ function resetFondPreview(){
 }
 function removeFond(){imgFond='';resetFondPreview();}
 
+// Parse un timecode (ex: "1:30", "01:30", "0:45", "90", "90s") en nombre de secondes
+function parseTimecode(t){
+  if(!t)return null;
+  t=String(t).trim();
+  if(/^\d+s?$/i.test(t))return parseInt(t,10);
+  const m=t.match(/^(\d+):(\d{1,2})$/);
+  if(m){const min=parseInt(m[1],10),sec=parseInt(m[2],10);if(sec<60)return min*60+sec;}
+  const m2=t.match(/^(\d+):(\d{1,2}):(\d{1,2})$/);
+  if(m2){const h=parseInt(m2[1],10),min=parseInt(m2[2],10),sec=parseInt(m2[3],10);if(sec<60&&min<60)return h*3600+min*60+sec;}
+  return null;
+}
+// Saute la vidéo Vimeo de la page d'accueil voyageur au timecode demandé
+function vimeoSeekTo(t){
+  const s=parseTimecode(t);if(s===null||!voyVimeoPlayer)return;
+  const card=document.getElementById('voy-video-card');
+  if(card)card.scrollIntoView({behavior:'smooth',block:'start'});
+  voyVimeoPlayer.setCurrentTime(s).then(()=>voyVimeoPlayer.play()).catch(()=>{});
+}
+
 function addBoutonVideo(){btnv.push({icone:'▶',texte:'',url:'',ordre:btnv.length});rbv();}
 function removeBoutonVideo(i){btnv.splice(i,1);rbv();}
 function rbv(){
   const list=document.getElementById('boutons-video-list');if(!list)return;list.innerHTML='';
   btnv.forEach((b,i)=>{
     const d=document.createElement('div');d.className='ai';
-    d.innerHTML=`<div class="ai-grid"><div class="fg" style="margin-bottom:0"><label class="fl2">Icône / emoji</label><input class="fi" value="${(b.icone||'').replace(/"/g,'&quot;')}" onchange="btnv[${i}].icone=this.value" placeholder="▶"></div><div class="fg" style="margin-bottom:0"><label class="fl2">Texte du bouton</label><input class="fi" value="${(b.texte||'').replace(/"/g,'&quot;')}" onchange="btnv[${i}].texte=this.value" placeholder="Visite virtuelle"></div></div><div class="fg" style="margin:10px 0"><label class="fl2">Lien</label><input class="fi" value="${(b.url||'').replace(/"/g,'&quot;')}" onchange="btnv[${i}].url=this.value" placeholder="https://..."></div><button class="btn-d" onclick="removeBoutonVideo(${i})">Supprimer</button>`;
+    d.innerHTML=`<div class="ai-grid"><div class="fg" style="margin-bottom:0"><label class="fl2">Icône / emoji</label><input class="fi" value="${(b.icone||'').replace(/"/g,'&quot;')}" onchange="btnv[${i}].icone=this.value" placeholder="▶"></div><div class="fg" style="margin-bottom:0"><label class="fl2">Texte du bouton</label><input class="fi" value="${(b.texte||'').replace(/"/g,'&quot;')}" onchange="btnv[${i}].texte=this.value" placeholder="Le salon"></div></div><div class="fg" style="margin:10px 0"><label class="fl2">Timecode (mm:ss) ou lien (https://...)</label><input class="fi" value="${(b.url||'').replace(/"/g,'&quot;')}" onchange="btnv[${i}].url=this.value" placeholder="1:30  ou  https://..."></div><button class="btn-d" onclick="removeBoutonVideo(${i})">Supprimer</button>`;
     list.appendChild(d);
   });
 }
@@ -1824,14 +1843,30 @@ function rv(l,adresses,equipements,back,services){
   if(l.vimeo_url){
     const playerUrl=normalizeVimeoUrl(l.vimeo_url);
     if(playerUrl){
-      document.getElementById('voy-iframe').src=playerUrl;
+      const iframeEl=document.getElementById('voy-iframe');
+      iframeEl.src=playerUrl;
       document.getElementById('voy-video-card').style.display='block';
+      // Initialise le Player Vimeo (API JS) pour pouvoir piloter la vidéo depuis les boutons-chapitres
+      try{
+        if(voyVimeoPlayer&&voyVimeoPlayer.destroy){voyVimeoPlayer.destroy().catch(()=>{});}
+      }catch(e){}
+      voyVimeoPlayer=(window.Vimeo&&window.Vimeo.Player)?new window.Vimeo.Player(iframeEl):null;
     }
   }
   const chapsEl=document.getElementById('voy-video-chapters');
   const chaps=Array.isArray(l.boutons_video)?l.boutons_video.filter(b=>(b.texte||'').trim()&&(b.url||'').trim()):[];
   if(chaps.length){
-    chapsEl.innerHTML=chaps.map(b=>`<a class="vid-chap-btn" href="${b.url}" target="_blank" rel="noopener">${b.icone?b.icone+' ':''}${b.texte}</a>`).join('');
+    chapsEl.innerHTML=chaps.map(b=>{
+      const icoH=b.icone?b.icone+' ':'';
+      const v=(b.url||'').trim();
+      // Si c'est une URL externe → lien classique (nouvel onglet)
+      if(/^https?:\/\//i.test(v)){
+        return `<a class="vid-chap-btn" href="${v}" target="_blank" rel="noopener">${icoH}${b.texte}</a>`;
+      }
+      // Sinon : timecode → on saute dans la vidéo Vimeo de la page
+      const safe=v.replace(/'/g,"\\'");
+      return `<button type="button" class="vid-chap-btn" onclick="vimeoSeekTo('${safe}')">${icoH}${b.texte}</button>`;
+    }).join('');
     chapsEl.style.display='flex';
   }else{chapsEl.style.display='none';chapsEl.innerHTML='';}
   if(l.procedure_arrivee){
