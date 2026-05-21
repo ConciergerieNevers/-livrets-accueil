@@ -1018,7 +1018,7 @@ const SB='https://iduognfftslrcresthuu.supabase.co';
 const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlkdW9nbmZmdHNscmNyZXN0aHV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNzk5NTMsImV4cCI6MjA5NDg1NTk1M30.H_4GWP7nELp-OvhTugj7MtkSdwHiPugvoIcLDZsoszA';
 const API=`${SB}/rest/v1`,AUTH=`${SB}/auth/v1`,STORAGE=`${SB}/storage/v1`,BASE=window.location.origin;
 const BUCKET='livret-images';
-const MAX_IMG_SIZE=800*1024;
+const MAX_IMG_SIZE=400*1024;
 
 const LANGS=[
   {code:'fr',flag:'🇫🇷',name:'Français'},
@@ -1727,21 +1727,27 @@ function cancelCrop(){closeModal('crop-modal');cropState.img=null;}
 
 async function applyCrop(){
   if(!cropState.img){closeModal('crop-modal');return;}
-  // taille de sortie carrée
-  const OUT=600;
   const s=curScale();
-  // portion de l'image source visible dans le cadre
   const sx=(-cropState.x)/s, sy=(-cropState.y)/s, sSize=CROP_BOX/s;
-  const canvas=document.createElement('canvas');
-  canvas.width=OUT;canvas.height=OUT;
-  const ctx=canvas.getContext('2d');
-  ctx.drawImage(cropState.img,sx,sy,sSize,sSize,0,0,OUT,OUT);
   const type=cropState.type;
   closeModal('crop-modal');
-  // compression qualité décroissante
-  const toBlobQ=(q)=>new Promise(res=>canvas.toBlob(res,'image/webp',q));
-  let q=0.85,blob=await toBlobQ(q);
-  while(blob.size>MAX_IMG_SIZE&&q>0.3){q-=0.1;blob=await toBlobQ(q);}
+  // 1) Compression qualité descendante à 600px
+  let OUT=600;
+  const buildCanvas=size=>{
+    const c=document.createElement('canvas');c.width=size;c.height=size;
+    c.getContext('2d').drawImage(cropState.img,sx,sy,sSize,sSize,0,0,size,size);
+    return c;
+  };
+  let canvas=buildCanvas(OUT);
+  const toBlobQ=(c,q)=>new Promise(res=>c.toBlob(res,'image/webp',q));
+  let q=0.85,blob=await toBlobQ(canvas,q);
+  while(blob.size>MAX_IMG_SIZE&&q>0.35){q-=0.1;blob=await toBlobQ(canvas,q);}
+  // 2) Si encore trop lourd → réduire les dimensions progressivement
+  while(blob.size>MAX_IMG_SIZE&&OUT>240){
+    OUT=Math.round(OUT*0.8);
+    canvas=buildCanvas(OUT);
+    blob=await toBlobQ(canvas,0.78);
+  }
   await uploadBlob(blob,type);
   cropState.img=null;
 }
@@ -2609,9 +2615,24 @@ function rs(){
   serv.forEach((s,i)=>{
     const d=document.createElement('div');d.className='ai';
     const hasImg=s.image_url?`<img src="${s.image_url}" style="width:140px;height:140px;object-fit:cover;border-radius:10px;margin-bottom:8px;display:block">`:'';
-    d.innerHTML=`${hasImg}<div class="ai-grid"><div class="fg" style="margin-bottom:0"><label class="fl2">Titre</label><input class="fi" value="${(s.titre||'').replace(/"/g,'&quot;')}" onchange="serv[${i}].titre=this.value" placeholder="Ménage supplémentaire"></div><div class="fg" style="margin-bottom:0"><label class="fl2">Prix (indicatif)</label><input class="fi" value="${(s.prix||'').replace(/"/g,'&quot;')}" onchange="serv[${i}].prix=this.value" placeholder="Ex: 35€"></div></div><div class="fg" style="margin:10px 0 0"><label class="fl2">Description</label><textarea class="fi" onchange="serv[${i}].description=this.value" placeholder="Ce que comprend le service...">${s.description||''}</textarea></div><div class="fg" style="margin:10px 0"><label class="fl2">Lien de paiement Stripe</label><input class="fi" value="${(s.lien_paiement||'').replace(/"/g,'&quot;')}" onchange="serv[${i}].lien_paiement=this.value" placeholder="https://buy.stripe.com/..."></div><input type="file" id="input-service-${i}" accept="image/*" style="display:none" onchange="uploadImage(this,'service-${i}')"><div style="display:flex;gap:8px"><button class="btn-add" style="margin-top:0;flex:1" onclick="document.getElementById('input-service-${i}').click()">${s.image_url?'🔄 Changer photo':'📷 Ajouter photo'}</button><button class="btn-d" onclick="removeService(${i})">Supprimer</button></div>`;
+    const handle=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><div class="drag-handle" title="Glisser pour réorganiser">⋮⋮</div><div style="font-size:11px;color:var(--muted2);font-weight:700;letter-spacing:1px;text-transform:uppercase">Service ${i+1}</div></div>`;
+    d.innerHTML=`${handle}${hasImg}<div class="ai-grid"><div class="fg" style="margin-bottom:0"><label class="fl2">Titre</label><input class="fi" value="${(s.titre||'').replace(/"/g,'&quot;')}" onchange="serv[${i}].titre=this.value" placeholder="Ménage supplémentaire"></div><div class="fg" style="margin-bottom:0"><label class="fl2">Prix (indicatif)</label><input class="fi" value="${(s.prix||'').replace(/"/g,'&quot;')}" onchange="serv[${i}].prix=this.value" placeholder="Ex: 35€"></div></div><div class="fg" style="margin:10px 0 0"><label class="fl2">Description</label><textarea class="fi" onchange="serv[${i}].description=this.value" placeholder="Ce que comprend le service...">${s.description||''}</textarea></div><div class="fg" style="margin:10px 0"><label class="fl2">Lien de paiement Stripe</label><input class="fi" value="${(s.lien_paiement||'').replace(/"/g,'&quot;')}" onchange="serv[${i}].lien_paiement=this.value" placeholder="https://buy.stripe.com/..."></div><input type="file" id="input-service-${i}" accept="image/*" style="display:none" onchange="uploadImage(this,'service-${i}')"><div style="display:flex;gap:8px"><button class="btn-add" style="margin-top:0;flex:1" onclick="document.getElementById('input-service-${i}').click()">${s.image_url?'🔄 Changer photo':'📷 Ajouter photo'}</button><button class="btn-d" onclick="removeService(${i})">Supprimer</button></div>`;
     list.appendChild(d);
   });
+  // Drag-drop pour réorganiser
+  if(window.Sortable){
+    if(list._sortable)try{list._sortable.destroy();}catch(_){}
+    list._sortable=new Sortable(list,{
+      animation:160,handle:'.drag-handle',ghostClass:'drag-ghost',dragClass:'dragging',
+      onEnd:evt=>{
+        if(evt.oldIndex===evt.newIndex)return;
+        const [moved]=serv.splice(evt.oldIndex,1);
+        serv.splice(evt.newIndex,0,moved);
+        serv.forEach((x,i)=>x.ordre=i);
+        rs();
+      }
+    });
+  }
 }
 
 function cleanRow(row){
