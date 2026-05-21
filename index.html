@@ -9,6 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@vimeo/player@2.20.1/dist/player.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <style>
 :root {
   --gold:#c9a84c;--gold2:#e2c06e;--gold3:#f5e4a8;--gold-dim:rgba(201,168,76,0.12);
@@ -226,6 +227,13 @@ textarea.fi{resize:vertical;min-height:80px;}
 .vr2-ico{width:28px;height:28px;border-radius:8px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;}
 .eq-card{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:12px;}
 .eq-img{width:100%;height:160px;object-fit:cover;display:block;background:var(--bg3);}
+.eq-video-wrap{position:relative;width:100%;padding-bottom:56.25%;height:0;background:#000;}
+.eq-video-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
+.drag-handle{cursor:grab;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;color:var(--muted2);background:var(--bg3);border:1px solid var(--border);font-size:16px;user-select:none;flex-shrink:0;}
+.drag-handle:hover{color:var(--gold2);border-color:var(--border-gold);}
+.drag-handle:active{cursor:grabbing;}
+.ai.dragging{opacity:0.4;}
+.ai.drag-ghost{opacity:0.6;background:var(--gold-dim);}
 .sv-img{width:108px;height:108px;aspect-ratio:1/1;object-fit:cover;display:block;background:var(--bg3);border-radius:14px;flex-shrink:0;}
 .sv-row{display:flex;gap:14px;padding:14px;align-items:stretch;}
 .sv-body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;}
@@ -521,9 +529,12 @@ body{top:0!important}
     <div id="teq" style="display:none">
       <div class="sc">
         <div class="sc-title">Guide d'utilisation des équipements</div>
-        <p style="font-size:12px;color:var(--muted2);margin-bottom:16px;line-height:1.6">Pour chaque équipement : titre, icône, description, photo et un lien vidéo optionnel (YouTube, Vimeo, Loom...).</p>
+        <p style="font-size:12px;color:var(--muted2);margin-bottom:16px;line-height:1.6">Pour chaque équipement : titre, icône, description, photo et un lien vidéo optionnel.<br>💡 Glisse-dépose chaque équipement par sa <b>poignée ⋮⋮</b> pour réorganiser l'ordre d'affichage côté voyageur.<br>🎬 Si tu colles un lien Vimeo, la vidéo s'affichera directement dans la carte côté voyageur (au timecode défini si chapitre importé).</p>
         <div id="equipements-list"></div>
-        <button class="btn-add" onclick="addEquipement()">+ Ajouter un équipement</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn-add" onclick="importVimeoChaptersToEquip()" style="flex:1;min-width:220px">📥 Importer les chapitres de la vidéo Vimeo</button>
+          <button class="btn-add" onclick="addEquipement()" style="flex:1;min-width:160px">+ Ajouter un équipement</button>
+        </div>
       </div>
     </div>
 
@@ -1675,14 +1686,83 @@ function ra(){
 
 function addEquipement(){equip.push({nom:'',description:'',image_url:'',icone:'⚙️',video_url:'',ordre:equip.length});re();}
 function removeEquipement(i){equip.splice(i,1);re();}
+// Construit l'URL d'embed Vimeo pour iframe, en préservant le timecode (#t=...)
+function vimeoEmbedUrlWithTime(url){
+  if(!url)return '';
+  const idx=url.indexOf('#');
+  const base=idx>=0?url.slice(0,idx):url;
+  const frag=idx>=0?url.slice(idx):'';
+  const normalized=normalizeVimeoUrl(base);
+  if(!normalized)return '';
+  return frag?normalized+frag:normalized;
+}
+function isVimeoUrl(u){return /vimeo\.com\//i.test(u||'');}
+// Importe les chapitres Vimeo en équipements (chaque chapitre = 1 carte équipement avec la vidéo intégrée au bon timecode)
+async function importVimeoChaptersToEquip(){
+  const url=document.getElementById('f-vimeo').value.trim();
+  if(!url){alert('Mets d\'abord le lien Vimeo dans l\'onglet Vidéo.');return;}
+  const playerUrl=normalizeVimeoUrl(url);
+  if(!playerUrl){alert('Lien Vimeo invalide.');return;}
+  if(!window.Vimeo||!window.Vimeo.Player){alert('Lecteur Vimeo non chargé. Recharge la page.');return;}
+  if(equip.length>0){
+    if(!confirm(`Cela va remplacer les ${equip.length} équipement(s) existant(s) par les chapitres de la vidéo. Continuer ?`))return;
+  }
+  toast('🎬 Récupération des chapitres…');
+  const tmp=document.createElement('iframe');
+  tmp.src=playerUrl;
+  tmp.style.cssText='position:absolute;left:-9999px;top:0;width:480px;height:270px;border:0;opacity:0';
+  tmp.allow='autoplay;fullscreen';
+  document.body.appendChild(tmp);
+  let player=null;
+  try{
+    player=new window.Vimeo.Player(tmp);
+    await player.ready();
+    const chapters=await player.getChapters();
+    if(!chapters||!chapters.length){toast('Aucun chapitre trouvé sur cette vidéo Vimeo.');return;}
+    equip=chapters.map((c,i)=>({
+      icone:'🎬',
+      nom:c.title||`Chapitre ${i+1}`,
+      description:'',
+      image_url:'',
+      video_url:`${playerUrl}#t=${Math.round(c.startTime||0)}s`,
+      ordre:i
+    }));
+    re();
+    toast(`✅ ${chapters.length} chapitre${chapters.length>1?'s':''} importé${chapters.length>1?'s':''} en équipements !`);
+  }catch(e){
+    console.error(e);
+    alert('Erreur de chargement des chapitres : '+(e&&e.message?e.message:'inconnue.'));
+  }finally{
+    try{if(player&&player.destroy)await player.destroy().catch(()=>{});}catch(_){}
+    if(tmp.parentNode)tmp.parentNode.removeChild(tmp);
+  }
+}
 function re(){
   const list=document.getElementById('equipements-list');list.innerHTML='';
   equip.forEach((e,i)=>{
     const d=document.createElement('div');d.className='ai';
     const hasImg=e.image_url?`<img src="${e.image_url}" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;margin-bottom:8px">`:'';
-    d.innerHTML=`${hasImg}<div class="ai-grid"><div class="fg" style="margin-bottom:0"><label class="fl2">Icône</label><input class="fi" value="${(e.icone||'⚙️').replace(/"/g,'&quot;')}" onchange="equip[${i}].icone=this.value" placeholder="🧺"></div><div class="fg" style="margin-bottom:0"><label class="fl2">Nom</label><input class="fi" value="${(e.nom||'').replace(/"/g,'&quot;')}" onchange="equip[${i}].nom=this.value" placeholder="Machine à laver"></div></div><div class="fg" style="margin:10px 0 0"><label class="fl2">Description / mode d'emploi</label><textarea class="fi" onchange="equip[${i}].description=this.value" placeholder="1. Ouvrir le hublot...">${e.description||''}</textarea></div><div class="fg" style="margin:10px 0"><label class="fl2">Lien vidéo (optionnel - YouTube, Vimeo, Loom...)</label><input class="fi" value="${(e.video_url||'').replace(/"/g,'&quot;')}" onchange="equip[${i}].video_url=this.value" placeholder="https://..."></div><input type="file" id="input-equip-${i}" accept="image/*" style="display:none" onchange="uploadImage(this,'equip-${i}')"><div style="display:flex;gap:8px"><button class="btn-add" style="margin-top:0;flex:1" onclick="document.getElementById('input-equip-${i}').click()">${e.image_url?'🔄 Changer photo':'📷 Ajouter photo'}</button><button class="btn-d" onclick="removeEquipement(${i})">Supprimer</button></div>`;
+    const handle=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><div class="drag-handle" title="Glisser pour réorganiser">⋮⋮</div><div style="font-size:11px;color:var(--muted2);font-weight:600">Équipement ${i+1}</div></div>`;
+    d.innerHTML=`${handle}${hasImg}<div class="ai-grid"><div class="fg" style="margin-bottom:0"><label class="fl2">Icône</label><input class="fi" value="${(e.icone||'⚙️').replace(/"/g,'&quot;')}" onchange="equip[${i}].icone=this.value" placeholder="🧺"></div><div class="fg" style="margin-bottom:0"><label class="fl2">Nom</label><input class="fi" value="${(e.nom||'').replace(/"/g,'&quot;')}" onchange="equip[${i}].nom=this.value" placeholder="Machine à laver"></div></div><div class="fg" style="margin:10px 0 0"><label class="fl2">Description / mode d'emploi</label><textarea class="fi" onchange="equip[${i}].description=this.value" placeholder="1. Ouvrir le hublot...">${e.description||''}</textarea></div><div class="fg" style="margin:10px 0"><label class="fl2">Lien vidéo (optionnel - Vimeo, YouTube, Loom...)</label><input class="fi" value="${(e.video_url||'').replace(/"/g,'&quot;')}" onchange="equip[${i}].video_url=this.value" placeholder="https://..."></div><input type="file" id="input-equip-${i}" accept="image/*" style="display:none" onchange="uploadImage(this,'equip-${i}')"><div style="display:flex;gap:8px"><button class="btn-add" style="margin-top:0;flex:1" onclick="document.getElementById('input-equip-${i}').click()">${e.image_url?'🔄 Changer photo':'📷 Ajouter photo'}</button><button class="btn-d" onclick="removeEquipement(${i})">Supprimer</button></div>`;
     list.appendChild(d);
   });
+  // Glisser-déposer pour réorganiser
+  if(window.Sortable){
+    if(list._sortable)try{list._sortable.destroy();}catch(_){}
+    list._sortable=new Sortable(list,{
+      animation:160,
+      handle:'.drag-handle',
+      ghostClass:'drag-ghost',
+      dragClass:'dragging',
+      onEnd:evt=>{
+        if(evt.oldIndex===evt.newIndex)return;
+        const [moved]=equip.splice(evt.oldIndex,1);
+        equip.splice(evt.newIndex,0,moved);
+        equip.forEach((x,i)=>x.ordre=i);
+        re();
+      }
+    });
+  }
 }
 
 function addService(){serv.push({titre:'',description:'',image_url:'',prix:'',lien_paiement:'',ordre:serv.length});rs();}
@@ -1928,7 +2008,14 @@ function rv(l,adresses,equipements,back,services){
   }
   const ic=['🚭','🐾','🎉','🗑️','🔇','💡','🛏️','🪟'];
   document.getElementById('voy-regles').innerHTML=(l.regles||[]).map((r,i)=>`<div class="vr2"><div class="vr2-ico">${ic[i]||'·'}</div><span>${r}</span></div>`).join('');
-  document.getElementById('voy-equipements').innerHTML=equipements&&equipements.length?equipements.map(e=>`<div class="eq-card">${e.image_url?`<img src="${e.image_url}" class="eq-img">`:''}<div class="eq-body"><div class="eq-header"><span class="eq-ico">${e.icone||'⚙️'}</span><div class="eq-nom">${e.nom||''}</div></div><div class="eq-desc">${e.description||''}</div>${e.video_url?`<a class="eq-vid-btn" href="${e.video_url}" target="_blank">▶ Voir la démo</a>`:''}</div></div>`).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun équipement renseigné.</div>';
+  document.getElementById('voy-equipements').innerHTML=equipements&&equipements.length?equipements.map(e=>{
+    const vidEmbed=isVimeoUrl(e.video_url)?vimeoEmbedUrlWithTime(e.video_url):'';
+    const visual=vidEmbed
+      ?`<div class="eq-video-wrap"><iframe src="${vidEmbed}" loading="lazy" allow="autoplay;fullscreen;picture-in-picture" allowfullscreen></iframe></div>`
+      :(e.image_url?`<img src="${e.image_url}" class="eq-img">`:'');
+    const cta=(e.video_url&&!vidEmbed)?`<a class="eq-vid-btn" href="${e.video_url}" target="_blank" rel="noopener">▶ Voir la démo</a>`:'';
+    return `<div class="eq-card">${visual}<div class="eq-body"><div class="eq-header"><span class="eq-ico">${e.icone||'⚙️'}</span><div class="eq-nom">${e.nom||''}</div></div>${e.description?`<div class="eq-desc">${e.description}</div>`:''}${cta}</div></div>`;
+  }).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun équipement renseigné.</div>';
   document.getElementById('voy-adresses').innerHTML=adresses.length?adresses.map(a=>`<a class="va" href="${a.url||'#'}" target="_blank"><div class="va-left"><h4>${a.nom}</h4><p>${a.description||''}${a.categorie?` · <span style="color:var(--gold2);font-size:10px;letter-spacing:0.5px">${a.categorie}</span>`:''}</p></div><div class="va-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div></a>`).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucune adresse renseignée.</div>';
   // Services payants
   const sv=services||[];
