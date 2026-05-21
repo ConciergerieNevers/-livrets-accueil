@@ -226,6 +226,27 @@ textarea.fi{resize:vertical;min-height:80px;}
 .vr2:last-child{border-bottom:none;}
 .vr2-ico{width:28px;height:28px;border-radius:8px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;}
 .eq-card{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:12px;}
+.eq-card.lien-utile{background:linear-gradient(135deg,#f5e4a8 0%,#e2c06e 60%,#c9a84c 100%);border:1px solid var(--gold);box-shadow:0 4px 18px rgba(201,168,76,0.18);}
+.eq-card.lien-utile .eq-nom{color:#1a1a1a;font-weight:800;}
+.eq-card.lien-utile .eq-desc{color:#3a2c10;}
+.eq-card.lien-utile .eq-header span{color:#5a4520 !important;background:rgba(0,0,0,0.08);padding:3px 9px;border-radius:30px;}
+.eq-card.lien-utile .sv-img{background:rgba(20,15,8,0.85) !important;border:1px solid rgba(0,0,0,0.18) !important;}
+.eq-card.lien-utile .sv-img svg g{stroke:var(--gold3) !important;color:var(--gold3) !important;}
+/* Flèche d'indication "cliquable" sur les cartes adresses (cards en lien) */
+.eq-card[href]{position:relative;display:block;transition:transform 0.22s ease,box-shadow 0.22s ease;}
+.eq-card[href]:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(0,0,0,0.28);}
+.eq-card[href] .sv-body{padding-right:38px;}
+.eq-card[href] .eq-desc{padding-right:0;}
+.eq-card[href]::after{
+  content:'→';position:absolute;bottom:12px;right:14px;width:30px;height:30px;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(201,168,76,0.14);border:1px solid var(--border-gold);
+  border-radius:50%;color:var(--gold2);font-size:15px;font-weight:700;
+  transition:all 0.2s ease;pointer-events:none;line-height:1;
+}
+.eq-card[href]:hover::after{background:rgba(201,168,76,0.32);transform:translateX(3px);border-color:var(--gold2);}
+.eq-card.lien-utile[href]::after{background:rgba(20,15,8,0.18);border-color:rgba(20,15,8,0.35);color:#1a1a1a;}
+.eq-card.lien-utile[href]:hover::after{background:rgba(20,15,8,0.32);border-color:rgba(20,15,8,0.55);}
 .eq-img{width:100%;height:160px;object-fit:cover;display:block;background:var(--bg3);}
 .eq-video-wrap{position:relative;width:100%;padding-bottom:56.25%;height:0;background:#000;}
 .eq-video-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
@@ -272,6 +293,19 @@ textarea.fi{resize:vertical;min-height:80px;}
 .proc-card{background:linear-gradient(135deg,#0a0800 0%,#141000 100%);border:1px solid var(--border-gold);border-radius:var(--radius);padding:24px;margin-bottom:12px;}
 .proc-title{font-family:var(--font-serif);font-size:16px;font-weight:700;color:var(--gold2);margin-bottom:14px;display:flex;align-items:center;gap:10px;}
 .proc-text{font-size:14px;line-height:1.7;color:var(--text);white-space:pre-line;}
+.proc-carousel{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:14px;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:4px 4px 8px;margin:0 -4px;}
+.proc-carousel::-webkit-scrollbar{display:none;}
+.proc-slide{flex:0 0 100%;scroll-snap-align:center;max-width:340px;margin:0 auto;}
+.proc-slide-img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:16px;display:block;background:var(--bg3);border:1px solid var(--border-gold);}
+.proc-slide-num{font-family:var(--font-serif);font-size:11px;color:var(--gold2);font-weight:700;letter-spacing:3px;text-align:center;margin-top:14px;margin-bottom:6px;text-transform:uppercase;}
+.proc-slide-text{font-size:14px;color:var(--text);line-height:1.55;padding:0 4px;text-align:center;white-space:pre-line;}
+.proc-dots{display:flex;justify-content:center;gap:6px;margin-top:18px;}
+.proc-dot{width:7px;height:7px;border-radius:50%;background:rgba(245,228,168,0.25);transition:all 0.25s;}
+.proc-dot.active{background:var(--gold2);width:22px;border-radius:4px;}
+.proc-nav{display:flex;justify-content:space-between;margin-top:14px;gap:10px;}
+.proc-nav-btn{background:rgba(201,168,76,0.1);border:1px solid var(--border-gold);color:var(--gold2);width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:20px;font-family:var(--font-sans);transition:all 0.2s;flex-shrink:0;}
+.proc-nav-btn:hover{background:rgba(201,168,76,0.22);transform:scale(1.05);}
+.proc-nav-btn:disabled{opacity:0.3;cursor:not-allowed;}
 .urg-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
 .urg-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;text-align:center;position:relative;overflow:hidden;}
 .urg-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,168,76,0.15),transparent);}
@@ -504,7 +538,13 @@ body{top:0!important}
           <input class="fi" id="f-vimeo" placeholder="https://vimeo.com/123456789/abcdef ou https://player.vimeo.com/video/123456789?h=abc">
           <small style="display:block;margin-top:8px;color:var(--muted);font-size:11px">💡 Les chapitres configurés directement dans Vimeo seront affichés automatiquement dans le lecteur</small>
         </div>
-        <div class="fg"><label class="fl2">Procédure d'arrivée (affichée sous la vidéo)</label><textarea class="fi" id="f-procedure" placeholder="1. Récupérez les clés dans la boîte à code (code: 1234)&#10;2. L'entrée se trouve à droite du portail..." style="min-height:140px"></textarea></div>
+        <div class="fg"><label class="fl2">Procédure d'arrivée (texte simple — fallback si pas d'étapes photo)</label><textarea class="fi" id="f-procedure" placeholder="1. Récupérez les clés dans la boîte à code (code: 1234)&#10;2. L'entrée se trouve à droite du portail..." style="min-height:140px"></textarea></div>
+      </div>
+      <div class="sc">
+        <div class="sc-title">📸 Procédure d'arrivée — Étapes avec photos (carrousel)</div>
+        <p style="font-size:12px;color:var(--muted2);margin-bottom:16px;line-height:1.6">Chaque étape = une photo carrée + une phrase courte. Affiché sous forme de carrousel sur la page d'accueil voyageur.<br>💡 <b>Si tu remplis cette section, elle remplace la procédure texte ci-dessus.</b></p>
+        <div id="proc-etapes-list"></div>
+        <button class="btn-add" onclick="addProcEtape()">+ Ajouter une étape</button>
       </div>
       <div class="sc">
         <div class="sc-title">Boutons sous la vidéo (optionnel)</div>
@@ -665,6 +705,14 @@ body{top:0!important}
           <div class="proc-title">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
             Procédure d'arrivée
+          </div>
+          <div id="voy-proc-carousel-wrap" style="display:none">
+            <div id="voy-proc-carousel" class="proc-carousel"></div>
+            <div id="voy-proc-dots" class="proc-dots"></div>
+            <div class="proc-nav">
+              <button class="proc-nav-btn" onclick="procSlide(-1)" aria-label="Étape précédente">‹</button>
+              <button class="proc-nav-btn" onclick="procSlide(1)" aria-label="Étape suivante">›</button>
+            </div>
           </div>
           <div class="proc-text" id="voy-procedure">—</div>
         </div>
@@ -925,7 +973,7 @@ const LANGS=[
   {code:'ru',flag:'🇷🇺',name:'Русский'},
 ];
 
-let cu=null,clid=null,adr=[],equip=[],serv=[],btnv=[],imgFond='',currentLivretId=null,currentLivretData=null,selectedNote=0,qrInstance=null,locData=null,voyVimeoPlayer=null;
+let cu=null,clid=null,adr=[],equip=[],serv=[],btnv=[],procEtapes=[],imgFond='',currentLivretId=null,currentLivretData=null,selectedNote=0,qrInstance=null,locData=null,voyVimeoPlayer=null;
 
 const ss=u=>localStorage.setItem('lv',JSON.stringify({u,t:Date.now()}));
 const ls=()=>{try{const s=JSON.parse(localStorage.getItem('lv'));if(!s)return null;if(Date.now()-s.t>28800000){localStorage.removeItem('lv');return null;}return s.u;}catch{return null;}};
@@ -1352,7 +1400,7 @@ async function del(id,nom){
 }
 
 async function openEditor(id){
-  clid=id;adr=[];equip=[];serv=[];btnv=[];imgFond='';
+  clid=id;adr=[];equip=[];serv=[];btnv=[];procEtapes=[];imgFond='';
   ['f-nom','f-slug','f-bienvenue','f-vimeo','f-procedure','f-adresse','f-hote','f-lat','f-lng','f-wifi-nom','f-wifi-mdp','f-checkin','f-checkout','f-parking','f-regles','f-poubelles','f-contact-nom','f-contact-tel','f-contact-email','f-cta1-texte','f-cta2-texte','f-cta3-texte','f-lien-avis-google','f-lien-reservation','f-lien-autres'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
   switchTab(document.querySelector('.tab'),'tg');
   resetFondPreview();
@@ -1396,8 +1444,9 @@ async function openEditor(id){
     equip=er.data;
     serv=sr.data;
     btnv=Array.isArray(l.boutons_video)?l.boutons_video:[];
+    procEtapes=Array.isArray(l.procedure_etapes)?l.procedure_etapes:[];
   }else{document.getElementById('editor-title').textContent='Nouveau livret';}
-  ra();re();rs();rbv();show('editor-screen');
+  ra();re();rs();rbv();rpe();show('editor-screen');
 }
 
 function prefillCosyGreen(){
@@ -1516,6 +1565,10 @@ async function uploadImage(input,type){
     else if(type.startsWith('adr-')){
       const idx=parseInt(type.split('-')[1]);
       adr[idx].image_url=publicUrl;ra();toast('✓ Photo ajoutée');
+    }
+    else if(type.startsWith('proc-')){
+      const idx=parseInt(type.split('-')[1]);
+      procEtapes[idx].image_url=publicUrl;rpe();toast('✓ Photo ajoutée');
     }
     input.value='';
   }catch(e){console.error(e);alert('Erreur upload.');}
@@ -1689,6 +1742,32 @@ function parseTimecode(t){
   if(m2){const h=parseInt(m2[1],10),min=parseInt(m2[2],10),sec=parseInt(m2[3],10);if(sec<60&&min<60)return h*3600+min*60+sec;}
   return null;
 }
+// Navigation du carrousel "Procédure d'arrivée"
+function procSlide(direction){
+  const car=document.getElementById('voy-proc-carousel');
+  if(!car)return;
+  const slides=car.querySelectorAll('.proc-slide');if(!slides.length)return;
+  // largeur d'une slide + gap (14)
+  const step=slides[0].offsetWidth+14;
+  car.scrollBy({left:direction*step,behavior:'smooth'});
+}
+function setupProcCarouselScroll(){
+  const car=document.getElementById('voy-proc-carousel');
+  if(!car||car._scrollBound)return;
+  car._scrollBound=true;
+  car.addEventListener('scroll',()=>{
+    const slides=car.querySelectorAll('.proc-slide');
+    const dots=document.querySelectorAll('#voy-proc-dots .proc-dot');
+    if(!slides.length||!dots.length)return;
+    const center=car.scrollLeft+car.offsetWidth/2;
+    let activeIdx=0;
+    slides.forEach((s,i)=>{
+      if(s.offsetLeft<=center&&s.offsetLeft+s.offsetWidth>center){activeIdx=i;}
+    });
+    dots.forEach((d,i)=>d.classList.toggle('active',i===activeIdx));
+  },{passive:true});
+}
+
 // Saute la vidéo Vimeo de la page d'accueil voyageur au timecode demandé
 function vimeoSeekTo(t){
   const s=parseTimecode(t);if(s===null||!voyVimeoPlayer)return;
@@ -1745,6 +1824,33 @@ async function importVimeoChapters(){
   }finally{
     try{if(player&&player.destroy)await player.destroy().catch(()=>{});}catch(_){}
     if(tmp.parentNode)tmp.parentNode.removeChild(tmp);
+  }
+}
+
+// === Étapes d'arrivée (carrousel) ===
+function addProcEtape(){procEtapes.push({image_url:'',texte:'',ordre:procEtapes.length});rpe();}
+function removeProcEtape(i){procEtapes.splice(i,1);rpe();}
+function rpe(){
+  const list=document.getElementById('proc-etapes-list');if(!list)return;list.innerHTML='';
+  procEtapes.forEach((p,i)=>{
+    const d=document.createElement('div');d.className='ai';
+    const hasImg=p.image_url?`<img src="${p.image_url}" style="width:100%;max-width:200px;aspect-ratio:1/1;object-fit:cover;border-radius:10px;margin-bottom:10px;display:block">`:'';
+    const handle=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><div class="drag-handle" title="Glisser pour réorganiser">⋮⋮</div><div style="font-size:11px;color:var(--muted2);font-weight:700;letter-spacing:1px;text-transform:uppercase">Étape ${i+1}</div></div>`;
+    d.innerHTML=`${handle}${hasImg}<div class="fg" style="margin-bottom:10px"><label class="fl2">Texte de l'étape (courte phrase)</label><textarea class="fi" onchange="procEtapes[${i}].texte=this.value" placeholder="Récupérez les clés dans la boîte à code à droite de l'entrée">${p.texte||''}</textarea></div><input type="file" id="input-proc-${i}" accept="image/*" style="display:none" onchange="uploadImage(this,'proc-${i}')"><div style="display:flex;gap:8px"><button class="btn-add" style="margin-top:0;flex:1" onclick="document.getElementById('input-proc-${i}').click()">${p.image_url?'🔄 Changer photo':'📷 Ajouter photo'}</button>${p.image_url?`<button class="btn-add" style="margin-top:0" onclick="procEtapes[${i}].image_url='';rpe()">Retirer photo</button>`:''}<button class="btn-d" onclick="removeProcEtape(${i})">Supprimer</button></div>`;
+    list.appendChild(d);
+  });
+  if(window.Sortable){
+    if(list._sortable)try{list._sortable.destroy();}catch(_){}
+    list._sortable=new Sortable(list,{
+      animation:160,handle:'.drag-handle',ghostClass:'drag-ghost',dragClass:'dragging',
+      onEnd:evt=>{
+        if(evt.oldIndex===evt.newIndex)return;
+        const [moved]=procEtapes.splice(evt.oldIndex,1);
+        procEtapes.splice(evt.newIndex,0,moved);
+        procEtapes.forEach((x,i)=>x.ordre=i);
+        rpe();
+      }
+    });
   }
 }
 
@@ -2369,7 +2475,8 @@ async function saveLivret(){
     cta1_texte:document.getElementById('f-cta1-texte').value||null,
     cta2_texte:document.getElementById('f-cta2-texte').value||null,
     cta3_texte:document.getElementById('f-cta3-texte').value||null,
-    boutons_video:btnv.filter(b=>(b.texte||'').trim()&&(b.url||'').trim()).map((b,i)=>({icone:(b.icone||'').trim(),texte:b.texte.trim(),url:b.url.trim(),ordre:i}))
+    boutons_video:btnv.filter(b=>(b.texte||'').trim()&&(b.url||'').trim()).map((b,i)=>({icone:(b.icone||'').trim(),texte:b.texte.trim(),url:b.url.trim(),ordre:i})),
+    procedure_etapes:procEtapes.filter(p=>(p.texte||'').trim()||p.image_url).map((p,i)=>({texte:(p.texte||'').trim(),image_url:p.image_url||'',ordre:i}))
   };
   if(!data.nom||!data.slug){return showErr(msg,'Le nom et le slug sont obligatoires.');}
   if(!cu||!cu.access_token){return showErr(msg,'Session expirée. Reconnectez-vous.');}
@@ -2545,9 +2652,30 @@ function rv(l,adresses,equipements,back,services){
     }).join('');
     chapsEl.style.display='flex';
   }else{chapsEl.style.display='none';chapsEl.innerHTML='';}
-  if(l.procedure_arrivee){
-    document.getElementById('voy-proc-card').style.display='block';
-    document.getElementById('voy-procedure').textContent=l.procedure_arrivee;
+  const etapes=Array.isArray(l.procedure_etapes)?l.procedure_etapes.filter(e=>(e.texte||'').trim()||e.image_url):[];
+  const carWrap=document.getElementById('voy-proc-carousel-wrap');
+  const procText=document.getElementById('voy-procedure');
+  const procCard=document.getElementById('voy-proc-card');
+  if(etapes.length){
+    // Mode carrousel : photo + texte par étape
+    const carEl=document.getElementById('voy-proc-carousel');
+    carEl.innerHTML=etapes.map((e,i)=>{
+      const img=e.image_url?`<img src="${e.image_url}" class="proc-slide-img" alt="${(e.texte||'').replace(/"/g,'&quot;').slice(0,80)}">`:`<div class="proc-slide-img" style="display:flex;align-items:center;justify-content:center"><div style="font-family:var(--font-serif);font-size:64px;color:var(--gold2);font-weight:700;line-height:1">${i+1}</div></div>`;
+      return `<div class="proc-slide">${img}<div class="proc-slide-num">Étape ${i+1}</div><div class="proc-slide-text">${e.texte||''}</div></div>`;
+    }).join('');
+    document.getElementById('voy-proc-dots').innerHTML=etapes.map((_,i)=>`<div class="proc-dot${i===0?' active':''}"></div>`).join('');
+    setupProcCarouselScroll();
+    carWrap.style.display='block';
+    procText.style.display='none';
+    procCard.style.display='block';
+  }else if(l.procedure_arrivee){
+    // Fallback : texte simple legacy
+    carWrap.style.display='none';
+    procText.style.display='';
+    procText.textContent=l.procedure_arrivee;
+    procCard.style.display='block';
+  }else{
+    procCard.style.display='none';
   }
   const ic=['🚭','🐾','🎉','🗑️','🔇','💡','🛏️','🪟'];
   document.getElementById('voy-regles').innerHTML=(l.regles||[]).map((r,i)=>`<div class="vr2"><div class="vr2-ico">${ic[i]||'·'}</div><span>${r}</span></div>`).join('');
@@ -2589,9 +2717,10 @@ function rv(l,adresses,equipements,back,services){
   const recoArr=adresses.filter(a=>a.type!=='lien_utile');
   const liensArr=adresses.filter(a=>a.type==='lien_utile');
   const renderAdrCard=a=>{
+    const isLien=a.type==='lien_utile';
     const isVimeoIll=a.icone&&ILLUSTRATIONS[a.icone];
-    const visual=a.image_url?`<img src="${a.image_url}" class="sv-img" alt="${(a.nom||'').replace(/"/g,'&quot;')}">`:`<div class="sv-img" style="display:flex;align-items:center;justify-content:center;background:var(--bg3);border:1px solid var(--border-gold)">${isVimeoIll?`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:50%;height:50%"><g stroke="var(--gold2)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" color="var(--gold2)">${ILLUSTRATIONS[a.icone]}</g></svg>`:`<div style="font-size:42px;line-height:1">${a.icone||(a.type==='lien_utile'?'🌐':'📍')}</div>`}</div>`;
-    return `<a class="eq-card" href="${a.url||'#'}" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:block"><div class="sv-row">${visual}<div class="sv-body"><div class="eq-header" style="margin-bottom:6px"><div class="eq-nom" style="font-size:15px">${a.nom||''}</div>${a.categorie?`<span style="margin-left:auto;color:var(--gold2);font-weight:700;font-size:11px;letter-spacing:0.5px">${a.categorie}</span>`:''}</div><div class="eq-desc" style="margin-bottom:0">${a.description||''}</div></div></div></a>`;
+    const visual=a.image_url?`<img src="${a.image_url}" class="sv-img" alt="${(a.nom||'').replace(/"/g,'&quot;')}">`:`<div class="sv-img" style="display:flex;align-items:center;justify-content:center;background:var(--bg3);border:1px solid var(--border-gold)">${isVimeoIll?`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:50%;height:50%"><g stroke="var(--gold2)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" color="var(--gold2)">${ILLUSTRATIONS[a.icone]}</g></svg>`:`<div style="font-size:42px;line-height:1">${a.icone||(isLien?'🌐':'📍')}</div>`}</div>`;
+    return `<a class="eq-card${isLien?' lien-utile':''}" href="${a.url||'#'}" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:block"><div class="sv-row">${visual}<div class="sv-body"><div class="eq-header" style="margin-bottom:6px"><div class="eq-nom" style="font-size:15px">${a.nom||''}</div>${a.categorie?`<span style="margin-left:auto;font-weight:700;font-size:11px;letter-spacing:0.5px${isLien?'':';color:var(--gold2)'}">${a.categorie}</span>`:''}</div><div class="eq-desc" style="margin-bottom:0">${a.description||''}</div></div></div></a>`;
   };
   const recoLbl=document.getElementById('voy-adresses-label');
   const liensLbl=document.getElementById('voy-liens-label');
