@@ -1873,6 +1873,62 @@ const VIS_LABELS={
   closing:'Fermeture',lock:'Coffre',lamp:'Éclairage',music:'Musique',film:'Visite vidéo',desk:'Bureau',
   chicken:'Poulailler',message:'Mot du propriétaire',garden:'Pelouse',star:'Autre',
 };
+// Banque de descriptions courtes pré-remplies lors de l'import des chapitres Vimeo
+const CHAPTER_DESCRIPTIONS={
+  door:'Découvrez comment accéder au logement',
+  access:'Comment accéder au logement',
+  hello:'Tout ce qu\'il faut savoir pour votre arrivée',
+  closing:'À faire avant de quitter le logement',
+  sofa:'Présentation du salon',
+  suite:'Présentation de la suite',
+  bed:'Présentation de la chambre',
+  kitchen:'Tour de la cuisine en vidéo',
+  bath:'Présentation de la salle de bain',
+  shower:'Utilisation de la douche en vidéo',
+  toilet:'Les toilettes du logement',
+  tv:'Utilisation de la télévision en vidéo',
+  multimedia:'Le système multimédia en vidéo',
+  speaker:'Utilisation de l\'enceinte connectée',
+  washer:'Utilisation de la machine à laver en vidéo',
+  dishwasher:'Utilisation du lave-vaisselle en vidéo',
+  laundry:'Découverte de la buanderie',
+  coffee:'Utilisation de la cafetière en vidéo',
+  flame:'Réglage du chauffage en vidéo',
+  fireplace:'Utilisation de la cheminée',
+  snow:'Réglage de la climatisation en vidéo',
+  oven:'Utilisation du four en vidéo',
+  microwave:'Utilisation du micro-ondes',
+  fridge:'Le réfrigérateur',
+  wifi:'Comment vous connecter au Wifi',
+  trash:'Tri sélectif et jours de collecte',
+  vacuum:'Utilisation de l\'aspirateur',
+  key:'Les clés du logement',
+  keybox:'Utilisation de la boîte à clés',
+  electricmeter:'Le tableau électrique en cas de coupure',
+  car:'Où se garer',
+  evcharge:'Utilisation de la borne de recharge',
+  leaf:'Découverte du jardin',
+  garden:'Découverte du jardin',
+  patio:'Le patio à votre disposition',
+  pergola:'La pergola à votre disposition',
+  balcony:'Le balcon du logement',
+  shutter:'Utilisation des volets / stores',
+  pool:'Découverte de la piscine',
+  spa:'Utilisation du jacuzzi en vidéo',
+  sauna:'Utilisation du sauna en vidéo',
+  gym:'La salle de sport à votre disposition',
+  gameroom:'La salle de jeux à votre disposition',
+  bbq:'Utilisation du barbecue',
+  bike:'Les vélos à votre disposition',
+  lock:'Utilisation du coffre-fort',
+  lamp:'L\'éclairage du logement',
+  music:'Profitez de la musique',
+  film:'Visite du logement en vidéo',
+  desk:'Espace bureau pour télétravailler',
+  chicken:'Le poulailler du domaine',
+  message:'Un mot de votre hôte',
+  star:'',
+};
 // Mapping mots-clés → illustration + emoji (fallback éditeur) + dégradé de couleur
 const CHAPTER_THEMES=[
   {kw:/entr[ée]e|porte d'entr/i,emoji:'🚪',illust:'door',from:'#2e2515',to:'#5e4a25'},
@@ -2065,15 +2121,17 @@ async function importVimeoChaptersToEquip(){
     await player.ready();
     const chapters=await player.getChapters();
     if(!chapters||!chapters.length){toast('Aucun chapitre trouvé sur cette vidéo Vimeo.');return;}
-    // Ajoute les chapitres à la suite des équipements existants. L'illustration est auto-détectée
-    // depuis le titre (cuisine → toque, chambre → lit, etc.) ; modifiable via le picker visuel.
+    // Ajoute les chapitres à la suite des équipements existants. L'illustration et la description courte
+    // sont auto-détectées depuis le titre (cuisine → toque + 'Tour de la cuisine en vidéo', etc.).
     const base=equip.length;
     chapters.forEach((c,i)=>{
       const t=Math.round(c.startTime||0);
+      const m=findChapterTheme(c.title||'');
+      const desc=m&&CHAPTER_DESCRIPTIONS[m.illust]?CHAPTER_DESCRIPTIONS[m.illust]:'';
       equip.push({
         icone:'',
         nom:c.title||`Chapitre ${i+1}`,
-        description:'',
+        description:desc,
         image_url:'',
         video_url:`${playerUrl}#t=${t}s`,
         ordre:base+i
