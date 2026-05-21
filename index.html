@@ -1631,7 +1631,18 @@ async function uploadImage(input,type){
       procEtapes[idx].image_url=publicUrl;rpe();toast('✓ Photo ajoutée');
     }
     input.value='';
-  }catch(e){console.error(e);alert('Erreur upload.');}
+  }catch(e){
+    console.error(e);
+    const st=e?.response?.status;
+    const detail=e?.response?.data;
+    let msg='Erreur upload.';
+    if(st===401||st===403){msg='Session expirée ou droits insuffisants. Déconnecte-toi puis reconnecte-toi.';}
+    else if(st===413){msg='Image trop volumineuse (rejetée par le serveur).';}
+    else if(st&&detail){msg=`Erreur upload (${st}) : ${detail.message||detail.error||JSON.stringify(detail).slice(0,200)}`;}
+    else if(e?.message){msg='Erreur upload : '+e.message;}
+    alert(msg);
+    input.value='';
+  }
 }
 
 // ===== RECADRAGE CARRÉ (services) =====
@@ -1737,13 +1748,24 @@ async function applyCrop(){
 
 async function uploadBlob(blob,type){
   try{
+    if(!cu||!cu.access_token){alert('Session expirée. Reconnecte-toi avant d\'uploader une photo.');return;}
     if(blob.size>MAX_IMG_SIZE){alert(`Image trop lourde (${Math.round(blob.size/1024)} KO).`);return;}
     const fname=`${cu.user.id}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.webp`;
     const url=`${STORAGE}/object/${BUCKET}/${fname}`;
     await axios.post(url,blob,{headers:{...hdf(),'Content-Type':'image/webp','x-upsert':'true'}});
     const publicUrl=`${STORAGE}/object/public/${BUCKET}/${fname}`;
     if(type.startsWith('service-')){const idx=parseInt(type.split('-')[1]);serv[idx].image_url=publicUrl;rs();toast('✓ Photo ajoutée');}
-  }catch(e){console.error(e);alert('Erreur upload.');}
+  }catch(e){
+    console.error(e);
+    const st=e?.response?.status;
+    const detail=e?.response?.data;
+    let msg='Erreur upload.';
+    if(st===401||st===403){msg='Session expirée ou droits insuffisants. Déconnecte-toi puis reconnecte-toi.';}
+    else if(st===413){msg='Image trop volumineuse (rejetée par le serveur).';}
+    else if(st&&detail){msg=`Erreur upload (${st}) : ${detail.message||detail.error||JSON.stringify(detail).slice(0,200)}`;}
+    else if(e?.message){msg='Erreur upload : '+e.message;}
+    alert(msg);
+  }
 }
 
 function compressImage(file,target){
