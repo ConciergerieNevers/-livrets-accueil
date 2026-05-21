@@ -564,9 +564,16 @@ body{top:0!important}
 
     <div id="ta" style="display:none">
       <div class="sc">
-        <div class="sc-title">Bonnes adresses</div>
-        <div id="adresses-list"></div>
-        <button class="btn-add" onclick="addAdresse()">+ Ajouter une adresse</button>
+        <div class="sc-title">📍 Recommandations — nos bonnes adresses</div>
+        <p style="font-size:12px;color:var(--muted2);margin-bottom:14px;line-height:1.6">Restaurants, cafés, boutiques, lieux à visiter. Pour chaque adresse : un nom, une catégorie, une description courte et un lien. Tu peux ajouter une icône (emoji) ou une photo perso à gauche.</p>
+        <div id="adresses-list-reco"></div>
+        <button class="btn-add" onclick="addAdresse()">+ Ajouter une recommandation</button>
+      </div>
+      <div class="sc">
+        <div class="sc-title">🌐 Liens utiles</div>
+        <p style="font-size:12px;color:var(--muted2);margin-bottom:14px;line-height:1.6">Sites web pratiques : office de tourisme, taxis, musées, transports, agenda… Mêmes champs que les recommandations.</p>
+        <div id="adresses-list-liens"></div>
+        <button class="btn-add" onclick="addLienUtile()">+ Ajouter un lien utile</button>
       </div>
     </div>
 
@@ -694,8 +701,10 @@ body{top:0!important}
 
     <div id="voy-panel-adresses" class="voy-panel">
       <div class="vs">
-        <div class="vs-label">Nos recommandations</div>
+        <div class="vs-label" id="voy-adresses-label" style="display:none">Nos recommandations</div>
         <div id="voy-adresses"></div>
+        <div class="vs-label" id="voy-liens-label" style="display:none;margin-top:30px">Liens utiles</div>
+        <div id="voy-liens"></div>
       </div>
     </div>
 
@@ -1465,6 +1474,10 @@ async function uploadImage(input,type){
       const idx=parseInt(type.split('-')[1]);
       serv[idx].image_url=publicUrl;rs();toast('✓ Photo ajoutée');
     }
+    else if(type.startsWith('adr-')){
+      const idx=parseInt(type.split('-')[1]);
+      adr[idx].image_url=publicUrl;ra();toast('✓ Photo ajoutée');
+    }
     input.value='';
   }catch(e){console.error(e);alert('Erreur upload.');}
 }
@@ -1707,15 +1720,84 @@ function rbv(){
   });
 }
 
-function addAdresse(){adr.push({nom:'',description:'',url:'',categorie:'Recommandation',ordre:adr.length});ra();}
-function removeAdresse(i){adr.splice(i,1);ra();}
-function ra(){
-  const list=document.getElementById('adresses-list');list.innerHTML='';
-  adr.forEach((a,i)=>{
-    const d=document.createElement('div');d.className='ai';
-    d.innerHTML=`<div class="ai-grid"><div class="fg" style="margin-bottom:0"><label class="fl2">Nom</label><input class="fi" value="${(a.nom||'').replace(/"/g,'&quot;')}" onchange="adr[${i}].nom=this.value" placeholder="Le Bengy"></div><div class="fg" style="margin-bottom:0"><label class="fl2">Catégorie</label><input class="fi" value="${(a.categorie||'').replace(/"/g,'&quot;')}" onchange="adr[${i}].categorie=this.value" placeholder="Restaurant"></div></div><div class="fg" style="margin:10px 0 0"><label class="fl2">Description</label><input class="fi" value="${(a.description||'').replace(/"/g,'&quot;')}" onchange="adr[${i}].description=this.value" placeholder="Semi-gastronomique"></div><div class="fg" style="margin:10px 0"><label class="fl2">Lien</label><input class="fi" value="${(a.url||'').replace(/"/g,'&quot;')}" onchange="adr[${i}].url=this.value" placeholder="https://..."></div><button class="btn-d" onclick="removeAdresse(${i})">Supprimer</button>`;
-    list.appendChild(d);
+function addAdresse(){adr.push({nom:'',description:'',url:'',categorie:'',icone:'📍',image_url:'',type:'recommandation',ordre:adr.length});ra();}
+function addLienUtile(){adr.push({nom:'',description:'',url:'',categorie:'',icone:'🌐',image_url:'',type:'lien_utile',ordre:adr.length});ra();}
+function removeAdresse(globalI){adr.splice(globalI,1);ra();}
+// Picker visuel pour les adresses (réutilise la modal du picker équipement avec un état différent)
+let __adrPickerIdx=-1;
+function openAdrVisualPicker(globalI){
+  __adrPickerIdx=globalI;
+  __visualPickerIndex=-1; // évite la confusion avec le picker équipement
+  const a=adr[globalI]||{};
+  const current=a.icone&&ILLUSTRATIONS[a.icone]?a.icone:'';
+  const grid=document.getElementById('visual-picker-grid');
+  const all=Object.keys(ILLUSTRATIONS).map(k=>({k,label:VIS_LABELS[k]||k})).sort((x,y)=>x.label.localeCompare(y.label,'fr'));
+  let h=`<div class="vis-grid-item ${!current?'selected':''}" onclick="selectAdrVisual('')">
+    <div class="vis-grid-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--gold2);font-size:28px">✨</div>
+    <div class="vis-grid-label">Emoji libre</div>
+  </div>`;
+  all.forEach(it=>{
+    const sel=current===it.k?'selected':'';
+    h+=`<div class="vis-grid-item ${sel}" onclick="selectAdrVisual('${it.k}')">
+      <div class="vis-grid-thumb"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g stroke="var(--gold2)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" color="var(--gold2)">${ILLUSTRATIONS[it.k]}</g></svg></div>
+      <div class="vis-grid-label">${it.label}</div>
+    </div>`;
   });
+  grid.innerHTML=h;
+  openModal('visual-picker-modal');
+}
+function selectAdrVisual(key){
+  if(__adrPickerIdx>=0&&adr[__adrPickerIdx]){
+    adr[__adrPickerIdx].icone=key||adr[__adrPickerIdx].icone||'📍';
+    ra();
+  }
+  __adrPickerIdx=-1;
+  closeModal('visual-picker-modal');
+}
+function ra(){
+  const recoList=document.getElementById('adresses-list-reco');
+  const liensList=document.getElementById('adresses-list-liens');
+  if(!recoList||!liensList)return;
+  recoList.innerHTML='';liensList.innerHTML='';
+  adr.forEach((a,i)=>{
+    if(!a.type)a.type='recommandation';
+    const isLien=a.type==='lien_utile';
+    const targetList=isLien?liensList:recoList;
+    const d=document.createElement('div');d.className='ai';
+    d.dataset.idx=i;
+    const hasImg=a.image_url?`<img src="${a.image_url}" style="width:90px;height:90px;object-fit:cover;border-radius:10px;flex-shrink:0">`:'';
+    const iconeDisp=a.icone&&ILLUSTRATIONS[a.icone]?`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:38px;height:38px"><g stroke="var(--gold2)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" color="var(--gold2)">${ILLUSTRATIONS[a.icone]}</g></svg>`:`<div style="font-size:30px;line-height:1">${a.icone||(isLien?'🌐':'📍')}</div>`;
+    const visualPreview=hasImg||`<div style="width:60px;height:60px;background:var(--bg3);border:1px solid var(--border-gold);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${iconeDisp}</div>`;
+    const handle=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><div class="drag-handle" title="Glisser pour réorganiser">⋮⋮</div><div style="font-size:11px;color:var(--muted2);font-weight:600">${isLien?'Lien utile':'Recommandation'}</div></div>`;
+    d.innerHTML=`${handle}<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px">${visualPreview}<div style="flex:1;display:flex;flex-direction:column;gap:6px"><input class="fi" value="${(a.icone||'').replace(/"/g,'&quot;')}" onchange="adr[${i}].icone=this.value;ra()" placeholder="Emoji (ex: 🍽️) ou clé d'illustration" style="font-size:13px"><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn-add" style="margin-top:0;flex:1;font-size:11px;min-width:130px" onclick="openAdrVisualPicker(${i})">🎨 Choisir un visuel</button><input type="file" id="input-adr-${i}" accept="image/*" style="display:none" onchange="uploadImage(this,'adr-${i}')"><button class="btn-add" style="margin-top:0;flex:1;font-size:11px;min-width:130px" onclick="document.getElementById('input-adr-${i}').click()">${a.image_url?'🔄 Changer photo':'📷 Ajouter photo'}</button>${a.image_url?`<button class="btn-d" style="font-size:11px" onclick="adr[${i}].image_url='';ra()">Retirer photo</button>`:''}</div></div></div><div class="ai-grid"><div class="fg" style="margin-bottom:0"><label class="fl2">Nom</label><input class="fi" value="${(a.nom||'').replace(/"/g,'&quot;')}" onchange="adr[${i}].nom=this.value" placeholder="${isLien?'Office de tourisme':'Le Bengy'}"></div><div class="fg" style="margin-bottom:0"><label class="fl2">Catégorie</label><input class="fi" value="${(a.categorie||'').replace(/"/g,'&quot;')}" onchange="adr[${i}].categorie=this.value" placeholder="${isLien?'Tourisme':'Restaurant'}"></div></div><div class="fg" style="margin:10px 0 0"><label class="fl2">Description courte</label><input class="fi" value="${(a.description||'').replace(/"/g,'&quot;')}" onchange="adr[${i}].description=this.value" placeholder="${isLien?'Toutes les infos sur Nevers':'Semi-gastronomique'}"></div><div class="fg" style="margin:10px 0"><label class="fl2">Lien</label><input class="fi" value="${(a.url||'').replace(/"/g,'&quot;')}" onchange="adr[${i}].url=this.value" placeholder="https://..."></div><button class="btn-d" onclick="removeAdresse(${i})">Supprimer</button>`;
+    targetList.appendChild(d);
+  });
+  // Drag-drop sur les deux listes
+  if(window.Sortable){
+    [recoList,liensList].forEach(list=>{
+      if(list._sortable)try{list._sortable.destroy();}catch(_){}
+      list._sortable=new Sortable(list,{
+        animation:160,handle:'.drag-handle',ghostClass:'drag-ghost',dragClass:'dragging',
+        onEnd:evt=>{
+          const fromIdx=parseInt(evt.item.dataset.idx,10);
+          if(isNaN(fromIdx))return;
+          // Récupère les ordres effectifs depuis l'ordre du DOM dans chaque liste
+          const recoOrder=Array.from(recoList.children).map(el=>parseInt(el.dataset.idx,10));
+          const liensOrder=Array.from(liensList.children).map(el=>parseInt(el.dataset.idx,10));
+          // Si déplacé entre les deux listes, change le type
+          const movedTo=evt.to===liensList?'lien_utile':'recommandation';
+          adr[fromIdx].type=movedTo;
+          // Reconstruit l'array global avec reco puis liens, dans le nouvel ordre
+          const newAdr=[];
+          recoOrder.forEach(idx=>newAdr.push(adr[idx]));
+          liensOrder.forEach(idx=>newAdr.push(adr[idx]));
+          newAdr.forEach((x,j)=>x.ordre=j);
+          adr=newAdr;
+          ra();
+        }
+      });
+    });
+  }
 }
 
 function addEquipement(){equip.push({nom:'',description:'',image_url:'',icone:'',video_url:'',ordre:equip.length});re();}
@@ -2203,7 +2285,7 @@ function pickCols(row,cols){
   return out;
 }
 // Schémas explicites (sans id / created_at / updated_at qui sont gérés par Postgres)
-const COLS_ADRESSES=['livret_id','nom','categorie','description','url','ordre'];
+const COLS_ADRESSES=['livret_id','nom','categorie','description','url','ordre','type','image_url','icone'];
 const COLS_EQUIPEMENTS=['livret_id','icone','nom','description','image_url','video_url','ordre'];
 const COLS_SERVICES=['livret_id','titre','description','image_url','prix','lien_paiement','ordre'];
 
@@ -2464,7 +2546,32 @@ function rv(l,adresses,equipements,back,services){
     const bodyH=bodyContent?`<div class="eq-body">${bodyContent}</div>`:'';
     return `<div class="eq-card">${visual}${bodyH}</div>`;
   }).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun équipement renseigné.</div>';
-  document.getElementById('voy-adresses').innerHTML=adresses.length?adresses.map(a=>`<a class="va" href="${a.url||'#'}" target="_blank"><div class="va-left"><h4>${a.nom}</h4><p>${a.description||''}${a.categorie?` · <span style="color:var(--gold2);font-size:10px;letter-spacing:0.5px">${a.categorie}</span>`:''}</p></div><div class="va-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div></a>`).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucune adresse renseignée.</div>';
+  // Adresses séparées en deux sections : recommandations + liens utiles
+  const recoArr=adresses.filter(a=>a.type!=='lien_utile');
+  const liensArr=adresses.filter(a=>a.type==='lien_utile');
+  const renderAdrCard=a=>{
+    const isVimeoIll=a.icone&&ILLUSTRATIONS[a.icone];
+    const visual=a.image_url?`<img src="${a.image_url}" class="sv-img" alt="${(a.nom||'').replace(/"/g,'&quot;')}">`:`<div class="sv-img" style="display:flex;align-items:center;justify-content:center;background:var(--bg3);border:1px solid var(--border-gold)">${isVimeoIll?`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:50%;height:50%"><g stroke="var(--gold2)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" color="var(--gold2)">${ILLUSTRATIONS[a.icone]}</g></svg>`:`<div style="font-size:42px;line-height:1">${a.icone||(a.type==='lien_utile'?'🌐':'📍')}</div>`}</div>`;
+    return `<a class="eq-card" href="${a.url||'#'}" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:block"><div class="sv-row">${visual}<div class="sv-body"><div class="eq-header" style="margin-bottom:6px"><div class="eq-nom" style="font-size:15px">${a.nom||''}</div>${a.categorie?`<span style="margin-left:auto;color:var(--gold2);font-weight:700;font-size:11px;letter-spacing:0.5px">${a.categorie}</span>`:''}</div><div class="eq-desc" style="margin-bottom:0">${a.description||''}</div></div></div></a>`;
+  };
+  const recoLbl=document.getElementById('voy-adresses-label');
+  const liensLbl=document.getElementById('voy-liens-label');
+  const recoEl=document.getElementById('voy-adresses');
+  const liensEl=document.getElementById('voy-liens');
+  if(recoArr.length){
+    recoEl.innerHTML=recoArr.map(renderAdrCard).join('');
+    recoLbl.style.display='';
+  }else{
+    recoEl.innerHTML=liensArr.length?'':'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucune adresse renseignée.</div>';
+    recoLbl.style.display='none';
+  }
+  if(liensArr.length){
+    liensEl.innerHTML=liensArr.map(renderAdrCard).join('');
+    liensLbl.style.display='';
+  }else{
+    liensEl.innerHTML='';
+    liensLbl.style.display='none';
+  }
   // Services payants
   const sv=services||[];
   document.getElementById('voy-services').innerHTML=sv.length?sv.map(s=>`<div class="eq-card"><div class="sv-row">${s.image_url?`<img src="${s.image_url}" class="sv-img">`:''}<div class="sv-body"><div class="eq-header" style="margin-bottom:6px"><div class="eq-nom" style="font-size:15px">${s.titre||''}</div>${s.prix?`<span style="margin-left:auto;color:var(--gold2);font-weight:700;font-size:14px">${s.prix}</span>`:''}</div><div class="eq-desc" style="margin-bottom:10px">${s.description||''}</div>${s.lien_paiement?`<a class="eq-vid-btn" href="${s.lien_paiement}" target="_blank" rel="noopener" style="align-self:flex-start">💳 Réserver / Payer</a>`:''}</div></div></div>`).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun service proposé pour le moment.</div>';
