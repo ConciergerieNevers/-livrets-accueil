@@ -689,6 +689,18 @@ body{top:0!important}
     <div id="tc" style="display:none">
       <div class="sc">
         <div class="sc-title">Contact & Conciergerie</div>
+        <div class="fg">
+          <label class="fl2">Logo / Image du contact (optionnel)</label>
+          <p style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5">Affichée dans le rond en haut du panneau Contact côté voyageur. Si vide, l'icône maison 🏠 par défaut est affichée.</p>
+          <div id="logo-preview-wrap" style="display:flex;align-items:center;gap:14px;margin-bottom:8px">
+            <div id="logo-preview" style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold2));display:flex;align-items:center;justify-content:center;font-size:32px;flex-shrink:0;overflow:hidden;border:1px solid var(--border-gold)">🏠</div>
+            <input type="file" id="input-logo" accept="image/*" style="display:none" onchange="uploadImage(this,'logo')">
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button type="button" class="btn-add" style="margin-top:0" onclick="document.getElementById('input-logo').click()">📷 Choisir un logo</button>
+              <button type="button" class="btn-d" id="btn-remove-logo" style="display:none" onclick="removeLogo()">Retirer</button>
+            </div>
+          </div>
+        </div>
         <div class="fg"><label class="fl2">Nom du contact</label><input class="fi" id="f-contact-nom" placeholder="Ex: Camille & Sophie"></div>
         <div class="fg"><label class="fl2">Téléphone</label><input class="fi" id="f-contact-tel" placeholder="Ex: +33744318931"></div>
         <div class="fg"><label class="fl2">Email</label><input class="fi" id="f-contact-email" placeholder="Ex: contact@email.fr"></div>
@@ -835,7 +847,7 @@ body{top:0!important}
         </div>
         <div class="vs-label">Conciergerie</div>
         <div class="voy-contact-card">
-          <div class="voy-av">🏠</div>
+          <div class="voy-av" id="voy-av">🏠</div>
           <div class="voy-contact-name serif notranslate" id="voy-contact-nom">—</div>
           <div class="voy-contact-role">Votre conciergerie · Disponible 24h/24</div>
           <a id="voy-contact-tel" class="voy-call-btn" href="#">
@@ -1033,7 +1045,7 @@ const LANGS=[
   {code:'ru',flag:'🇷🇺',name:'Русский'},
 ];
 
-let cu=null,clid=null,adr=[],equip=[],serv=[],btnv=[],procEtapes=[],imgFond='',currentLivretId=null,currentLivretData=null,selectedNote=0,qrInstance=null,locData=null,voyVimeoPlayer=null;
+let cu=null,clid=null,adr=[],equip=[],serv=[],btnv=[],procEtapes=[],imgFond='',logoUrl='',currentLivretId=null,currentLivretData=null,selectedNote=0,qrInstance=null,locData=null,voyVimeoPlayer=null;
 
 const ss=u=>localStorage.setItem('lv',JSON.stringify({u,t:Date.now()}));
 const ls=()=>{try{const s=JSON.parse(localStorage.getItem('lv'));if(!s)return null;if(Date.now()-s.t>28800000){localStorage.removeItem('lv');return null;}return s.u;}catch{return null;}};
@@ -1460,7 +1472,7 @@ async function del(id,nom){
 }
 
 async function openEditor(id){
-  clid=id;adr=[];equip=[];serv=[];btnv=[];procEtapes=[];imgFond='';
+  clid=id;adr=[];equip=[];serv=[];btnv=[];procEtapes=[];imgFond='';logoUrl='';resetLogoPreview();
   ['f-nom','f-slug','f-bienvenue','f-vimeo','f-procedure','f-adresse','f-hote','f-lat','f-lng','f-wifi-nom','f-wifi-mdp','f-checkin','f-checkout','f-parking','f-regles','f-poubelles','f-contact-nom','f-contact-tel','f-contact-email','f-cta1-texte','f-cta2-texte','f-cta3-texte','f-lien-avis-google','f-lien-reservation','f-lien-autres'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
   switchTab(document.querySelector('.tab'),'tg');
   resetFondPreview();
@@ -1500,6 +1512,8 @@ async function openEditor(id){
     document.getElementById('f-cta3-texte').value=l.cta3_texte||'';
     imgFond=l.image_fond||'';
     if(imgFond)showFondPreview(imgFond);
+    logoUrl=l.logo_url||'';
+    if(logoUrl)showLogoPreview(logoUrl);
     adr=ar.data;
     equip=er.data;
     serv=sr.data;
@@ -1603,7 +1617,7 @@ async function uploadImage(input,type){
   }
   try{
     let blob=file;
-    const ratio=type==='fond'?{w:1600,h:900}:{w:800,h:600};
+    const ratio=type==='fond'?{w:1600,h:900}:type==='logo'?{w:400,h:400}:{w:800,h:600};
     blob=await compressImage(file,ratio);
     if(blob.size>MAX_IMG_SIZE){
       alert(`Image trop lourde même après compression (${Math.round(blob.size/1024)} KO).`);
@@ -1614,6 +1628,7 @@ async function uploadImage(input,type){
     await axios.post(url,blob,{headers:{...hdf(),'Content-Type':'image/webp','x-upsert':'true'}});
     const publicUrl=`${STORAGE}/object/public/${BUCKET}/${fname}`;
     if(type==='fond'){imgFond=publicUrl;showFondPreview(publicUrl);toast('✓ Image ajoutée');}
+    else if(type==='logo'){logoUrl=publicUrl;showLogoPreview(publicUrl);toast('✓ Logo ajouté');}
     else if(type.startsWith('equip-')){
       const idx=parseInt(type.split('-')[1]);
       equip[idx].image_url=publicUrl;re();toast('✓ Photo ajoutée');
@@ -1818,6 +1833,28 @@ function resetFondPreview(){
   el.onclick=()=>document.getElementById('input-fond').click();
 }
 function removeFond(){imgFond='';resetFondPreview();}
+// === Logo du Contact (cercle dans le panneau Contact voyageur) ===
+function showLogoPreview(url){
+  const el=document.getElementById('logo-preview');
+  if(!el)return;
+  el.innerHTML='';
+  el.style.fontSize='0';
+  el.style.background='var(--bg3)';
+  const img=document.createElement('img');
+  img.src=url;img.alt='Logo';
+  img.style.cssText='width:100%;height:100%;object-fit:cover;display:block';
+  el.appendChild(img);
+  const rm=document.getElementById('btn-remove-logo');if(rm)rm.style.display='';
+}
+function resetLogoPreview(){
+  const el=document.getElementById('logo-preview');
+  if(!el)return;
+  el.innerHTML='🏠';
+  el.style.fontSize='32px';
+  el.style.background='linear-gradient(135deg,var(--gold),var(--gold2))';
+  const rm=document.getElementById('btn-remove-logo');if(rm)rm.style.display='none';
+}
+function removeLogo(){logoUrl='';resetLogoPreview();}
 
 // Parse un timecode (ex: "1:30", "01:30", "0:45", "90", "90s") en nombre de secondes
 function parseTimecode(t){
@@ -2689,6 +2726,7 @@ async function saveLivret(){
     contact_tel:document.getElementById('f-contact-tel').value,
     contact_email:document.getElementById('f-contact-email').value,
     image_fond:imgFond||null,
+    logo_url:logoUrl||null,
     lien_avis_google:document.getElementById('f-lien-avis-google').value||null,
     lien_reservation_directe:document.getElementById('f-lien-reservation').value||null,
     lien_autres_logements:document.getElementById('f-lien-autres').value||null,
@@ -2825,6 +2863,21 @@ function rv(l,adresses,equipements,back,services){
   document.getElementById('voy-parking').textContent=l.parking||'—';
   if(l.poubelles){document.getElementById('voy-poubelles').textContent=l.poubelles;document.getElementById('voy-poubelles-card').style.display='';}
   document.getElementById('voy-contact-nom').textContent=l.contact_nom||'—';
+  // Logo dans le rond du contact (si défini en base, sinon fallback emoji maison)
+  const avEl=document.getElementById('voy-av');
+  if(avEl){
+    if(l.logo_url){
+      avEl.innerHTML=`<img src="${l.logo_url}" alt="Logo" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:50%">`;
+      avEl.style.background='var(--bg3)';
+      avEl.style.padding='0';
+      avEl.style.overflow='hidden';
+    }else{
+      avEl.innerHTML='🏠';
+      avEl.style.background='';
+      avEl.style.padding='';
+      avEl.style.overflow='';
+    }
+  }
   document.getElementById('voy-contact-tel').href='tel:'+(l.contact_tel||'');
   document.getElementById('voy-contact-email').href='mailto:'+(l.contact_email||'');
   document.getElementById('voy-contact-email').innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> ${l.contact_email||'Envoyer un email'}`;
