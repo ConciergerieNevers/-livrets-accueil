@@ -478,7 +478,10 @@ body{top:0!important}
         <div class="sc-title">Boutons sous la vidéo (optionnel)</div>
         <p style="font-size:12px;color:var(--muted2);margin-bottom:16px;line-height:1.6">Petits boutons rapides affichés sous la vidéo de la page d'accueil. Tu peux mettre :<br>• un <b>timecode</b> (ex : <code>1:30</code> ou <code>0:45</code>) → la vidéo saute à ce moment sans changer de page (idéal pour les chapitres)<br>• une <b>URL</b> (ex : <code>https://maps.google.com/…</code>) → ouvre dans un nouvel onglet</p>
         <div id="boutons-video-list"></div>
-        <button class="btn-add" onclick="addBoutonVideo()">+ Ajouter un bouton</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn-add" onclick="importVimeoChapters()" style="flex:1;min-width:200px">📥 Importer les chapitres de la vidéo Vimeo</button>
+          <button class="btn-add" onclick="addBoutonVideo()" style="flex:1;min-width:160px">+ Ajouter un bouton</button>
+        </div>
       </div>
     </div>
 
@@ -1596,6 +1599,56 @@ function vimeoSeekTo(t){
   const card=document.getElementById('voy-video-card');
   if(card)card.scrollIntoView({behavior:'smooth',block:'start'});
   voyVimeoPlayer.setCurrentTime(s).then(()=>voyVimeoPlayer.play()).catch(()=>{});
+}
+
+// Formate un nombre de secondes en mm:ss (ou h:mm:ss si > 1h)
+function formatTimecode(sec){
+  sec=Math.max(0,Math.round(sec||0));
+  const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;
+  const pad=n=>n.toString().padStart(2,'0');
+  return h>0?`${h}:${pad(m)}:${pad(s)}`:`${m}:${pad(s)}`;
+}
+// Récupère les chapitres définis sur Vimeo et remplit la liste des boutons
+async function importVimeoChapters(){
+  const url=document.getElementById('f-vimeo').value.trim();
+  if(!url){alert('Mets d\'abord le lien Vimeo dans le champ ci-dessus.');return;}
+  const playerUrl=normalizeVimeoUrl(url);
+  if(!playerUrl){alert('Lien Vimeo invalide.');return;}
+  if(!window.Vimeo||!window.Vimeo.Player){alert('Lecteur Vimeo non chargé. Recharge la page.');return;}
+  if(btnv.length>0){
+    if(!confirm(`Cela va remplacer les ${btnv.length} bouton(s) existant(s) par les chapitres de la vidéo. Continuer ?`))return;
+  }
+  toast('🎬 Récupération des chapitres…');
+  // iframe Vimeo temporaire caché
+  const tmp=document.createElement('iframe');
+  tmp.src=playerUrl;
+  tmp.style.cssText='position:absolute;left:-9999px;top:0;width:480px;height:270px;border:0;opacity:0';
+  tmp.allow='autoplay;fullscreen';
+  document.body.appendChild(tmp);
+  let player=null;
+  try{
+    player=new window.Vimeo.Player(tmp);
+    await player.ready();
+    const chapters=await player.getChapters();
+    if(!chapters||!chapters.length){
+      toast('Aucun chapitre trouvé sur cette vidéo Vimeo.');
+      return;
+    }
+    btnv=chapters.map((c,i)=>({
+      icone:'',
+      texte:c.title||`Chapitre ${i+1}`,
+      url:formatTimecode(c.startTime),
+      ordre:i
+    }));
+    rbv();
+    toast(`✅ ${chapters.length} chapitre${chapters.length>1?'s':''} importé${chapters.length>1?'s':''} !`);
+  }catch(e){
+    console.error(e);
+    alert('Erreur de chargement des chapitres : '+(e&&e.message?e.message:'inconnue.'));
+  }finally{
+    try{if(player&&player.destroy)await player.destroy().catch(()=>{});}catch(_){}
+    if(tmp.parentNode)tmp.parentNode.removeChild(tmp);
+  }
 }
 
 function addBoutonVideo(){btnv.push({icone:'▶',texte:'',url:'',ordre:btnv.length});rbv();}
