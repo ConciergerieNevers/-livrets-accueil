@@ -229,6 +229,13 @@ textarea.fi{resize:vertical;min-height:80px;}
 .eq-img{width:100%;height:160px;object-fit:cover;display:block;background:var(--bg3);}
 .eq-video-wrap{position:relative;width:100%;padding-bottom:56.25%;height:0;background:#000;}
 .eq-video-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
+.eq-poster{position:relative;cursor:pointer;overflow:hidden;background:#000;display:block;}
+.eq-poster-img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;transition:transform 0.5s ease;}
+.eq-poster:hover .eq-poster-img{transform:scale(1.05);}
+.eq-play-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(0,0,0,0.05) 0%,rgba(0,0,0,0.45) 100%);transition:background 0.2s;}
+.eq-poster:hover .eq-play-overlay{background:linear-gradient(180deg,rgba(0,0,0,0.15) 0%,rgba(0,0,0,0.55) 100%);}
+.eq-play-btn{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.92);color:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:24px;padding-left:5px;box-shadow:0 6px 24px rgba(0,0,0,0.45);transition:transform 0.2s,background 0.2s;}
+.eq-poster:hover .eq-play-btn{background:var(--gold2);transform:scale(1.1);}
 .drag-handle{cursor:grab;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;color:var(--muted2);background:var(--bg3);border:1px solid var(--border);font-size:16px;user-select:none;flex-shrink:0;}
 .drag-handle:hover{color:var(--gold2);border-color:var(--border-gold);}
 .drag-handle:active{cursor:grabbing;}
@@ -1698,6 +1705,41 @@ function vimeoEmbedUrlWithTime(url){
   return frag?normalized+frag:normalized;
 }
 function isVimeoUrl(u){return /vimeo\.com\//i.test(u||'');}
+// Reconstruit l'URL Vimeo standard à partir d'une URL player.vimeo.com (pour oEmbed)
+function vimeoStandardUrl(playerUrl){
+  const m=playerUrl.match(/player\.vimeo\.com\/video\/(\d+)/);
+  if(!m)return null;
+  const hm=playerUrl.match(/[?&]h=([a-z0-9]+)/i);
+  return hm?`https://vimeo.com/${m[1]}/${hm[1]}`:`https://vimeo.com/${m[1]}`;
+}
+// Récupère l'URL de la miniature Vimeo via l'API oEmbed publique
+async function getVimeoThumbnailBase(playerUrl){
+  const stdUrl=vimeoStandardUrl(playerUrl);if(!stdUrl)return '';
+  try{
+    const r=await fetch(`https://vimeo.com/api/oembed.json?url=${encodeURIComponent(stdUrl)}&width=640`);
+    if(!r.ok)return '';
+    const data=await r.json();
+    return data.thumbnail_url||'';
+  }catch(_){return '';}
+}
+// Construit la miniature par chapitre en ajoutant ?at=Xs sur l'URL de base
+function vimeoChapterThumbnail(base,seconds){
+  if(!base)return '';
+  const sep=base.includes('?')?'&':'?';
+  return `${base}${sep}at=${Math.round(seconds||0)}`;
+}
+// Lance la lecture inline d'un équipement vidéo (remplace le poster par l'iframe avec autoplay)
+function playEqVideo(posterEl,embedUrl){
+  const idx=embedUrl.indexOf('#');
+  const base=idx>=0?embedUrl.slice(0,idx):embedUrl;
+  const frag=idx>=0?embedUrl.slice(idx):'';
+  const sep=base.includes('?')?'&':'?';
+  const url=`${base}${sep}autoplay=1${frag}`;
+  const wrap=document.createElement('div');
+  wrap.className='eq-video-wrap';
+  wrap.innerHTML=`<iframe src="${url}" allow="autoplay;fullscreen;picture-in-picture" allowfullscreen></iframe>`;
+  posterEl.replaceWith(wrap);
+}
 // Importe les chapitres Vimeo en équipements (chaque chapitre = 1 carte équipement avec la vidéo intégrée au bon timecode)
 async function importVimeoChaptersToEquip(){
   const url=document.getElementById('f-vimeo').value.trim();
@@ -1717,15 +1759,18 @@ async function importVimeoChaptersToEquip(){
     await player.ready();
     const chapters=await player.getChapters();
     if(!chapters||!chapters.length){toast('Aucun chapitre trouvé sur cette vidéo Vimeo.');return;}
+    // Récupère la miniature de base de la vidéo Vimeo (pour générer une preview par chapitre)
+    const thumbBase=await getVimeoThumbnailBase(playerUrl);
     // Ajoute les chapitres à la suite des équipements existants (sans supprimer ce qui est déjà là)
     const base=equip.length;
     chapters.forEach((c,i)=>{
+      const t=Math.round(c.startTime||0);
       equip.push({
         icone:'🎬',
         nom:c.title||`Chapitre ${i+1}`,
         description:'',
-        image_url:'',
-        video_url:`${playerUrl}#t=${Math.round(c.startTime||0)}s`,
+        image_url:vimeoChapterThumbnail(thumbBase,t),
+        video_url:`${playerUrl}#t=${t}s`,
         ordre:base+i
       });
     });
@@ -1786,6 +1831,17 @@ function cleanRow(row){
   });
   return clean;
 }
+// Pickle uniquement les colonnes connues d'une table, avec valeur par défaut null si absent.
+// Nécessaire pour les batch INSERT PostgREST (erreur PGRST102 si les clés diffèrent entre objets).
+function pickCols(row,cols){
+  const out={};
+  cols.forEach(k=>{out[k]=(row&&row[k]!==undefined&&!(typeof row[k]==='number'&&isNaN(row[k])))?row[k]:null;});
+  return out;
+}
+// Schémas explicites (sans id / created_at / updated_at qui sont gérés par Postgres)
+const COLS_ADRESSES=['livret_id','nom','categorie','description','url','ordre'];
+const COLS_EQUIPEMENTS=['livret_id','icone','nom','description','image_url','video_url','ordre'];
+const COLS_SERVICES=['livret_id','titre','description','image_url','prix','lien_paiement','ordre'];
 
 function normalizeVimeoUrl(url){
   if(!url||!url.trim())return null;
@@ -1847,17 +1903,17 @@ async function saveLivret(){
       axios.delete(`${API}/services?livret_id=eq.${lid}`,{headers:{...hd(),'Prefer':'return=minimal'}})
     ]);
     if(adr.length){
-      const payloadAdr=adr.map((a,i)=>cleanRow({...a,livret_id:lid,ordre:i}));
+      const payloadAdr=adr.map((a,i)=>pickCols({...a,livret_id:lid,ordre:i},COLS_ADRESSES));
       try{await axios.post(`${API}/adresses`,payloadAdr,{headers:{...hd(),'Prefer':'return=minimal'}});}
       catch(e){return logAndShowErr(msg,'adresses',e);}
     }
     if(equip.length){
-      const payloadEq=equip.map((e,i)=>cleanRow({...e,livret_id:lid,ordre:i}));
+      const payloadEq=equip.map((e,i)=>pickCols({...e,livret_id:lid,ordre:i},COLS_EQUIPEMENTS));
       try{await axios.post(`${API}/equipements`,payloadEq,{headers:{...hd(),'Prefer':'return=minimal'}});}
       catch(e){return logAndShowErr(msg,'equipements',e);}
     }
     if(serv.length){
-      const payloadSv=serv.map((s,i)=>cleanRow({...s,livret_id:lid,ordre:i}));
+      const payloadSv=serv.map((s,i)=>pickCols({...s,livret_id:lid,ordre:i},COLS_SERVICES));
       try{await axios.post(`${API}/services`,payloadSv,{headers:{...hd(),'Prefer':'return=minimal'}});}
       catch(e){return logAndShowErr(msg,'services',e);}
     }
@@ -2012,9 +2068,18 @@ function rv(l,adresses,equipements,back,services){
   document.getElementById('voy-regles').innerHTML=(l.regles||[]).map((r,i)=>`<div class="vr2"><div class="vr2-ico">${ic[i]||'·'}</div><span>${r}</span></div>`).join('');
   document.getElementById('voy-equipements').innerHTML=equipements&&equipements.length?equipements.map(e=>{
     const vidEmbed=isVimeoUrl(e.video_url)?vimeoEmbedUrlWithTime(e.video_url):'';
-    const visual=vidEmbed
-      ?`<div class="eq-video-wrap"><iframe src="${vidEmbed}" loading="lazy" allow="autoplay;fullscreen;picture-in-picture" allowfullscreen></iframe></div>`
-      :(e.image_url?`<img src="${e.image_url}" class="eq-img">`:'');
+    let visual='';
+    if(vidEmbed&&e.image_url){
+      // Vidéo Vimeo + miniature spécifique → poster cliquable avec play overlay (click-to-play)
+      const safe=vidEmbed.replace(/"/g,'&quot;').replace(/'/g,"\\'");
+      const nm=(e.nom||'').replace(/"/g,'&quot;');
+      visual=`<div class="eq-poster" onclick="playEqVideo(this,'${safe}')"><img src="${e.image_url}" class="eq-poster-img" alt="${nm}"><div class="eq-play-overlay"><div class="eq-play-btn">▶</div></div></div>`;
+    }else if(vidEmbed){
+      // Vidéo Vimeo sans miniature → iframe inline (fallback)
+      visual=`<div class="eq-video-wrap"><iframe src="${vidEmbed}" loading="lazy" allow="autoplay;fullscreen;picture-in-picture" allowfullscreen></iframe></div>`;
+    }else if(e.image_url){
+      visual=`<img src="${e.image_url}" class="eq-img">`;
+    }
     const cta=(e.video_url&&!vidEmbed)?`<a class="eq-vid-btn" href="${e.video_url}" target="_blank" rel="noopener">▶ Voir la démo</a>`:'';
     return `<div class="eq-card">${visual}<div class="eq-body"><div class="eq-header"><span class="eq-ico">${e.icone||'⚙️'}</span><div class="eq-nom">${e.nom||''}</div></div>${e.description?`<div class="eq-desc">${e.description}</div>`:''}${cta}</div></div>`;
   }).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun équipement renseigné.</div>';
