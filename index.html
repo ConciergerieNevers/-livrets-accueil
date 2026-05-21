@@ -238,6 +238,21 @@ textarea.fi{resize:vertical;min-height:80px;}
 .eq-poster:hover .eq-play-btn{background:var(--gold2);transform:scale(1.1);}
 .eq-poster-title{position:absolute;bottom:14px;left:16px;right:16px;color:#fff;font-family:var(--font-serif);font-size:18px;font-weight:700;line-height:1.3;text-shadow:0 2px 12px rgba(0,0,0,0.85),0 0 4px rgba(0,0,0,0.6);z-index:2;pointer-events:none;}
 .eq-poster-ico{position:absolute;top:12px;left:12px;width:34px;height:34px;border-radius:10px;background:rgba(0,0,0,0.55);border:1px solid rgba(201,168,76,0.4);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;font-size:18px;z-index:2;}
+.vis-pick-row{display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;}
+.vis-pick-preview{width:80px;height:50px;border-radius:8px;background:linear-gradient(135deg,#1f3a5e,#365e90);flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1px solid var(--border-gold);}
+.vis-pick-preview svg{width:60%;height:60%;}
+.vis-pick-info{flex:1;min-width:0;}
+.vis-pick-label-current{font-size:11px;color:var(--muted2);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;}
+.vis-pick-name{font-size:14px;color:var(--text);font-weight:600;}
+.vis-pick-btn{background:rgba(201,168,76,0.1);border:1px solid var(--border-gold);color:var(--gold2);border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-sans);white-space:nowrap;}
+.vis-pick-btn:hover{background:rgba(201,168,76,0.2);}
+.vis-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;max-height:60vh;overflow-y:auto;padding:8px 4px;margin-top:20px;}
+.vis-grid-item{cursor:pointer;border-radius:12px;overflow:hidden;border:1.5px solid var(--border);background:var(--bg3);transition:all 0.2s;text-align:center;padding-bottom:6px;}
+.vis-grid-item:hover{border-color:var(--gold2);transform:translateY(-2px);}
+.vis-grid-item.selected{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold-dim);}
+.vis-grid-thumb{width:100%;height:70px;display:block;}
+.vis-grid-thumb svg{width:100%;height:100%;}
+.vis-grid-label{font-size:10px;color:var(--muted2);padding:4px 6px;line-height:1.3;}
 .drag-handle{cursor:grab;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;color:var(--muted2);background:var(--bg3);border:1px solid var(--border);font-size:16px;user-select:none;flex-shrink:0;}
 .drag-handle:hover{color:var(--gold2);border-color:var(--border-gold);}
 .drag-handle:active{cursor:grabbing;}
@@ -857,6 +872,15 @@ body{top:0!important}
       <div class="modal-sub">Votre retour a bien été transmis. Nous vous recontacterons si nécessaire.</div>
       <button class="review-cta primary" onclick="closeReviewModal()">Fermer</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="visual-picker-modal">
+  <div class="modal-content wide">
+    <button class="modal-close" onclick="closeModal('visual-picker-modal')">×</button>
+    <div class="modal-title serif gold-text">Choisir un visuel</div>
+    <div class="modal-sub">Sélectionne l'illustration qui correspond le mieux à cet équipement.<br>« Auto » = détection automatique depuis le titre.</div>
+    <div id="visual-picker-grid" class="vis-grid"></div>
   </div>
 </div>
 
@@ -1694,8 +1718,57 @@ function ra(){
   });
 }
 
-function addEquipement(){equip.push({nom:'',description:'',image_url:'',icone:'⚙️',video_url:'',ordre:equip.length});re();}
+function addEquipement(){equip.push({nom:'',description:'',image_url:'',icone:'',video_url:'',ordre:equip.length});re();}
 function removeEquipement(i){equip.splice(i,1);re();}
+// Picker visuel (modal) pour choisir l'illustration d'un équipement
+let __visualPickerIndex=-1;
+function openVisualPicker(idx){
+  __visualPickerIndex=idx;
+  const e=equip[idx]||{};
+  const current=e.icone&&ILLUSTRATIONS[e.icone]?e.icone:'';
+  const grid=document.getElementById('visual-picker-grid');
+  // « Auto » en premier + toutes les illustrations triées par label
+  const all=Object.keys(ILLUSTRATIONS).map(k=>({k,label:VIS_LABELS[k]||k})).sort((a,b)=>a.label.localeCompare(b.label,'fr'));
+  let h=`<div class="vis-grid-item ${!current?'selected':''}" onclick="selectVisual('')">
+    <div class="vis-grid-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--gold2);font-size:28px">✨</div>
+    <div class="vis-grid-label">Auto<br>(depuis titre)</div>
+  </div>`;
+  all.forEach(it=>{
+    const sel=current===it.k?'selected':'';
+    h+=`<div class="vis-grid-item ${sel}" onclick="selectVisual('${it.k}')">
+      <div class="vis-grid-thumb"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g stroke="var(--gold2)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" color="var(--gold2)">${ILLUSTRATIONS[it.k]}</g></svg></div>
+      <div class="vis-grid-label">${it.label}</div>
+    </div>`;
+  });
+  grid.innerHTML=h;
+  openModal('visual-picker-modal');
+}
+function selectVisual(key){
+  if(__visualPickerIndex>=0&&equip[__visualPickerIndex]){
+    equip[__visualPickerIndex].icone=key;
+    re();
+  }
+  closeModal('visual-picker-modal');
+}
+// Renvoie l'illustration effective d'un équipement (override utilisateur sinon auto-détection)
+function effectiveIllust(e){
+  if(e.icone&&ILLUSTRATIONS[e.icone])return e.icone;
+  const m=findChapterTheme(e.nom||'');
+  return m?m.illust:'star';
+}
+function effectiveIllustLabel(e){
+  if(e.icone&&ILLUSTRATIONS[e.icone])return VIS_LABELS[e.icone]||e.icone;
+  const m=findChapterTheme(e.nom||'');
+  return m?`Auto · ${VIS_LABELS[m.illust]||m.illust}`:'Auto (titre)';
+}
+// Mini preview SVG dans l'éditeur (couleurs du thème détecté ou de fallback)
+function miniIllustPreview(e,index){
+  const m=findChapterTheme(e.nom||'');
+  const pal=PALETTE_FALLBACK[index%PALETTE_FALLBACK.length];
+  const from=m?m.from:pal.from,to=m?m.to:pal.to;
+  const ill=effectiveIllust(e);
+  return `<svg viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" style="display:block;width:100%;height:100%"><defs><linearGradient id="mp-${index}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="100" height="60" fill="url(#mp-${index})"/><g transform="translate(38,18) scale(1)" stroke="rgba(245,228,168,0.9)" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round" color="rgba(245,228,168,0.9)">${ILLUSTRATIONS[ill]||ILLUSTRATIONS.star}</g></svg>`;
+}
 // Construit l'URL d'embed Vimeo pour iframe, en préservant le timecode (#t=...)
 function vimeoEmbedUrlWithTime(url){
   if(!url)return '';
@@ -1732,56 +1805,145 @@ function vimeoChapterThumbnail(base,seconds){
 }
 // Détecte si une URL est une miniature i.vimeocdn.com (donc générique, à remplacer par un thème)
 function isVimeoCdnThumb(url){return /i\.vimeocdn\.com/i.test(url||'');}
-// Mapping mots-clés → emoji + dégradé de couleur (pour cartes thématiques auto-générées)
+// Illustrations vectorielles dessinées (line-art 24x24, rendues en grand sur les cartes)
+const ILLUSTRATIONS={
+  door:'<path d="M5 22V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v18"/><line x1="3" x2="21" y1="22" y2="22"/><circle cx="15" cy="12" r="0.8" fill="currentColor"/>',
+  access:'<path d="M3 12h12l-4-4M11 16l4-4M21 4v16"/>',
+  sofa:'<path d="M20 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v3M2 11v5a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v2.5H6V11a2 2 0 0 0-4 0ZM4 18v2M20 18v2"/>',
+  bed:'<path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10M2 17h20M6 8v9"/>',
+  suite:'<path d="M2 4v16M22 8v14M2 8h18a2 2 0 0 1 2 2M2 13h20M6 8v5M14 8v5"/>',
+  kitchen:'<path d="M17 21a1 1 0 0 0 1-1v-5.35c0-.457.316-.844.727-1.041a4 4 0 0 0-2.134-7.589 5 5 0 0 0-9.186 0 4 4 0 0 0-2.134 7.588c.411.198.727.585.727 1.041V20a1 1 0 0 0 1 1ZM6 17h12"/>',
+  bath:'<path d="M9 6 6.5 3.5a1.5 1.5 0 0 0-1-.5C4.683 3 4 3.683 4 4.5V17a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5M4 13h18M6 19v2M18 19v2"/>',
+  shower:'<path d="M4 4v16M4 8h10a4 4 0 0 1 4 4v8M8 20v.01M12 18v.01M14 16v.01M16 14v.01M16 18v.01M18 16v.01"/>',
+  toilet:'<rect x="6" y="3" width="12" height="9" rx="2"/><path d="M5 12h14l-1.5 8a2 2 0 0 1-2 2H8.5a2 2 0 0 1-2-2zM10 16h4"/>',
+  tv:'<rect x="2" y="7" width="20" height="13" rx="2"/><polyline points="17 2 12 7 7 2"/>',
+  multimedia:'<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><circle cx="8" cy="10" r="1.2" fill="currentColor"/><path d="M11 8l5 2-5 2z"/>',
+  speaker:'<rect x="6" y="2" width="12" height="20" rx="2"/><circle cx="12" cy="8" r="1.5"/><circle cx="12" cy="15" r="3"/>',
+  washer:'<rect x="3" y="2" width="18" height="20" rx="2"/><circle cx="12" cy="13" r="5"/><circle cx="12" cy="13" r="1.5"/><circle cx="7" cy="6" r="0.6" fill="currentColor"/><circle cx="10" cy="6" r="0.6" fill="currentColor"/>',
+  dishwasher:'<rect x="3" y="2" width="18" height="20" rx="2"/><line x1="3" x2="21" y1="8" y2="8"/><line x1="3" x2="21" y1="18" y2="18"/><circle cx="7" cy="5" r="0.6" fill="currentColor"/><line x1="10" x2="17" y1="5" y2="5"/><path d="M8 11v5M12 11v5M16 11v5"/>',
+  laundry:'<path d="M5 9h14l-2 12H7zM5 9V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2M9 12v6M13 12v6M17 12v6"/>',
+  coffee:'<path d="M17 8h1a4 4 0 1 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4ZM6 2v2M10 2v2M14 2v2"/>',
+  flame:'<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+  fireplace:'<path d="M3 22h18M5 18h14M5 18v-8h14v8M5 10V5a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v5"/><path d="M10 17c0-2 2-2 2-4-1-1-1-2 0-3 1 1 2 2 2 4s-2 2-2 4-2 1-2-1z"/>',
+  snow:'<line x1="2" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="22"/><path d="m20 16-4-4 4-4M4 8l4 4-4 4M16 4l-4 4-4-4M8 20l4-4 4 4"/>',
+  oven:'<rect x="3" y="2" width="18" height="20" rx="2"/><rect x="6" y="9" width="12" height="10" rx="1"/><line x1="7" x2="17" y1="5.5" y2="5.5"/><circle cx="7" cy="5.5" r="0.7" fill="currentColor"/><line x1="9" x2="15" y1="14" y2="14"/>',
+  microwave:'<rect x="2" y="4" width="20" height="15" rx="2"/><rect x="5" y="7" width="10" height="9" rx="1"/><circle cx="18.5" cy="9" r="0.7" fill="currentColor"/><circle cx="18.5" cy="11.5" r="0.7" fill="currentColor"/><line x1="17" x2="20" y1="14" y2="14"/>',
+  fridge:'<path d="M5 6a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2ZM5 10h14M9 5v2M9 14v2"/>',
+  wifi:'<path d="M5 13a10 10 0 0 1 14 0M8.5 16.5a5 5 0 0 1 7 0M2 8.82a15 15 0 0 1 20 0"/><circle cx="12" cy="20" r="0.6" fill="currentColor"/>',
+  trash:'<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/>',
+  vacuum:'<path d="M14 4V2M14 4a4 4 0 0 1 4 4M14 4a4 4 0 0 0-4 4v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V12M14 12h8M2 22h6M5 22v-3M3 19h4"/>',
+  key:'<path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/><path d="M15.5 6.5 20.5 11.5M17.5 4.5 22.5 9.5"/>',
+  car:'<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>',
+  evcharge:'<path d="M3 17h2v-7H3M3 14h2M7 19V8a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v11M15 13h2l3 3v3a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-3"/><path d="M10 9l-1 3 2 0-1 3 2-2-2 0z"/>',
+  leaf:'<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19.2 2.96a1 1 0 0 1 1.5.5C22 7 21.5 11 19 14c-2.27 2.74-6 5-13 5"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/>',
+  patio:'<circle cx="12" cy="7" r="3"/><path d="M12 4V2M16 7h2M12 10v2M8 7H6M14.5 4.5l1-1M9.5 4.5l-1-1M14.5 9.5l1 1M9.5 9.5l-1 1M3 17h18M3 21h18M5 17v4M19 17v4M9 17v4M15 17v4"/>',
+  pergola:'<path d="M3 22V8M21 22V8M3 8h18M5 8V4M9 8V4M13 8V4M17 8V4M21 8V4M3 4h18"/><line x1="3" x2="21" y1="11" y2="11"/><line x1="3" x2="21" y1="14" y2="14"/>',
+  balcony:'<path d="M3 10v12M21 10v12M3 22h18M3 16h18M3 13h18M7 22V10M11 22V10M15 22V10M19 22V10M3 10h18l-2-4H5z"/>',
+  shutter:'<rect x="3" y="3" width="18" height="18" rx="1"/><line x1="3" x2="21" y1="7" y2="7"/><line x1="3" x2="21" y1="11" y2="11"/><line x1="3" x2="21" y1="15" y2="15"/><line x1="3" x2="21" y1="19" y2="19"/>',
+  pool:'<path d="M2 12s2-3 5-3 5 3 10 3 5-3 5-3M2 18s2-3 5-3 5 3 10 3 5-3 5-3M2 6s2-3 5-3 5 3 10 3 5-3 5-3"/>',
+  spa:'<path d="M3 15h18M3 19h18"/><circle cx="12" cy="9" r="3"/><path d="M3 19v2M21 19v2"/><circle cx="7" cy="13" r="0.5" fill="currentColor"/><circle cx="12" cy="13" r="0.5" fill="currentColor"/><circle cx="17" cy="13" r="0.5" fill="currentColor"/><path d="M12 4v-2M9 6l1-1M15 6l-1-1"/>',
+  sauna:'<rect x="3" y="6" width="18" height="14" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="3" y1="14" x2="21" y2="14"/><line x1="3" y1="18" x2="21" y2="18"/><path d="M8 4c-.5 1 .5 1 0 2M12 4c-.5 1 .5 1 0 2M16 4c-.5 1 .5 1 0 2"/>',
+  gym:'<path d="M6 4v16M18 4v16M2 8h4M2 16h4M18 8h4M18 16h4M6 12h12"/>',
+  gameroom:'<rect x="2" y="6" width="20" height="12" rx="3"/><circle cx="7" cy="12" r="1.3"/><path d="M5 12h4M7 10v4"/><circle cx="15" cy="11" r="1" fill="currentColor"/><circle cx="18" cy="13" r="1" fill="currentColor"/>',
+  bbq:'<path d="M5 9h14l-1.5 7a4 4 0 0 1-4 3h-3a4 4 0 0 1-4-3ZM6 19v2M18 19v2M9 5c1-1 2-1 3 0s2 1 3 0M9 2c1-1 2-1 3 0s2 1 3 0"/>',
+  bike:'<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h3l3 11M9 17.5h6L12 6h-3"/><circle cx="13" cy="6" r="1" fill="currentColor"/>',
+  hello:'<path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>',
+  closing:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16.5" r="1" fill="currentColor"/><line x1="12" y1="17.5" x2="12" y2="19.5"/>',
+  lock:'<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  lamp:'<path d="M12 18v3M9 21h6M9 8h6l-1-6h-4Z"/><path d="M5 22h14M7 8v2a5 5 0 0 0 10 0V8M9 12h6"/>',
+  music:'<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+  film:'<rect x="2" y="2" width="20" height="20" rx="2"/><line x1="7" x2="7" y1="2" y2="22"/><line x1="17" x2="17" y1="2" y2="22"/><line x1="2" x2="22" y1="12" y2="12"/><line x1="2" x2="7" y1="7" y2="7"/><line x1="2" x2="7" y1="17" y2="17"/><line x1="17" x2="22" y1="17" y2="17"/><line x1="17" x2="22" y1="7" y2="7"/>',
+  desk:'<rect x="3" y="6" width="18" height="3"/><line x1="6" y1="9" x2="6" y2="22"/><line x1="18" y1="9" x2="18" y2="22"/><rect x="8" y="11" width="8" height="6"/><circle cx="12" cy="14" r="0.8" fill="currentColor"/><line x1="10" y1="20" x2="14" y2="20"/>',
+  chicken:'<path d="M5 21V12a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v9z"/><path d="M5 21h14M10 8V5a2 2 0 0 1 4 0v3"/><circle cx="13" cy="14" r="0.7" fill="currentColor"/><path d="M11 13c-1 1-2 1-2 2M14 16c.5.5 1.5.5 2 0"/>',
+  message:'<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>',
+  garden:'<path d="M12 22V12M12 12s-2-2-5-2-5 2-5 4 2 4 4 4 6-6 6-6zM12 12s2-2 5-2 5 2 5 4-2 4-4 4-6-6-6-6z"/>',
+  star:'<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+};
+// Labels lisibles pour le picker (modal)
+const VIS_LABELS={
+  door:'Entrée / Porte',access:'Accès',sofa:'Salon / Canapé',bed:'Chambre',suite:'Suite',kitchen:'Cuisine',
+  bath:'Salle de bain',shower:'Douche',toilet:'WC',tv:'Télévision',multimedia:'Multimédia',speaker:'Enceinte',
+  washer:'Machine à laver',dishwasher:'Lave-vaisselle',laundry:'Buanderie',coffee:'Café',flame:'Chauffage',
+  fireplace:'Cheminée',snow:'Climatisation',oven:'Four',microwave:'Micro-ondes',fridge:'Frigo',wifi:'Wifi',
+  trash:'Poubelles',vacuum:'Aspirateur',key:'Clés',car:'Parking',evcharge:'Borne recharge',leaf:'Jardin',
+  patio:'Patio',pergola:'Pergola',balcony:'Balcon',shutter:'Volets / Store',pool:'Piscine',spa:'Jacuzzi / Spa',
+  sauna:'Sauna',gym:'Salle de sport',gameroom:'Salle de jeux',bbq:'Barbecue',bike:'Vélo',hello:'Arrivée',
+  closing:'Fermeture',lock:'Coffre',lamp:'Éclairage',music:'Musique',film:'Visite vidéo',desk:'Bureau',
+  chicken:'Poulailler',message:'Mot du propriétaire',garden:'Pelouse',star:'Autre',
+};
+// Mapping mots-clés → illustration + emoji (fallback éditeur) + dégradé de couleur
 const CHAPTER_THEMES=[
-  {kw:/salon|living|canap|s[ée]jour/i,emoji:'🛋️',from:'#3b2a1f',to:'#5e3a1f'},
-  {kw:/chambre|bedroom|lit\b|literie/i,emoji:'🛏️',from:'#1f3a5e',to:'#2a4a7a'},
-  {kw:/cuisine|kitchen/i,emoji:'🍳',from:'#3e2615',to:'#6e3925'},
-  {kw:/salle de bain|sdb|bathroom|douche|baignoire/i,emoji:'🛁',from:'#1a3a4d',to:'#2c5e7a'},
-  {kw:/\bwc\b|toilet/i,emoji:'🚽',from:'#2e2e2e',to:'#4a4a4a'},
-  {kw:/t[ée]l[ée]vision|\btv\b|[ée]cran/i,emoji:'📺',from:'#16213e',to:'#2c4571'},
-  {kw:/machine [àa] laver|lave-?linge|laundry/i,emoji:'🧺',from:'#2e3e5e',to:'#476485'},
-  {kw:/lave-?vaisselle|vaisselle|dishwasher/i,emoji:'🍽️',from:'#1e3e2e',to:'#356a4a'},
-  {kw:/caf[ée]|cafeti[èe]re|coffee|nespresso/i,emoji:'☕',from:'#3e1e0d',to:'#6e3a1c'},
-  {kw:/chauffage|heating|radiateur|thermostat/i,emoji:'🔥',from:'#4e1f0d',to:'#8a3a1c'},
-  {kw:/climatisation|\bclim\b|air cond/i,emoji:'❄️',from:'#0d3e5e',to:'#1c6a9a'},
-  {kw:/\bfour\b|oven|cuisson/i,emoji:'🍞',from:'#3e1e0d',to:'#6e351c'},
-  {kw:/micro-?onde|microwave/i,emoji:'⚡',from:'#3e3e1e',to:'#6e6a25'},
-  {kw:/frigo|r[ée]frig[ée]rateur|fridge/i,emoji:'🧊',from:'#1e3e5e',to:'#356a8a'},
-  {kw:/wifi|internet|routeur|connexion/i,emoji:'📶',from:'#1e3e3e',to:'#2c6a6e'},
-  {kw:/poubelle|d[ée]chet|tri/i,emoji:'🗑️',from:'#2e3e2e',to:'#4a685a'},
-  {kw:/aspirateur|vacuum|m[ée]nage|nettoyage/i,emoji:'🧹',from:'#2e2e4e',to:'#4a4a7a'},
-  {kw:/cl[ée]s?|serrure|entr[ée]e|porte d'entr/i,emoji:'🔑',from:'#3e2e0d',to:'#6e571c'},
-  {kw:/parking|garage|voiture/i,emoji:'🚗',from:'#2a2a2a',to:'#4a4a4a'},
-  {kw:/jardin|terrasse|ext[ée]rieur|balcon/i,emoji:'🌿',from:'#0d3e2e',to:'#1c6a4a'},
-  {kw:/piscine|pool/i,emoji:'🏊',from:'#0d3e5e',to:'#1c6a9a'},
-  {kw:/barbecue|bbq|grill|plancha/i,emoji:'🔥',from:'#3e1e0d',to:'#6e351c'},
-  {kw:/v[ée]lo|bike|bicyclette/i,emoji:'🚴',from:'#2e3e1e',to:'#4a6e35'},
-  {kw:/arriv[ée]e|check-?in|accueil|bienvenue/i,emoji:'👋',from:'#3e1e3e',to:'#6e2e6e'},
-  {kw:/d[ée]part|check-?out/i,emoji:'👋',from:'#3e1e3e',to:'#6e2e6e'},
-  {kw:/coffre|safe|coffre-fort/i,emoji:'🔒',from:'#2a2a2a',to:'#4a4a4a'},
-  {kw:/lumi[èe]re|light|[ée]clairage|interrupteur/i,emoji:'💡',from:'#3e3e1e',to:'#6e6a25'},
-  {kw:/musique|enceinte|hi-?fi|sono|bluetooth/i,emoji:'🎵',from:'#3e1e3e',to:'#6e2e6e'},
-  {kw:/visite|tour|pr[ée]sentation|d[ée]couverte/i,emoji:'🎬',from:'#2e1e3e',to:'#4a2e6e'},
+  {kw:/entr[ée]e|porte d'entr/i,emoji:'🚪',illust:'door',from:'#2e2515',to:'#5e4a25'},
+  {kw:/acc[èe]s|arriv[ée]e|check-?in|accueil|bienvenue/i,emoji:'👋',illust:'hello',from:'#3e1e3e',to:'#7a3a7a'},
+  {kw:/d[ée]part|check-?out|fermeture/i,emoji:'🔒',illust:'closing',from:'#2a2a2a',to:'#525252'},
+  {kw:/salon|living|s[ée]jour|pi[èe]ce de vie/i,emoji:'🛋️',illust:'sofa',from:'#3b2a1f',to:'#6e4a30'},
+  {kw:/canap[ée]/i,emoji:'🛋️',illust:'sofa',from:'#3b2a1f',to:'#6e4a30'},
+  {kw:/suite/i,emoji:'🛏️',illust:'suite',from:'#1a2a5e',to:'#3a5e95'},
+  {kw:/chambre|bedroom|\blit\b|literie/i,emoji:'🛏️',illust:'bed',from:'#1f3a5e',to:'#365e90'},
+  {kw:/cuisine|kitchen/i,emoji:'🍳',illust:'kitchen',from:'#3e2615',to:'#7a4528'},
+  {kw:/salle de bain|sdb|bathroom|baignoire|salle d.eau/i,emoji:'🛁',illust:'bath',from:'#1a3a4d',to:'#2e6585'},
+  {kw:/douche|shower/i,emoji:'🚿',illust:'shower',from:'#1a3a4d',to:'#2e6585'},
+  {kw:/\bwc\b|toilet/i,emoji:'🚽',illust:'toilet',from:'#2e2e3e',to:'#4f4f60'},
+  {kw:/t[ée]l[ée]vision|\btv\b|[ée]cran/i,emoji:'📺',illust:'tv',from:'#16213e',to:'#324d8a'},
+  {kw:/multim[ée]dia|home cinema|home-cinema/i,emoji:'🎬',illust:'multimedia',from:'#2e1e3e',to:'#5a3a85'},
+  {kw:/enceinte|hi-?fi|sono|bluetooth|sonos/i,emoji:'🔊',illust:'speaker',from:'#2e1e3e',to:'#5a3a7a'},
+  {kw:/machine [àa] laver|lave-?linge/i,emoji:'🧺',illust:'washer',from:'#2e3e5e',to:'#4d6a95'},
+  {kw:/lave-?vaisselle|vaisselle|dishwasher/i,emoji:'🍽️',illust:'dishwasher',from:'#1e3e2e',to:'#3a7a5a'},
+  {kw:/buanderie|laundry|s[ée]choir|s[èe]che-?linge/i,emoji:'🧺',illust:'laundry',from:'#2e3e5e',to:'#4d6a95'},
+  {kw:/caf[ée]|cafeti[èe]re|coffee|nespresso/i,emoji:'☕',illust:'coffee',from:'#3e1e0d',to:'#7a4520'},
+  {kw:/chauffage|heating|radiateur|thermostat/i,emoji:'🔥',illust:'flame',from:'#4e1f0d',to:'#a04525'},
+  {kw:/chemin[ée]e|fireplace|po[êe]le/i,emoji:'🔥',illust:'fireplace',from:'#4e1f0d',to:'#8a3a1c'},
+  {kw:/climatisation|\bclim\b|air cond/i,emoji:'❄️',illust:'snow',from:'#0d3e5e',to:'#2080b5'},
+  {kw:/\bfour\b|oven|cuisson/i,emoji:'🔥',illust:'oven',from:'#3e1e0d',to:'#7a4020'},
+  {kw:/micro-?onde|microwave/i,emoji:'⚡',illust:'microwave',from:'#3e3e1e',to:'#7a7530'},
+  {kw:/frigo|r[ée]frig[ée]rateur|fridge/i,emoji:'🧊',illust:'fridge',from:'#1e3e5e',to:'#3a7aa0'},
+  {kw:/wifi|internet|routeur|connexion/i,emoji:'📶',illust:'wifi',from:'#1e3e3e',to:'#357580'},
+  {kw:/poubelle|d[ée]chet|tri|local poubelle/i,emoji:'🗑️',illust:'trash',from:'#2e3e2e',to:'#557565'},
+  {kw:/aspirateur|vacuum|m[ée]nage|nettoyage/i,emoji:'🧹',illust:'vacuum',from:'#2e2e4e',to:'#4d4d85'},
+  {kw:/cl[ée]s?|serrure|cl[ée]\b/i,emoji:'🔑',illust:'key',from:'#3e2e0d',to:'#7a6325'},
+  {kw:/coffre|safe|coffre-fort/i,emoji:'🔒',illust:'lock',from:'#2a2a2a',to:'#525252'},
+  {kw:/recharge|borne|[ée]lectrique|wallbox|tesla/i,emoji:'🔌',illust:'evcharge',from:'#1e3e4e',to:'#3a7080'},
+  {kw:/parking|garage|voiture/i,emoji:'🚗',illust:'car',from:'#2a2a2a',to:'#525252'},
+  {kw:/jardin|pelouse|ext[ée]rieur/i,emoji:'🌿',illust:'leaf',from:'#0d3e2e',to:'#1f7a52'},
+  {kw:/patio/i,emoji:'☀️',illust:'patio',from:'#3e3a1e',to:'#7a6a30'},
+  {kw:/pergola/i,emoji:'🌳',illust:'pergola',from:'#2e3e1e',to:'#577a35'},
+  {kw:/balcon/i,emoji:'🏛️',illust:'balcony',from:'#3e2e1e',to:'#7a5a35'},
+  {kw:/terrasse/i,emoji:'🌿',illust:'patio',from:'#3e3a1e',to:'#7a6a30'},
+  {kw:/volet|store|persienne/i,emoji:'🪟',illust:'shutter',from:'#2e2e3e',to:'#4d4d65'},
+  {kw:/piscine|pool/i,emoji:'🏊',illust:'pool',from:'#0d3e5e',to:'#2080b5'},
+  {kw:/jacuzzi|\bspa\b|hot tub/i,emoji:'♨️',illust:'spa',from:'#1a2e5e',to:'#3a5a95'},
+  {kw:/sauna|hammam/i,emoji:'🧖',illust:'sauna',from:'#3e1e0d',to:'#7a3a20'},
+  {kw:/sport|gym|fitness|musculation/i,emoji:'🏋️',illust:'gym',from:'#2e1e3e',to:'#5a3a7a'},
+  {kw:/jeux|game|billard|baby[ -]?foot/i,emoji:'🎮',illust:'gameroom',from:'#3e1e3e',to:'#7a3a7a'},
+  {kw:/d[ée]tente|relax|repos|chillout/i,emoji:'🌿',illust:'leaf',from:'#0d3e2e',to:'#1f7a52'},
+  {kw:/barbecue|bbq|grill|plancha|brasero/i,emoji:'🔥',illust:'bbq',from:'#3e1e0d',to:'#7a4020'},
+  {kw:/v[ée]lo|bike|bicyclette/i,emoji:'🚴',illust:'bike',from:'#2e3e1e',to:'#577a35'},
+  {kw:/lumi[èe]re|light|[ée]clairage|interrupteur|lampe/i,emoji:'💡',illust:'lamp',from:'#3e3e1e',to:'#807a30'},
+  {kw:/musique|playlist/i,emoji:'🎵',illust:'music',from:'#3e1e3e',to:'#7a3a7a'},
+  {kw:/visite|tour|pr[ée]sentation|d[ée]couverte/i,emoji:'🎬',illust:'film',from:'#2e1e3e',to:'#5a3a85'},
+  {kw:/bureau|workspace|t[ée]l[ée]travail/i,emoji:'💼',illust:'desk',from:'#2e2e1e',to:'#5a5a35'},
+  {kw:/poulailler|poule|chicken/i,emoji:'🐓',illust:'chicken',from:'#3e2e1e',to:'#7a5a35'},
+  {kw:/mot du propri[ée]taire|message|host note|h[ôo]te|propri[ée]taire/i,emoji:'💬',illust:'message',from:'#2e1e3e',to:'#5a3a7a'},
 ];
 const PALETTE_FALLBACK=[
-  {from:'#3b2a1f',to:'#5e3a1f'},
-  {from:'#1f3a5e',to:'#2a4a7a'},
-  {from:'#1a3a4d',to:'#2c5e7a'},
-  {from:'#3e1e3e',to:'#6e2e6e'},
-  {from:'#0d3e2e',to:'#1c6a4a'},
-  {from:'#2e2e4e',to:'#4a4a7a'},
-  {from:'#3e3e1e',to:'#6e6a25'},
-  {from:'#1e3e3e',to:'#2c5e5e'}
+  {from:'#3b2a1f',to:'#6e4a30'},
+  {from:'#1f3a5e',to:'#365e90'},
+  {from:'#1a3a4d',to:'#2e6585'},
+  {from:'#3e1e3e',to:'#7a3a7a'},
+  {from:'#0d3e2e',to:'#1f7a52'},
+  {from:'#2e2e4e',to:'#4d4d85'},
+  {from:'#3e3e1e',to:'#807a30'},
+  {from:'#1e3e3e',to:'#357580'}
 ];
 function findChapterTheme(title){if(!title)return null;for(const t of CHAPTER_THEMES){if(t.kw.test(title))return t;}return null;}
 function getThemeForChapter(e,index){
   const m=findChapterTheme(e.nom||'');
   const pal=PALETTE_FALLBACK[index%PALETTE_FALLBACK.length];
-  // L'emoji vient en priorité de l'icône personnalisée par l'utilisateur (si différente du défaut), sinon de la détection par mot-clé.
-  const userIco=e.icone&&e.icone!=='🎬'&&e.icone!=='⚙️'?e.icone:null;
+  // Si l'utilisateur a explicitement choisi une illustration via le picker (clé valide dans ILLUSTRATIONS),
+  // on utilise cette illustration avec les couleurs du thème détecté (ou palette si rien ne matche).
+  const userIllust=e.icone&&ILLUSTRATIONS[e.icone]?e.icone:null;
   return {
-    emoji:userIco||(m?m.emoji:(e.icone||'🎬')),
+    illust:userIllust||(m?m.illust:'star'),
     from:m?m.from:pal.from,
     to:m?m.to:pal.to
   };
@@ -1789,13 +1951,18 @@ function getThemeForChapter(e,index){
 let __themeIdSeq=0;
 function generateThemeSvg(theme){
   const id=`eqgr-${++__themeIdSeq}`;
+  const illust=ILLUSTRATIONS[theme.illust]||ILLUSTRATIONS.star;
   return `<svg viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" class="eq-poster-img">
     <defs><linearGradient id="${id}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${theme.from}"/><stop offset="100%" stop-color="${theme.to}"/></linearGradient></defs>
     <rect width="640" height="360" fill="url(#${id})"/>
-    <circle cx="120" cy="80" r="60" fill="rgba(201,168,76,0.08)"/>
-    <circle cx="520" cy="280" r="80" fill="rgba(201,168,76,0.05)"/>
-    <circle cx="540" cy="60" r="30" fill="rgba(201,168,76,0.06)"/>
-    <text x="320" y="200" text-anchor="middle" dominant-baseline="middle" font-size="180" font-family="'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif">${theme.emoji}</text>
+    <circle cx="80" cy="60" r="2" fill="rgba(245,228,168,0.5)"/>
+    <circle cx="130" cy="120" r="1.5" fill="rgba(245,228,168,0.35)"/>
+    <circle cx="580" cy="80" r="2.5" fill="rgba(245,228,168,0.45)"/>
+    <circle cx="550" cy="290" r="2" fill="rgba(245,228,168,0.35)"/>
+    <circle cx="60" cy="290" r="1.5" fill="rgba(245,228,168,0.3)"/>
+    <line x1="50" y1="320" x2="100" y2="320" stroke="rgba(245,228,168,0.3)" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="540" y1="40" x2="590" y2="40" stroke="rgba(245,228,168,0.3)" stroke-width="1.5" stroke-linecap="round"/>
+    <g transform="translate(230,90) scale(7.5)" stroke="rgba(245,228,168,0.92)" stroke-width="0.75" fill="none" stroke-linecap="round" stroke-linejoin="round" color="rgba(245,228,168,0.92)">${illust}</g>
   </svg>`;
 }
 // Lance la lecture inline d'un équipement vidéo (remplace le poster par l'iframe avec autoplay)
@@ -1829,14 +1996,13 @@ async function importVimeoChaptersToEquip(){
     await player.ready();
     const chapters=await player.getChapters();
     if(!chapters||!chapters.length){toast('Aucun chapitre trouvé sur cette vidéo Vimeo.');return;}
-    // Ajoute les chapitres à la suite des équipements existants. L'icône est détectée automatiquement
-    // depuis le titre (cuisine → 🍳, chambre → 🛏️, etc.) et un thème graphique sera généré côté voyageur.
+    // Ajoute les chapitres à la suite des équipements existants. L'illustration est auto-détectée
+    // depuis le titre (cuisine → toque, chambre → lit, etc.) ; modifiable via le picker visuel.
     const base=equip.length;
     chapters.forEach((c,i)=>{
       const t=Math.round(c.startTime||0);
-      const m=findChapterTheme(c.title||'');
       equip.push({
-        icone:m?m.emoji:'🎬',
+        icone:'',
         nom:c.title||`Chapitre ${i+1}`,
         description:'',
         image_url:'',
@@ -1858,9 +2024,10 @@ function re(){
   const list=document.getElementById('equipements-list');list.innerHTML='';
   equip.forEach((e,i)=>{
     const d=document.createElement('div');d.className='ai';
-    const hasImg=e.image_url?`<img src="${e.image_url}" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;margin-bottom:8px">`:'';
+    const hasImg=e.image_url&&!isVimeoCdnThumb(e.image_url)?`<img src="${e.image_url}" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;margin-bottom:8px">`:'';
     const handle=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><div class="drag-handle" title="Glisser pour réorganiser">⋮⋮</div><div style="font-size:11px;color:var(--muted2);font-weight:600">Équipement ${i+1}</div></div>`;
-    d.innerHTML=`${handle}${hasImg}<div class="ai-grid"><div class="fg" style="margin-bottom:0"><label class="fl2">Icône</label><input class="fi" value="${(e.icone||'⚙️').replace(/"/g,'&quot;')}" onchange="equip[${i}].icone=this.value" placeholder="🧺"></div><div class="fg" style="margin-bottom:0"><label class="fl2">Nom</label><input class="fi" value="${(e.nom||'').replace(/"/g,'&quot;')}" onchange="equip[${i}].nom=this.value" placeholder="Machine à laver"></div></div><div class="fg" style="margin:10px 0 0"><label class="fl2">Description / mode d'emploi</label><textarea class="fi" onchange="equip[${i}].description=this.value" placeholder="1. Ouvrir le hublot...">${e.description||''}</textarea></div><div class="fg" style="margin:10px 0"><label class="fl2">Lien vidéo (optionnel - Vimeo, YouTube, Loom...)</label><input class="fi" value="${(e.video_url||'').replace(/"/g,'&quot;')}" onchange="equip[${i}].video_url=this.value" placeholder="https://..."></div><input type="file" id="input-equip-${i}" accept="image/*" style="display:none" onchange="uploadImage(this,'equip-${i}')"><div style="display:flex;gap:8px"><button class="btn-add" style="margin-top:0;flex:1" onclick="document.getElementById('input-equip-${i}').click()">${e.image_url?'🔄 Changer photo':'📷 Ajouter photo'}</button><button class="btn-d" onclick="removeEquipement(${i})">Supprimer</button></div>`;
+    const visualPicker=`<div class="vis-pick-row"><div class="vis-pick-preview">${miniIllustPreview(e,i)}</div><div class="vis-pick-info"><div class="vis-pick-label-current">Visuel</div><div class="vis-pick-name">${effectiveIllustLabel(e)}</div></div><button class="vis-pick-btn" onclick="openVisualPicker(${i})">Changer</button></div>`;
+    d.innerHTML=`${handle}${visualPicker}${hasImg}<div class="fg" style="margin-bottom:0"><label class="fl2">Nom du chapitre / de l'équipement</label><input class="fi" value="${(e.nom||'').replace(/"/g,'&quot;')}" onchange="equip[${i}].nom=this.value;re()" placeholder="Le salon"></div><div class="fg" style="margin:10px 0 0"><label class="fl2">Description / mode d'emploi (optionnel)</label><textarea class="fi" onchange="equip[${i}].description=this.value" placeholder="1. Ouvrir le hublot...">${e.description||''}</textarea></div><div class="fg" style="margin:10px 0"><label class="fl2">Lien vidéo (optionnel - Vimeo, YouTube, Loom...)</label><input class="fi" value="${(e.video_url||'').replace(/"/g,'&quot;')}" onchange="equip[${i}].video_url=this.value" placeholder="https://..."></div><input type="file" id="input-equip-${i}" accept="image/*" style="display:none" onchange="uploadImage(this,'equip-${i}')"><div style="display:flex;gap:8px"><button class="btn-add" style="margin-top:0;flex:1" onclick="document.getElementById('input-equip-${i}').click()">${e.image_url&&!isVimeoCdnThumb(e.image_url)?'🔄 Changer photo':'📷 Ajouter une photo perso'}</button><button class="btn-d" onclick="removeEquipement(${i})">Supprimer</button></div>`;
     list.appendChild(d);
   });
   // Glisser-déposer pour réorganiser
