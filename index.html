@@ -1401,7 +1401,8 @@ async function openEditor(id){
 }
 
 function prefillCosyGreen(){
-  if(!confirm('Cela va remplacer le contenu actuel par l\'exemple "Le Cosy Green". Continuer ?'))return;
+  if(!confirm('Cela va remplacer le contenu actuel par l\'exemple "Le Cosy Green" (toutes les infos + chapitres vidéo + recommandations + liens utiles). Continuer ?'))return;
+  // ===== Champs livret =====
   document.getElementById('f-nom').value='Le Cosy Green';
   document.getElementById('f-slug').value='cosy-green';
   document.getElementById('f-bienvenue').value='Bonjour et bienvenue à Nevers ! Vous trouverez toutes les informations d\'arrivée et le livret d\'accueil en vidéo ci-après. Vous pouvez nous contacter par téléphone en cas d\'urgence.';
@@ -1409,9 +1410,11 @@ function prefillCosyGreen(){
   document.getElementById('f-procedure').value='1. Récupérez les clés dans la boîte à code à droite de l\'entrée\n   Code communiqué 24h avant votre arrivée\n\n2. Entrez dans le logement par la porte principale\n\n3. Le tableau électrique se trouve dans l\'entrée à gauche\n   Tous les disjoncteurs sont déjà activés\n\n4. Le wifi se connecte automatiquement (voir onglet "Infos")\n\n5. Profitez de votre séjour à Nevers !';
   document.getElementById('f-wifi-nom').value='SFR_E04F';
   document.getElementById('f-wifi-mdp').value='ksmf34kxiswzpqlsjps1';
-  document.getElementById('f-adresse')&&(document.getElementById('f-adresse').value='12 rue de la Préfecture, 58000 Nevers');
-  document.getElementById('f-hote')&&(document.getElementById('f-hote').value='Camille & Sophie');
-  document.getElementById('f-poubelles')&&(document.getElementById('f-poubelles').value='À mettre dans les conteneurs à l\'entrée. Collecte le mardi (jaune) et le vendredi (noir).');
+  if(document.getElementById('f-adresse'))document.getElementById('f-adresse').value='34 côte de conflans, 58180 Marzy';
+  if(document.getElementById('f-hote'))document.getElementById('f-hote').value='Antoine';
+  if(document.getElementById('f-lat'))document.getElementById('f-lat').value='46.97370910644531';
+  if(document.getElementById('f-lng'))document.getElementById('f-lng').value='3.0724287033081055';
+  if(document.getElementById('f-poubelles'))document.getElementById('f-poubelles').value='Mettre dans l\'entrée sous le paillasson';
   document.getElementById('f-checkin').value='À partir de 16h';
   document.getElementById('f-checkout').value='Avant 11h';
   document.getElementById('f-parking').value='Stationnement possible dans la rue';
@@ -1419,29 +1422,65 @@ function prefillCosyGreen(){
   document.getElementById('f-contact-nom').value='Camille & Sophie';
   document.getElementById('f-contact-tel').value='+33744318931';
   document.getElementById('f-contact-email').value='nevers@primoconciergerie.fr';
-  adr=[
-    {nom:'Le Bengy',categorie:'Restaurant',description:'Restaurant semi-gastronomique',url:'https://www.le-bengy-restaurant.com',ordre:0},
-    {nom:'Café Vélo',categorie:'Restaurant',description:'Caffé & British Restaurant',url:'https://www.cafevelonevers.fr',ordre:1},
-    {nom:'O Wok 58',categorie:'Restaurant',description:'Restaurant asiatique, chinois, vietnamien',url:'https://o-wok58.fr',ordre:2},
-    {nom:'L\'Envie',categorie:'Restaurant',description:'Restaurant / Pizzeria',url:'https://www.tripadvisor.fr/Restaurant_Review-g196542-d3237793-Reviews-Restaurant_L_envie-Nevers_Nievre_Bourgogne_Franche_Comte.html',ordre:3},
-    {nom:'La Simplicité',categorie:'Restaurant',description:'Restaurant',url:'https://www.tripadvisor.fr/Restaurant_Review-g196542-d3721591-Reviews-La_Simplicite-Nevers_Nievre_Bourgogne_Franche_Comte.html',ordre:4},
-    {nom:'La Fontaine Cavalier',categorie:'Restaurant',description:'Restaurant semi-gastronomique',url:'https://www.fontaine-cavalier.com',ordre:5},
-    {nom:'La Gabare',categorie:'Restaurant',description:'Restaurant traditionnel',url:'https://www.restaurant-challuy.fr/restaurant-traditionnel',ordre:6},
-    {nom:'Couleur Café',categorie:'Café',description:'Pâtisseries et brunchs',url:'https://www.facebook.com/Couleur.Cafe.Nevers',ordre:7},
-    {nom:'Une Note de Vin',categorie:'Cave',description:'Dégustation de vins et planches apéro',url:'https://laboutique-unenotedevin.com',ordre:8},
-    {nom:'Les Nougatines de Nevers',categorie:'Spécialité',description:'Spécialité locale',url:'https://www.nougatines-nevers.fr',ordre:9},
-    {nom:'Faïencerie Georges',categorie:'Boutique',description:'Boutique pour faire les petits cadeaux',url:'https://www.faienceriegeorges.com',ordre:10},
-    {nom:'Parc floral d\'Apremont-sur-Allier',categorie:'À visiter',description:'Pour vous promener',url:'http://www.apremont-sur-allier.com/fr/parc-floral/',ordre:11}
+  document.getElementById('f-lien-avis-google').value='https://www.primoconciergerie.fr/voyage-direct-primo-conciergerie/';
+  document.getElementById('f-lien-reservation').value='https://www.primoconciergerie.fr/voyage-direct-primo-conciergerie/';
+  document.getElementById('f-cta1-texte').value='Réserver ce Logement au meilleur prix';
+  document.getElementById('f-cta2-texte').value='Voir tous les logements';
+  // ===== Boutons sous la vidéo (chapitres Vimeo) =====
+  btnv=[
+    {icone:'',texte:'Début',url:'0:01',ordre:0},
+    {icone:'',texte:'Accès',url:'0:33',ordre:1},
+    {icone:'',texte:'Entrée',url:'0:46',ordre:2},
+    {icone:'',texte:'Cuisine',url:'1:01',ordre:3},
+    {icone:'',texte:'Pièce de vie',url:'1:37',ordre:4},
+    {icone:'',texte:'Télévision',url:'1:47',ordre:5},
+    {icone:'',texte:'Chambres',url:'1:59',ordre:6},
+    {icone:'',texte:'Salle de bains',url:'2:11',ordre:7},
+    {icone:'',texte:'Autres services',url:'2:21',ordre:8},
+    {icone:'',texte:'Chauffage',url:'2:31',ordre:9},
+    {icone:'',texte:'Compteur électrique',url:'2:48',ordre:10},
+    {icone:'',texte:'Nos services +',url:'2:51',ordre:11}
   ];
+  // ===== Équipements (chapitres Guide avec timecodes Vimeo) =====
+  const VID='https://player.vimeo.com/video/1150383065?h=33843a3c0a';
   equip=[
-    {icone:'📺',nom:'Télévision',description:'1. Allumez avec la télécommande Samsung\n2. Accès à Netflix, Prime Video et YouTube\n3. Connectez-vous avec vos propres identifiants\n4. Pour le son : utilisez la télécommande de la barre de son',video_url:'',ordre:0},
-    {icone:'🧺',nom:'Machine à laver',description:'1. Ouvrez le hublot et chargez le linge\n2. Lessive dans le bac de gauche (fournie)\n3. Programme recommandé : Coton 40°C - 1h30\n4. Appuyez sur "Start"\n5. À la fin, n\'oubliez pas de vider le filtre',video_url:'',ordre:1},
-    {icone:'🔥',nom:'Chauffage',description:'1. Thermostat dans le couloir\n2. Tournez la molette pour régler la température (recommandé : 19-20°C)\n3. Chaque radiateur a son propre robinet thermostatique\n4. Merci de baisser le chauffage en quittant le logement',video_url:'',ordre:2},
-    {icone:'☕',nom:'Cafetière & bouilloire',description:'1. Nespresso : capsules fournies dans le tiroir de droite\n2. Bouilloire : versez l\'eau, appuyez sur le bouton\n3. Thés et infusions dans la boîte en bois sur le plan de travail',video_url:'',ordre:3}
+    {icone:'hello',nom:'Accès',description:'Tout ce qu\'il faut savoir pour votre arrivée',image_url:'',video_url:`${VID}#t=33s`,ordre:0},
+    {icone:'door',nom:'Entrée',description:'Découvrez comment accéder au logement',image_url:'',video_url:`${VID}#t=46s`,ordre:1},
+    {icone:'kitchen',nom:'Cuisine',description:'Tour de la cuisine en vidéo',image_url:'',video_url:`${VID}#t=61s`,ordre:2},
+    {icone:'sofa',nom:'Pièce de vie',description:'Présentation du salon',image_url:'',video_url:`${VID}#t=97s`,ordre:3},
+    {icone:'tv',nom:'Télévision',description:'Utilisation de la télévision en vidéo',image_url:'',video_url:`${VID}#t=107s`,ordre:4},
+    {icone:'bed',nom:'Chambres',description:'Présentation des chambres',image_url:'',video_url:`${VID}#t=119s`,ordre:5},
+    {icone:'bath',nom:'Salle de bains',description:'Présentation de la salle de bain',image_url:'',video_url:`${VID}#t=131s`,ordre:6},
+    {icone:'flame',nom:'Chauffage',description:'Réglage du chauffage en vidéo',image_url:'',video_url:`${VID}#t=151s`,ordre:7},
+    {icone:'electricmeter',nom:'Compteur électrique',description:'Le tableau électrique en cas de coupure',image_url:'',video_url:`${VID}#t=168s`,ordre:8},
+    {icone:'star',nom:'Nos services +',description:'Découvrez tous les services à votre disposition',image_url:'',video_url:`${VID}#t=171s`,ordre:9}
+  ];
+  // ===== Adresses : 12 Recommandations + 8 Liens utiles =====
+  adr=[
+    {nom:'Le Bengy',categorie:'Restaurant',description:'Restaurant semi-gastronomique',url:'https://www.le-bengy-restaurant.com',icone:'🍽️',image_url:'',type:'recommandation',ordre:0},
+    {nom:'Café Vélo',categorie:'Restaurant',description:'Caffé & British Restaurant',url:'https://www.cafevelonevers.fr',icone:'🚲',image_url:'',type:'recommandation',ordre:1},
+    {nom:'O Wok 58',categorie:'Restaurant',description:'Restaurant asiatique, chinois, vietnamien',url:'https://o-wok58.fr',icone:'🥢',image_url:'',type:'recommandation',ordre:2},
+    {nom:'L\'Envie',categorie:'Restaurant / Pizzeria',description:'Restaurant / Pizzeria',url:'https://www.tripadvisor.fr/Restaurant_Review-g196542-d3237793-Reviews-Restaurant_L_envie-Nevers_Nievre_Bourgogne_Franche_Comte.html',icone:'🍕',image_url:'',type:'recommandation',ordre:3},
+    {nom:'La Simplicité',categorie:'Restaurant',description:'Restaurant',url:'https://www.tripadvisor.fr/Restaurant_Review-g196542-d3721591-Reviews-La_Simplicite-Nevers_Nievre_Bourgogne_Franche_Comte.html',icone:'🍽️',image_url:'',type:'recommandation',ordre:4},
+    {nom:'La Fontaine Cavalier',categorie:'Restaurant',description:'Restaurant semi-gastronomique',url:'https://www.fontaine-cavalier.com',icone:'🍷',image_url:'',type:'recommandation',ordre:5},
+    {nom:'La Gabare',categorie:'Restaurant',description:'Restaurant traditionnel',url:'https://www.restaurant-challuy.fr/restaurant-traditionnel',icone:'⚓',image_url:'',type:'recommandation',ordre:6},
+    {nom:'Couleur Café',categorie:'Café',description:'Pâtisseries et brunchs',url:'https://www.facebook.com/Couleur.Cafe.Nevers',icone:'coffee',image_url:'',type:'recommandation',ordre:7},
+    {nom:'Une Note de Vin',categorie:'Cave',description:'Dégustation de vins et planches apéro',url:'https://laboutique-unenotedevin.com',icone:'🍷',image_url:'',type:'recommandation',ordre:8},
+    {nom:'Les Nougatines de Nevers',categorie:'Spécialité',description:'Spécialité locale',url:'https://www.nougatines-nevers.fr',icone:'🍬',image_url:'',type:'recommandation',ordre:9},
+    {nom:'Faïencerie Georges',categorie:'Boutique',description:'Boutique pour faire les petits cadeaux',url:'https://www.faienceriegeorges.com',icone:'🛍️',image_url:'',type:'recommandation',ordre:10},
+    {nom:'Parc floral d\'Apremont-sur-Allier',categorie:'À visiter',description:'Pour vous promener',url:'http://www.apremont-sur-allier.com/fr/parc-floral/',icone:'leaf',image_url:'',type:'recommandation',ordre:11},
+    {nom:'Office de Tourisme',categorie:'Tourisme',description:'Toutes les infos touristiques de Nevers',url:'https://www.nevers-tourisme.com',icone:'🏛️',image_url:'',type:'lien_utile',ordre:12},
+    {nom:'À voir / à faire',categorie:'Agenda',description:'Agenda et activités locales',url:'https://www.nevers-tourisme.com/agenda/',icone:'🎭',image_url:'',type:'lien_utile',ordre:13},
+    {nom:'Les musées',categorie:'Culture',description:'Découverte des musées de Nevers',url:'https://www.nevers-tourisme.com/explorer/visiter-nevers/les-musees/',icone:'🖼️',image_url:'',type:'lien_utile',ordre:14},
+    {nom:'Le patrimoine',categorie:'Histoire',description:'Le riche héritage historique de la ville',url:'https://www.nevers-tourisme.com/explorer/visiter-nevers/notre-riche-heritage/',icone:'🏰',image_url:'',type:'lien_utile',ordre:15},
+    {nom:'Visites',categorie:'Découverte',description:'Visites guidées et explorations',url:'https://www.nevers-tourisme.com/explorer/visiter-nevers/',icone:'film',image_url:'',type:'lien_utile',ordre:16},
+    {nom:'Se restaurer',categorie:'Gastronomie',description:'Tous les restaurants de Nevers',url:'https://www.nevers-tourisme.com/se-restaurer/',icone:'kitchen',image_url:'',type:'lien_utile',ordre:17},
+    {nom:'La Loire',categorie:'Nature',description:'Le fleuve et ses activités',url:'https://www.nevers-tourisme.com/category/la-loire/',icone:'🌊',image_url:'',type:'lien_utile',ordre:18},
+    {nom:'Taxis',categorie:'Transport',description:'Service de taxis de Nevers',url:'http://www.taxis-nevers.fr',icone:'🚕',image_url:'',type:'lien_utile',ordre:19}
   ];
   serv=[];
-  ra();re();rs();
-  toast('✨ Exemple Cosy Green chargé !');
+  ra();re();rs();rbv();
+  toast('✨ Exemple Le Cosy Green chargé (12 reco + 8 liens utiles + 10 chapitres) !');
 }
 
 async function uploadImage(input,type){
