@@ -226,12 +226,48 @@ textarea.fi{resize:vertical;min-height:80px;}
 .vr2:last-child{border-bottom:none;}
 .vr2-ico{width:28px;height:28px;border-radius:8px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;}
 .eq-card{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:12px;}
-.eq-card.lien-utile{background:linear-gradient(135deg,#f5e4a8 0%,#e2c06e 60%,#c9a84c 100%);border:1px solid var(--gold);box-shadow:0 4px 18px rgba(201,168,76,0.18);}
-.eq-card.lien-utile .eq-nom{color:#1a1a1a;font-weight:800;}
-.eq-card.lien-utile .eq-desc{color:#3a2c10;}
-.eq-card.lien-utile .eq-header span{color:#5a4520 !important;background:rgba(0,0,0,0.08);padding:3px 9px;border-radius:30px;}
-.eq-card.lien-utile .sv-img{background:rgba(20,15,8,0.85) !important;border:1px solid rgba(0,0,0,0.18) !important;}
+/* === LIENS UTILES : section entièrement inversée (or dominant, typo sombre) === */
+#voy-liens-label{
+  display:inline-block !important;
+  background:linear-gradient(90deg,var(--gold2) 0%,var(--gold) 50%,var(--gold2) 100%) !important;
+  color:#0a0a0a !important;
+  padding:9px 18px !important;
+  border-radius:30px !important;
+  letter-spacing:2.5px !important;
+  font-weight:800 !important;
+  text-transform:uppercase !important;
+  font-size:11px !important;
+  box-shadow:0 4px 16px rgba(201,168,76,0.35) !important;
+  border:1px solid var(--gold) !important;
+  margin-bottom:16px !important;
+  margin-top:30px !important;
+}
+#voy-liens{
+  background:rgba(201,168,76,0.04);
+  border:1px solid rgba(201,168,76,0.15);
+  border-radius:18px;
+  padding:14px;
+  margin-top:4px;
+}
+.eq-card.lien-utile{
+  background:linear-gradient(135deg,var(--gold2) 0%,var(--gold) 100%) !important;
+  border:1.5px solid var(--gold) !important;
+  box-shadow:0 6px 22px rgba(201,168,76,0.32) !important;
+}
+.eq-card.lien-utile .eq-nom{color:#0a0a0a !important;font-weight:800 !important;}
+.eq-card.lien-utile .eq-desc{color:#2a1f08 !important;font-weight:500;}
+.eq-card.lien-utile .eq-header span{
+  color:#fff !important;
+  background:#0a0a0a !important;
+  padding:4px 11px !important;
+  border-radius:30px;
+  font-size:10px !important;
+  letter-spacing:1px !important;
+  text-transform:uppercase;
+}
+.eq-card.lien-utile .sv-img{background:#0a0a0a !important;border:1.5px solid rgba(0,0,0,0.4) !important;}
 .eq-card.lien-utile .sv-img svg g{stroke:var(--gold3) !important;color:var(--gold3) !important;}
+.eq-card.lien-utile .sv-img svg g *{stroke:var(--gold3) !important;}
 /* Flèche d'indication "cliquable" sur les cartes adresses (cards en lien) */
 .eq-card[href]{position:relative;display:block;transition:transform 0.22s ease,box-shadow 0.22s ease;}
 .eq-card[href]:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(0,0,0,0.28);}
@@ -1874,17 +1910,23 @@ function openAdrVisualPicker(globalI){
   __adrPickerIdx=globalI;
   __visualPickerIndex=-1; // évite la confusion avec le picker équipement
   const a=adr[globalI]||{};
-  const current=a.icone&&ILLUSTRATIONS[a.icone]?a.icone:'';
+  const current=a.icone&&ADRESSE_ICONS[a.icone]?a.icone:'';
   const grid=document.getElementById('visual-picker-grid');
-  const all=Object.keys(ILLUSTRATIONS).map(k=>({k,label:VIS_LABELS[k]||k})).sort((x,y)=>x.label.localeCompare(y.label,'fr'));
-  let h=`<div class="vis-grid-item ${!current?'selected':''}" onclick="selectAdrVisual('')">
+  const all=Object.keys(ADRESSE_ICONS).map(k=>({k,label:ADRESSE_LABELS[k]||k})).sort((x,y)=>x.label.localeCompare(y.label,'fr'));
+  // Bouton "Détection auto" en premier
+  let h=`<div class="vis-grid-item" onclick="autoDetectAdrAndClose()" style="cursor:pointer">
     <div class="vis-grid-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--gold2);font-size:28px">✨</div>
-    <div class="vis-grid-label">Emoji libre</div>
+    <div class="vis-grid-label" style="font-weight:700">Détection auto<br>(depuis catégorie)</div>
+  </div>`;
+  // Bouton "Pas d'icône" (emoji libre)
+  h+=`<div class="vis-grid-item ${!current?'selected':''}" onclick="selectAdrVisual('')">
+    <div class="vis-grid-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--muted2);font-size:24px">∅</div>
+    <div class="vis-grid-label">Emoji libre / vide</div>
   </div>`;
   all.forEach(it=>{
     const sel=current===it.k?'selected':'';
     h+=`<div class="vis-grid-item ${sel}" onclick="selectAdrVisual('${it.k}')">
-      <div class="vis-grid-thumb"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g stroke="var(--gold2)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" color="var(--gold2)">${ILLUSTRATIONS[it.k]}</g></svg></div>
+      <div class="vis-grid-thumb"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g stroke="var(--gold2)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" color="var(--gold2)">${ADRESSE_ICONS[it.k]}</g></svg></div>
       <div class="vis-grid-label">${it.label}</div>
     </div>`;
   });
@@ -1893,9 +1935,14 @@ function openAdrVisualPicker(globalI){
 }
 function selectAdrVisual(key){
   if(__adrPickerIdx>=0&&adr[__adrPickerIdx]){
-    adr[__adrPickerIdx].icone=key||adr[__adrPickerIdx].icone||'📍';
+    adr[__adrPickerIdx].icone=key;
     ra();
   }
+  __adrPickerIdx=-1;
+  closeModal('visual-picker-modal');
+}
+function autoDetectAdrAndClose(){
+  if(__adrPickerIdx>=0)autoDetectAdrIcon(__adrPickerIdx);
   __adrPickerIdx=-1;
   closeModal('visual-picker-modal');
 }
@@ -1911,10 +1958,17 @@ function ra(){
     const d=document.createElement('div');d.className='ai';
     d.dataset.idx=i;
     const hasImg=a.image_url?`<img src="${a.image_url}" style="width:90px;height:90px;object-fit:cover;border-radius:10px;flex-shrink:0">`:'';
-    const iconeDisp=a.icone&&ILLUSTRATIONS[a.icone]?`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:38px;height:38px"><g stroke="var(--gold2)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" color="var(--gold2)">${ILLUSTRATIONS[a.icone]}</g></svg>`:`<div style="font-size:30px;line-height:1">${a.icone||(isLien?'🌐':'📍')}</div>`;
-    const visualPreview=hasImg||`<div style="width:60px;height:60px;background:var(--bg3);border:1px solid var(--border-gold);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${iconeDisp}</div>`;
+    // L'icône peut être : (1) clé ADRESSE_ICONS (banque adresses), (2) clé ILLUSTRATIONS (banque Guide - rétrocompat), (3) emoji libre
+    const isAdrIcon=a.icone&&ADRESSE_ICONS[a.icone];
+    const isVisualIll=a.icone&&ILLUSTRATIONS[a.icone];
+    const iconeDisp=isAdrIcon
+      ?`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:40px;height:40px"><g stroke="var(--gold2)" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" color="var(--gold2)">${ADRESSE_ICONS[a.icone]}</g></svg>`
+      :isVisualIll
+      ?`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:38px;height:38px"><g stroke="var(--gold2)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" color="var(--gold2)">${ILLUSTRATIONS[a.icone]}</g></svg>`
+      :`<div style="font-size:30px;line-height:1">${a.icone||(isLien?'🌐':'📍')}</div>`;
+    const visualPreview=hasImg||`<div style="width:62px;height:62px;background:var(--bg3);border:1px solid var(--border-gold);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${iconeDisp}</div>`;
     const handle=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><div class="drag-handle" title="Glisser pour réorganiser">⋮⋮</div><div style="font-size:11px;color:var(--muted2);font-weight:600">${isLien?'Lien utile':'Recommandation'}</div></div>`;
-    d.innerHTML=`${handle}<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px">${visualPreview}<div style="flex:1;display:flex;flex-direction:column;gap:6px"><input class="fi" value="${(a.icone||'').replace(/"/g,'&quot;')}" onchange="adr[${i}].icone=this.value;ra()" placeholder="Emoji (ex: 🍽️) ou clé d'illustration" style="font-size:13px"><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn-add" style="margin-top:0;flex:1;font-size:11px;min-width:130px" onclick="openAdrVisualPicker(${i})">🎨 Choisir un visuel</button><input type="file" id="input-adr-${i}" accept="image/*" style="display:none" onchange="uploadImage(this,'adr-${i}')"><button class="btn-add" style="margin-top:0;flex:1;font-size:11px;min-width:130px" onclick="document.getElementById('input-adr-${i}').click()">${a.image_url?'🔄 Changer photo':'📷 Ajouter photo'}</button>${a.image_url?`<button class="btn-d" style="font-size:11px" onclick="adr[${i}].image_url='';ra()">Retirer photo</button>`:''}</div></div></div><div class="ai-grid"><div class="fg" style="margin-bottom:0"><label class="fl2">Nom</label><input class="fi" value="${(a.nom||'').replace(/"/g,'&quot;')}" onchange="adr[${i}].nom=this.value" placeholder="${isLien?'Office de tourisme':'Le Bengy'}"></div><div class="fg" style="margin-bottom:0"><label class="fl2">Catégorie</label><input class="fi" value="${(a.categorie||'').replace(/"/g,'&quot;')}" onchange="adr[${i}].categorie=this.value" placeholder="${isLien?'Tourisme':'Restaurant'}"></div></div><div class="fg" style="margin:10px 0 0"><label class="fl2">Description courte</label><input class="fi" value="${(a.description||'').replace(/"/g,'&quot;')}" onchange="adr[${i}].description=this.value" placeholder="${isLien?'Toutes les infos sur Nevers':'Semi-gastronomique'}"></div><div class="fg" style="margin:10px 0"><label class="fl2">Lien</label><input class="fi" value="${(a.url||'').replace(/"/g,'&quot;')}" onchange="adr[${i}].url=this.value" placeholder="https://..."></div><button class="btn-d" onclick="removeAdresse(${i})">Supprimer</button>`;
+    d.innerHTML=`${handle}<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px">${visualPreview}<div style="flex:1;display:flex;flex-direction:column;gap:6px"><input class="fi" value="${(a.icone||'').replace(/"/g,'&quot;')}" onchange="adr[${i}].icone=this.value;ra()" placeholder="Emoji (ex: 🍽️) ou clé d'icône" style="font-size:13px"><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn-add" style="margin-top:0;font-size:11px" onclick="autoDetectAdrIcon(${i})" title="Détection auto depuis la catégorie">✨ Auto</button><button class="btn-add" style="margin-top:0;flex:1;font-size:11px;min-width:120px" onclick="openAdrVisualPicker(${i})">🎨 Choisir une icône</button><input type="file" id="input-adr-${i}" accept="image/*" style="display:none" onchange="uploadImage(this,'adr-${i}')"><button class="btn-add" style="margin-top:0;flex:1;font-size:11px;min-width:120px" onclick="document.getElementById('input-adr-${i}').click()">${a.image_url?'🔄 Changer photo':'📷 Ajouter photo'}</button>${a.image_url?`<button class="btn-d" style="font-size:11px" onclick="adr[${i}].image_url='';ra()">Retirer photo</button>`:''}</div></div></div><div class="ai-grid"><div class="fg" style="margin-bottom:0"><label class="fl2">Nom</label><input class="fi" value="${(a.nom||'').replace(/"/g,'&quot;')}" onchange="adr[${i}].nom=this.value" placeholder="${isLien?'Office de tourisme':'Le Bengy'}"></div><div class="fg" style="margin-bottom:0"><label class="fl2">Catégorie</label><input class="fi" value="${(a.categorie||'').replace(/"/g,'&quot;')}" onchange="adr[${i}].categorie=this.value" placeholder="${isLien?'Tourisme':'Restaurant'}"></div></div><div class="fg" style="margin:10px 0 0"><label class="fl2">Description courte</label><input class="fi" value="${(a.description||'').replace(/"/g,'&quot;')}" onchange="adr[${i}].description=this.value" placeholder="${isLien?'Toutes les infos sur Nevers':'Semi-gastronomique'}"></div><div class="fg" style="margin:10px 0"><label class="fl2">Lien</label><input class="fi" value="${(a.url||'').replace(/"/g,'&quot;')}" onchange="adr[${i}].url=this.value" placeholder="https://..."></div><button class="btn-d" onclick="removeAdresse(${i})">Supprimer</button>`;
     targetList.appendChild(d);
   });
   // Drag-drop sur les deux listes
@@ -2100,6 +2154,105 @@ const VIS_LABELS={
   closing:'Fermeture',lock:'Coffre',lamp:'Éclairage',music:'Musique',film:'Visite vidéo',desk:'Bureau',
   chicken:'Poulailler',message:'Mot du propriétaire',garden:'Pelouse',star:'Autre',
 };
+// === Banque d'icônes DÉDIÉE aux adresses (Recommandations + Liens utiles)
+// Séparée de la banque Guide (équipements). Style line-art simple, 24x24.
+const ADRESSE_ICONS={
+  restaurant:'<path d="M4 2v8a2 2 0 0 0 2 2h2v10M16 22v-7l-3-3 6-6"/>',
+  pizza:'<path d="M2 21h20L12 3z"/><circle cx="10" cy="13" r="1" fill="currentColor"/><circle cx="14" cy="16" r="1" fill="currentColor"/><circle cx="13" cy="9" r="1" fill="currentColor"/>',
+  coffee_cup:'<path d="M17 8h1a4 4 0 1 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4ZM6 2v2M10 2v2M14 2v2"/>',
+  chopsticks:'<line x1="3" y1="21" x2="19" y2="5"/><line x1="6" y1="21" x2="22" y2="7"/><path d="M19 5l3-3M22 7l3-3" stroke-linecap="round"/>',
+  wine:'<path d="M8 22h8M12 22V15M6 2h12v5a6 6 0 0 1-12 0z"/>',
+  bar:'<path d="M3 2l9 11 9-11zM12 13v9M8 22h8"/>',
+  bakery:'<path d="M5 19c1 2 4 3 7 3s6-1 7-3M5 19c-1-2 1-7 4-8M19 19c1-2-1-7-4-8M9 11c1-2 4-2 6 0"/>',
+  ice_cream:'<path d="M8 8h8L12 22zM12 2a3 3 0 0 0-3 3 3 3 0 0 0-2 5h10a3 3 0 0 0-2-5 3 3 0 0 0-3-3z"/>',
+  cheese:'<path d="M3 14l5-8 13 4-10 7z"/><circle cx="10" cy="11" r="0.7" fill="currentColor"/><circle cx="13" cy="13" r="0.7" fill="currentColor"/><circle cx="15" cy="9" r="0.7" fill="currentColor"/>',
+  candy:'<rect x="7" y="9" width="10" height="6" rx="1"/><path d="M3 12l4-3M3 12l4 3M21 12l-4-3M21 12l-4 3"/>',
+  shopping_bag:'<path d="M6 2 4 6v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6L18 2zM4 6h16M16 10a4 4 0 0 1-8 0"/>',
+  market:'<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 2h2l2 14h13l3-9H6"/>',
+  gift:'<rect x="3" y="8" width="18" height="13" rx="1"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="8" x2="12" y2="21"/><path d="M8 8c-2 0-2-3 0-3s4 3 4 3M16 8c2 0 2-3 0-3s-4 3-4 3"/>',
+  landmark:'<path d="M3 22h18M3 11L12 5l9 6M5 22V11M19 22V11M9 22V13M15 22V13"/>',
+  museum:'<rect x="3" y="4" width="18" height="14" rx="1"/><circle cx="8" cy="9" r="1.5"/><path d="M3 15l5-5 6 6 3-3 4 4"/>',
+  castle:'<path d="M3 22V8h2V4l2 2 2-2v4h2V4l2 2 2-2v4h2V4l2 2 2-2v4h2v14M3 22h18M11 22v-5h2v5"/>',
+  calendar:'<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><circle cx="12" cy="15" r="1.5" fill="currentColor"/>',
+  theater:'<path d="M2 7h20M4 7c0 5 1 11 8 11s8-6 8-11"/><circle cx="9" cy="12" r="1" fill="currentColor"/><circle cx="15" cy="12" r="1" fill="currentColor"/><path d="M9 16c1 1 5 1 6 0"/>',
+  cinema:'<rect x="2" y="2" width="20" height="20" rx="2"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>',
+  camera:'<path d="M3 7h4l2-3h6l2 3h4v13H3z"/><circle cx="12" cy="13" r="4"/>',
+  binoculars:'<circle cx="7" cy="15" r="4"/><circle cx="17" cy="15" r="4"/><path d="M11 15h2M7 11V6h3v5M14 11V6h3v5"/>',
+  tree:'<path d="M12 22V14M12 14c-4 0-6-3-6-6s2-6 6-6 6 3 6 6-2 6-6 6"/>',
+  flower:'<circle cx="12" cy="9" r="3"/><circle cx="6" cy="14" r="3"/><circle cx="18" cy="14" r="3"/><circle cx="9" cy="18" r="3"/><circle cx="15" cy="18" r="3"/><circle cx="12" cy="13" r="1.5" fill="currentColor"/>',
+  beach:'<line x1="2" y1="20" x2="22" y2="20"/><path d="M2 20c4-3 8-3 12 0M16 4l6 16M14 4l8 14M16 4a3 3 0 0 0 0 6"/>',
+  mountain:'<path d="M3 20l6-12 5 8 3-4 4 8z"/><circle cx="17" cy="6" r="1.5" fill="currentColor"/>',
+  waves:'<path d="M2 6c2-2 4 2 6 0 2-2 4 2 6 0 2-2 4 2 6 0M2 12c2-2 4 2 6 0 2-2 4 2 6 0 2-2 4 2 6 0M2 18c2-2 4 2 6 0 2-2 4 2 6 0 2-2 4 2 6 0"/>',
+  pool:'<path d="M2 12s2-3 5-3 5 3 10 3 5-3 5-3M2 18s2-3 5-3 5 3 10 3 5-3 5-3M2 6s2-3 5-3 5 3 10 3 5-3 5-3"/>',
+  bike_adr:'<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h3l3 11M9 17.5h6L12 6h-3"/>',
+  taxi:'<path d="M9 4h6l2 4H7zM5 8h14a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z"/><circle cx="8" cy="18" r="1.5"/><circle cx="16" cy="18" r="1.5"/><path d="M11 11h2"/>',
+  bus:'<rect x="3" y="4" width="18" height="14" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><circle cx="7" cy="18" r="1.5"/><circle cx="17" cy="18" r="1.5"/><line x1="7" y1="4" x2="7" y2="12"/><line x1="17" y1="4" x2="17" y2="12"/>',
+  train:'<rect x="5" y="3" width="14" height="15" rx="2"/><circle cx="9" cy="14" r="1" fill="currentColor"/><circle cx="15" cy="14" r="1" fill="currentColor"/><line x1="5" y1="9" x2="19" y2="9"/><line x1="7" y1="18" x2="5" y2="22"/><line x1="17" y1="18" x2="19" y2="22"/>',
+  plane:'<path d="M2 12l3 3 6-3v6l-2 1v2l4-1 4 1v-2l-2-1v-6l6 3 3-3-9-5V3a2 2 0 0 0-4 0v4z"/>',
+  hotel:'<path d="M3 21V8h18v13M3 12h18M3 16h18M7 8V5M17 8V5"/>',
+  pharmacy:'<rect x="9" y="2" width="6" height="20" rx="1"/><rect x="2" y="9" width="20" height="6" rx="1"/>',
+  medical:'<path d="M3 12h4l3-9 4 18 3-9h4"/>',
+  globe:'<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/>',
+  pin:'<path d="M12 22c-3-5-9-7-9-13a9 9 0 0 1 18 0c0 6-6 8-9 13z"/><circle cx="12" cy="9" r="3"/>',
+};
+const ADRESSE_LABELS={
+  restaurant:'Restaurant',pizza:'Pizzeria',coffee_cup:'Café / Brunch',chopsticks:'Asiatique',
+  wine:'Cave / Vin',bar:'Bar / Cocktail',bakery:'Boulangerie',ice_cream:'Glacier',cheese:'Fromagerie',
+  candy:'Spécialité locale',shopping_bag:'Boutique',market:'Marché',gift:'Cadeau / Souvenir',
+  landmark:'Office de tourisme',museum:'Musée',castle:'Patrimoine',calendar:'Agenda / Événement',
+  theater:'Théâtre / Spectacle',cinema:'Cinéma',camera:'Photo / Visite',binoculars:'Visites guidées',
+  tree:'Parc / Nature',flower:'Jardin floral',beach:'Plage',mountain:'Montagne',waves:'Fleuve / Loire',
+  pool:'Piscine publique',bike_adr:'Vélo / Location',taxi:'Taxi',bus:'Bus / Transport',
+  train:'Train / Gare',plane:'Aéroport',hotel:'Hôtel',pharmacy:'Pharmacie',medical:'Médecin / Santé',
+  globe:'Site web',pin:'Adresse / Lieu',
+};
+// Mots-clés (regex testée sur le champ "catégorie" ou "nom") → icône
+const ADRESSE_KEYWORDS=[
+  {kw:/pizza|pizz/i,icon:'pizza'},
+  {kw:/asiat|chinois|vietnam|sushi|thai|japonais|wok/i,icon:'chopsticks'},
+  {kw:/café|coffee|brunch|salon de th[ée]/i,icon:'coffee_cup'},
+  {kw:/cave|\bvin\b|vins?\b|caviste|wine/i,icon:'wine'},
+  {kw:/\bbar\b|cocktail|pub|brasserie/i,icon:'bar'},
+  {kw:/boulang|patiss|p[âa]tiss|p[âa]ti|bakery/i,icon:'bakery'},
+  {kw:/glac|ice|sorbet/i,icon:'ice_cream'},
+  {kw:/fromag/i,icon:'cheese'},
+  {kw:/sp[ée]cialit|nougat|local/i,icon:'candy'},
+  {kw:/boutique|magasin|shop|fa[ïi]encerie|d[ée]co/i,icon:'shopping_bag'},
+  {kw:/march[ée]/i,icon:'market'},
+  {kw:/cadeau|souvenir|gift/i,icon:'gift'},
+  {kw:/office de tourisme|tourisme|office tourist/i,icon:'landmark'},
+  {kw:/mus[ée]e?|museum/i,icon:'museum'},
+  {kw:/patrimoine|histo[ir]|heritage|ch[âa]teau|castle/i,icon:'castle'},
+  {kw:/agenda|[ée]v[ée]nement|event/i,icon:'calendar'},
+  {kw:/th[ée][âa]tre|spectacle|concert|opera|op[ée]ra/i,icon:'theater'},
+  {kw:/cin[ée]ma/i,icon:'cinema'},
+  {kw:/visite|guid[ée]e|d[ée]couverte|tour\b/i,icon:'binoculars'},
+  {kw:/parc|nature|for[êe]t|bois|verdure/i,icon:'tree'},
+  {kw:/floral|jardin/i,icon:'flower'},
+  {kw:/plage|mer\b|c[ôo]te|beach/i,icon:'beach'},
+  {kw:/montagne|sommet|ski|alp/i,icon:'mountain'},
+  {kw:/loire|fleuve|rivi[èe]re|canal/i,icon:'waves'},
+  {kw:/piscine|baignade|swim/i,icon:'pool'},
+  {kw:/v[ée]lo|bike|vtt/i,icon:'bike_adr'},
+  {kw:/taxi/i,icon:'taxi'},
+  {kw:/\bbus\b|transport public|tcl|ratp/i,icon:'bus'},
+  {kw:/\bgare\b|train|sncf|tgv/i,icon:'train'},
+  {kw:/a[ée]roport|avion|airport|flight/i,icon:'plane'},
+  {kw:/h[ôo]tel|chambre d'h[ôo]te|gite|gîte|auberge/i,icon:'hotel'},
+  {kw:/pharmac/i,icon:'pharmacy'},
+  {kw:/m[ée]decin|docteur|h[ôo]pital|urgence|sant[ée]/i,icon:'medical'},
+  {kw:/restaurant|gastronomi[qe]|bistro|bistrot|table\b/i,icon:'restaurant'},
+  {kw:/site|web|internet|url/i,icon:'globe'},
+];
+function findAdrIcon(text){if(!text)return null;for(const k of ADRESSE_KEYWORDS){if(k.kw.test(text))return k.icon;}return null;}
+function autoDetectAdrIcon(idx){
+  if(idx<0||!adr[idx])return;
+  const a=adr[idx];
+  const hit=findAdrIcon(a.categorie||'')||findAdrIcon(a.nom||'');
+  if(hit){adr[idx].icone=hit;ra();toast('✨ Icône détectée : '+(ADRESSE_LABELS[hit]||hit));}
+  else{toast('Aucune icône ne correspond à cette catégorie. Choisis manuellement.');}
+}
+
 // Banque de descriptions courtes pré-remplies lors de l'import des chapitres Vimeo
 const CHAPTER_DESCRIPTIONS={
   door:'Découvrez comment accéder au logement',
@@ -2718,8 +2871,12 @@ function rv(l,adresses,equipements,back,services){
   const liensArr=adresses.filter(a=>a.type==='lien_utile');
   const renderAdrCard=a=>{
     const isLien=a.type==='lien_utile';
-    const isVimeoIll=a.icone&&ILLUSTRATIONS[a.icone];
-    const visual=a.image_url?`<img src="${a.image_url}" class="sv-img" alt="${(a.nom||'').replace(/"/g,'&quot;')}">`:`<div class="sv-img" style="display:flex;align-items:center;justify-content:center;background:var(--bg3);border:1px solid var(--border-gold)">${isVimeoIll?`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:50%;height:50%"><g stroke="var(--gold2)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" color="var(--gold2)">${ILLUSTRATIONS[a.icone]}</g></svg>`:`<div style="font-size:42px;line-height:1">${a.icone||(isLien?'🌐':'📍')}</div>`}</div>`;
+    // Priorité d'affichage de l'icône : (1) photo upload, (2) ADRESSE_ICONS, (3) ILLUSTRATIONS (Guide - rétrocompat), (4) emoji libre
+    const isAdrIcon=a.icone&&ADRESSE_ICONS[a.icone];
+    const isVisualIll=a.icone&&ILLUSTRATIONS[a.icone];
+    const visual=a.image_url
+      ?`<img src="${a.image_url}" class="sv-img" alt="${(a.nom||'').replace(/"/g,'&quot;')}">`
+      :`<div class="sv-img" style="display:flex;align-items:center;justify-content:center;background:var(--bg3);border:1px solid var(--border-gold)">${isAdrIcon?`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:54%;height:54%"><g stroke="var(--gold2)" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" color="var(--gold2)">${ADRESSE_ICONS[a.icone]}</g></svg>`:isVisualIll?`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:50%;height:50%"><g stroke="var(--gold2)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" color="var(--gold2)">${ILLUSTRATIONS[a.icone]}</g></svg>`:`<div style="font-size:42px;line-height:1">${a.icone||(isLien?'🌐':'📍')}</div>`}</div>`;
     return `<a class="eq-card${isLien?' lien-utile':''}" href="${a.url||'#'}" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:block"><div class="sv-row">${visual}<div class="sv-body"><div class="eq-header" style="margin-bottom:6px"><div class="eq-nom" style="font-size:15px">${a.nom||''}</div>${a.categorie?`<span style="margin-left:auto;font-weight:700;font-size:11px;letter-spacing:0.5px${isLien?'':';color:var(--gold2)'}">${a.categorie}</span>`:''}</div><div class="eq-desc" style="margin-bottom:0">${a.description||''}</div></div></div></a>`;
   };
   const recoLbl=document.getElementById('voy-adresses-label');
