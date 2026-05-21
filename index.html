@@ -232,10 +232,12 @@ textarea.fi{resize:vertical;min-height:80px;}
 .eq-poster{position:relative;cursor:pointer;overflow:hidden;background:#000;display:block;}
 .eq-poster-img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;transition:transform 0.5s ease;}
 .eq-poster:hover .eq-poster-img{transform:scale(1.05);}
-.eq-play-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(0,0,0,0.05) 0%,rgba(0,0,0,0.45) 100%);transition:background 0.2s;}
-.eq-poster:hover .eq-play-overlay{background:linear-gradient(180deg,rgba(0,0,0,0.15) 0%,rgba(0,0,0,0.55) 100%);}
+.eq-play-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(0,0,0,0.05) 0%,rgba(0,0,0,0.25) 50%,rgba(0,0,0,0.85) 100%);transition:background 0.25s;}
+.eq-poster:hover .eq-play-overlay{background:linear-gradient(180deg,rgba(0,0,0,0.15) 0%,rgba(0,0,0,0.4) 50%,rgba(0,0,0,0.9) 100%);}
 .eq-play-btn{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.92);color:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:24px;padding-left:5px;box-shadow:0 6px 24px rgba(0,0,0,0.45);transition:transform 0.2s,background 0.2s;}
 .eq-poster:hover .eq-play-btn{background:var(--gold2);transform:scale(1.1);}
+.eq-poster-title{position:absolute;bottom:14px;left:16px;right:16px;color:#fff;font-family:var(--font-serif);font-size:18px;font-weight:700;line-height:1.3;text-shadow:0 2px 12px rgba(0,0,0,0.85),0 0 4px rgba(0,0,0,0.6);z-index:2;pointer-events:none;}
+.eq-poster-ico{position:absolute;top:12px;left:12px;width:34px;height:34px;border-radius:10px;background:rgba(0,0,0,0.55);border:1px solid rgba(201,168,76,0.4);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;font-size:18px;z-index:2;}
 .drag-handle{cursor:grab;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;color:var(--muted2);background:var(--bg3);border:1px solid var(--border);font-size:16px;user-select:none;flex-shrink:0;}
 .drag-handle:hover{color:var(--gold2);border-color:var(--border-gold);}
 .drag-handle:active{cursor:grabbing;}
@@ -2069,19 +2071,27 @@ function rv(l,adresses,equipements,back,services){
   document.getElementById('voy-equipements').innerHTML=equipements&&equipements.length?equipements.map(e=>{
     const vidEmbed=isVimeoUrl(e.video_url)?vimeoEmbedUrlWithTime(e.video_url):'';
     let visual='';
+    let hasPosterTitle=false;
     if(vidEmbed&&e.image_url){
-      // Vidéo Vimeo + miniature spécifique → poster cliquable avec play overlay (click-to-play)
+      // Vidéo Vimeo + miniature → poster cliquable avec titre superposé (click-to-play)
       const safe=vidEmbed.replace(/"/g,'&quot;').replace(/'/g,"\\'");
       const nm=(e.nom||'').replace(/"/g,'&quot;');
-      visual=`<div class="eq-poster" onclick="playEqVideo(this,'${safe}')"><img src="${e.image_url}" class="eq-poster-img" alt="${nm}"><div class="eq-play-overlay"><div class="eq-play-btn">▶</div></div></div>`;
+      const ico=e.icone||'🎬';
+      const titleH=e.nom?`<div class="eq-poster-title">${e.nom}</div>`:'';
+      visual=`<div class="eq-poster" onclick="playEqVideo(this,'${safe}')"><img src="${e.image_url}" class="eq-poster-img" alt="${nm}"><div class="eq-poster-ico">${ico}</div>${titleH}<div class="eq-play-overlay"><div class="eq-play-btn">▶</div></div></div>`;
+      hasPosterTitle=!!e.nom;
     }else if(vidEmbed){
-      // Vidéo Vimeo sans miniature → iframe inline (fallback)
       visual=`<div class="eq-video-wrap"><iframe src="${vidEmbed}" loading="lazy" allow="autoplay;fullscreen;picture-in-picture" allowfullscreen></iframe></div>`;
     }else if(e.image_url){
       visual=`<img src="${e.image_url}" class="eq-img">`;
     }
     const cta=(e.video_url&&!vidEmbed)?`<a class="eq-vid-btn" href="${e.video_url}" target="_blank" rel="noopener">▶ Voir la démo</a>`:'';
-    return `<div class="eq-card">${visual}<div class="eq-body"><div class="eq-header"><span class="eq-ico">${e.icone||'⚙️'}</span><div class="eq-nom">${e.nom||''}</div></div>${e.description?`<div class="eq-desc">${e.description}</div>`:''}${cta}</div></div>`;
+    // Si le titre est déjà sur le poster, on ne le répète pas dans le body
+    const headerH=hasPosterTitle?'':`<div class="eq-header"><span class="eq-ico">${e.icone||'⚙️'}</span><div class="eq-nom">${e.nom||''}</div></div>`;
+    const descH=e.description?`<div class="eq-desc">${e.description}</div>`:'';
+    const bodyContent=`${headerH}${descH}${cta}`;
+    const bodyH=bodyContent?`<div class="eq-body">${bodyContent}</div>`:'';
+    return `<div class="eq-card">${visual}${bodyH}</div>`;
   }).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun équipement renseigné.</div>';
   document.getElementById('voy-adresses').innerHTML=adresses.length?adresses.map(a=>`<a class="va" href="${a.url||'#'}" target="_blank"><div class="va-left"><h4>${a.nom}</h4><p>${a.description||''}${a.categorie?` · <span style="color:var(--gold2);font-size:10px;letter-spacing:0.5px">${a.categorie}</span>`:''}</p></div><div class="va-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div></a>`).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucune adresse renseignée.</div>';
   // Services payants
