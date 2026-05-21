@@ -357,6 +357,15 @@ textarea.fi{resize:vertical;min-height:80px;}
 .proc-carousel::-webkit-scrollbar{display:none;}
 .proc-slide{flex:0 0 100%;scroll-snap-align:center;max-width:340px;margin:0 auto;}
 .proc-slide-img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:16px;display:block;background:var(--bg3);border:1px solid var(--border-gold);}
+.proc-slide-img-wrap{position:relative;}
+.proc-slide-counter{
+  position:absolute;top:14px;left:16px;z-index:3;
+  font-family:var(--font-serif);font-weight:800;font-size:38px;
+  color:var(--gold2);line-height:1;letter-spacing:-1px;
+  text-shadow:0 2px 12px rgba(0,0,0,0.85),0 0 4px rgba(0,0,0,0.6);
+  pointer-events:none;
+}
+.proc-slide-counter span{font-size:22px;opacity:0.75;font-weight:600;margin-left:2px;}
 .proc-slide-num{font-family:var(--font-serif);font-size:11px;color:var(--gold2);font-weight:700;letter-spacing:3px;text-align:center;margin-top:14px;margin-bottom:6px;text-transform:uppercase;}
 .proc-slide-text{font-size:14px;color:var(--text);line-height:1.55;padding:0 4px;text-align:center;white-space:pre-line;}
 .proc-dots{display:flex;justify-content:center;gap:6px;margin-top:18px;}
@@ -2932,9 +2941,11 @@ function rv(l,adresses,equipements,back,services){
   if(etapes.length){
     // Mode carrousel : photo + texte par étape
     const carEl=document.getElementById('voy-proc-carousel');
+    const total=etapes.length;
     carEl.innerHTML=etapes.map((e,i)=>{
       const img=e.image_url?`<img src="${e.image_url}" class="proc-slide-img" alt="${(e.texte||'').replace(/"/g,'&quot;').slice(0,80)}">`:`<div class="proc-slide-img" style="display:flex;align-items:center;justify-content:center"><div style="font-family:var(--font-serif);font-size:64px;color:var(--gold2);font-weight:700;line-height:1">${i+1}</div></div>`;
-      return `<div class="proc-slide">${img}<div class="proc-slide-num">Étape ${i+1}</div><div class="proc-slide-text">${e.texte||''}</div></div>`;
+      const counter=`<div class="proc-slide-counter">${i+1}<span>/${total}</span></div>`;
+      return `<div class="proc-slide"><div class="proc-slide-img-wrap">${img}${counter}</div><div class="proc-slide-num">Étape ${i+1}</div><div class="proc-slide-text">${e.texte||''}</div></div>`;
     }).join('');
     document.getElementById('voy-proc-dots').innerHTML=etapes.map((_,i)=>`<div class="proc-dot${i===0?' active':''}"></div>`).join('');
     setupProcCarouselScroll();
