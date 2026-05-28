@@ -807,6 +807,10 @@ body{top:0!important}
           <div class="proc-text" id="voy-procedure">—</div>
         </div>
       </div>
+      <div class="vs" id="voy-horaires-zone" style="display:none">
+        <div class="vs-label">Arrivée &amp; départ</div>
+        <a id="voy-horaires-link" href="#" target="_blank" rel="noopener" class="notranslate" style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:6px;padding:15px 20px;border-radius:14px;background:linear-gradient(135deg,#b8922a 0%,#e2c06e 50%,#d4a843 100%);color:#060606;font-size:14px;font-weight:700;text-decoration:none;box-shadow:0 6px 24px rgba(201,168,76,0.3)">🕐 Choisir mon heure d'arrivée / départ</a>
+      </div>
       <div class="vs" id="voy-facture-zone" style="display:none">
         <div class="vs-label">Mes documents</div>
         <a id="voy-facture-link" href="#" target="_blank" rel="noopener" class="notranslate" style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:6px;padding:15px 20px;border-radius:14px;background:linear-gradient(135deg,#b8922a 0%,#e2c06e 50%,#d4a843 100%);color:#060606;font-size:14px;font-weight:700;text-decoration:none;box-shadow:0 6px 24px rgba(201,168,76,0.3)">📄 Télécharger ma facture</a>
@@ -1078,7 +1082,12 @@ const hdf=()=>({'apikey':KEY,'Authorization':`Bearer ${cu?.access_token||KEY}`})
 window.addEventListener('DOMContentLoaded',()=>{
   setupCropEvents();
   const qp=new URLSearchParams(window.location.search);
-  if(qp.get('r')){const _s=window.location.search,_fi=_s.indexOf('&f=');const _fac=_fi>=0?_s.substring(_fi+3):'';lbres(qp.get('r'),qp.get('k')||'',qp.get('d')||'',_fac);return;}
+  if(qp.get('r')){
+    const _s=window.location.search;
+    const _fi=_s.indexOf('&f=');const _fac=_fi>=0?_s.substring(_fi+3):'';
+    const _gi=_s.indexOf('&g=');let _gp='';if(_gi>=0){_gp=_s.substring(_gi+3);const _ge=_gp.indexOf('&f=');if(_ge>=0)_gp=_gp.substring(0,_ge);}
+    lbres(qp.get('r'),qp.get('k')||'',qp.get('d')||'',_fac,_gp);return;
+  }
   const p=window.location.pathname;
   if(p.startsWith('/livret/')){lbs(p.replace('/livret/',''));return;}
   const sv=ls();
@@ -2892,7 +2901,13 @@ function showFacture(url){
   const u=(url||'').trim();
   if(u&&/^https?:\/\//i.test(u)){link.href=u;zone.style.display='';}else{zone.style.display='none';}
 }
-async function lbres(bookingId,lastName,checkinDate,invoiceUrl){
+function showHoraires(url){
+  const zone=document.getElementById('voy-horaires-zone'),link=document.getElementById('voy-horaires-link');
+  if(!zone||!link)return;
+  const u=(url||'').trim();
+  if(u&&/^https?:\/\//i.test(u)){link.href=u;zone.style.display='';}else{zone.style.display='none';}
+}
+async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl){
   show('voyageur-screen');
   document.getElementById('voy-loading').style.display='block';
   document.getElementById('voy-content').style.display='none';
@@ -2913,6 +2928,7 @@ async function lbres(bookingId,lastName,checkinDate,invoiceUrl){
     rv(l,ar.data,er.data,false,sr.data);
     showGuestBanner(g);
     showFacture(invoiceUrl);
+    showHoraires(guestPageUrl);
     trackView(l.id,'home');
   }catch(e){console.error(e);document.getElementById('voy-loading').textContent='Erreur de chargement du livret.';}
 }
