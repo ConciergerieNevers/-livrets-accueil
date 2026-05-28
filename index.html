@@ -537,17 +537,7 @@ body{top:0!important}
     </div>
   </nav>
   <div class="adm-body">
-    <div class="adm-hero">
-      <div class="adm-hero-text">
-        <h2 class="serif gold-text">Tableau de bord</h2>
-        <p>Gérez vos livrets d'accueil en toute élégance</p>
-      </div>
-      <div class="adm-hero-stats">
-        <div class="adm-stat"><div class="adm-stat-num gold-text serif" id="stat-l">—</div><div class="adm-stat-lbl">Livrets</div></div>
-        <div class="adm-stat"><div class="adm-stat-num gold-text serif" id="stat-v">—</div><div class="adm-stat-lbl">Vues 30j</div></div>
-        <div class="adm-stat"><div class="adm-stat-num gold-text serif" id="stat-a">—</div><div class="adm-stat-lbl">Upsell (mois)</div></div>
-      </div>
-    </div>
+    <div id="adm-accueil"></div>
     <div class="adm-section-hdr">
       <div class="adm-section-title">Vos logements</div>
       <div class="adm-actions-hdr">
@@ -1884,10 +1874,7 @@ async function ll(){
       axios.get(`${API}/consultations?select=id&created_at=gte.${since}`,{headers:hd()}).catch(()=>({data:[]}))
     ]);
     const upsell=(cr.data||[]).reduce((s,c)=>s+((c.total_cents||0)-(c.refunded_cents||0)),0);
-    document.getElementById('stat-l').textContent=lr.data.length;
-    document.getElementById('stat-v').textContent=vr.data.length;
-    document.getElementById('stat-a').textContent=(upsell/100).toFixed(0)+'€';
-    axios.get(`${API}/commandes?select=id&statut=in.(paye,rembourse_partiel)&traitee=eq.false`,{headers:hd()}).then(nr=>setDemBadge((nr.data||[]).length)).catch(()=>{});
+    loadAccueil(lr.data,upsell,vr.data.length);
     const viewsByLivret={};
     const allViews=await axios.get(`${API}/consultations?select=livret_id&created_at=gte.${since}`,{headers:hd()}).catch(()=>({data:[]}));
     allViews.data.forEach(v=>viewsByLivret[v.livret_id]=(viewsByLivret[v.livret_id]||0)+1);
@@ -1895,6 +1882,59 @@ async function ll(){
   }catch(e){console.error(e);document.getElementById('livrets-loading').textContent='Erreur.';}
 }
 
+function accLivretNom(livrets,rentalId){const l=(livrets||[]).find(x=>String(x.superhote_rental_id)===String(rentalId));return l?l.nom:('Logement #'+rentalId);}
+async function loadAccueil(livrets,upsellCents,vues){
+  if(!document.getElementById('adm-accueil'))return;
+  renderAccueil(livrets,upsellCents,vues,{aTraiter:'…',arr:null,deliv:null,aVenir:'…'});
+  const d=new Date();const td=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  try{
+    const [at,resv,cmds]=await Promise.all([
+      axios.get(`${API}/commandes?select=id&statut=in.(paye,rembourse_partiel)&traitee=eq.false`,{headers:hd()}).catch(()=>({data:[]})),
+      axios.get(`${API}/sh_reservations?select=first_name,last_name,checkin,rental_id&checkin=gte.${td}&order=checkin.asc&limit=400`,{headers:hd()}).catch(()=>({data:[]})),
+      axios.get(`${API}/commandes?select=livret_nom,guest_nom,items&statut=in.(paye,rembourse_partiel)`,{headers:hd()}).catch(()=>({data:[]}))
+    ]);
+    setDemBadge((at.data||[]).length);
+    const arr=(resv.data||[]).filter(r=>r.checkin===td);
+    const aVenir=(resv.data||[]).filter(r=>r.checkin>td).length;
+    const deliv=[];(cmds.data||[]).forEach(c=>(c.items||[]).forEach(i=>{if(i.date===td&&i.statut!=='refuse')deliv.push({heure:i.heure,titre:i.titre,qty:i.qty,guest:c.guest_nom,livret:c.livret_nom});}));
+    deliv.sort((a,b)=>(parseInt(a.heure)||0)-(parseInt(b.heure)||0));
+    renderAccueil(livrets,upsellCents,vues,{aTraiter:(at.data||[]).length,arr:arr,deliv:deliv,aVenir:aVenir});
+  }catch(e){}
+}
+function renderAccueil(livrets,upsellCents,vues,dyn){
+  const el=document.getElementById('adm-accueil');if(!el)return;
+  const dateTxt=new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  const nbL=(livrets||[]).length;
+  const kpi=(ico,val,lbl)=>'<div style="flex:1;min-width:140px;background:linear-gradient(135deg,#0d0b00,#171200);border:1px solid var(--border-gold);border-radius:16px;padding:16px 18px"><div class="serif" style="font-size:25px;font-weight:800;color:var(--gold3);line-height:1.05">'+val+'</div><div style="font-size:10px;color:var(--muted2);letter-spacing:.5px;margin-top:4px;text-transform:uppercase">'+ico+' '+lbl+'</div></div>';
+  let arrHtml,delivHtml;
+  if(dyn.arr===null)arrHtml='<div style="font-size:12px;color:var(--muted)">Chargement…</div>';
+  else if(!dyn.arr.length)arrHtml='<div style="font-size:13px;color:var(--muted);font-style:italic">Aucune arrivée aujourd\'hui</div>';
+  else arrHtml=dyn.arr.slice(0,8).map(r=>'<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:#fff">👤 '+((((r.first_name||'')+' '+(r.last_name||'')).trim())||'—').replace(/</g,'&lt;')+'</span><span style="color:var(--muted2);text-align:right">'+accLivretNom(livrets,r.rental_id).replace(/</g,'&lt;')+'</span></div>').join('');
+  if(dyn.deliv===null)delivHtml='<div style="font-size:12px;color:var(--muted)">Chargement…</div>';
+  else if(!dyn.deliv.length)delivHtml='<div style="font-size:13px;color:var(--muted);font-style:italic">Aucune livraison aujourd\'hui</div>';
+  else delivHtml=dyn.deliv.slice(0,8).map(e=>'<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="background:rgba(226,192,110,0.18);color:var(--gold2);font-weight:700;padding:2px 8px;border-radius:7px;white-space:nowrap">'+(parseInt(e.heure)?parseInt(e.heure)+'h':'—')+'</span><span style="flex:1;color:#fff">'+((e.qty>1?e.qty+'× ':'')+(e.titre||'')).replace(/</g,'&lt;')+'</span><span style="color:var(--muted2)">'+(''+(e.guest||'')).replace(/</g,'&lt;')+'</span></div>').join('');
+  const sc=(oc,l)=>'<button onclick="'+oc+'" style="padding:11px 16px;border-radius:12px;border:1px solid var(--border-gold);background:var(--bg3);color:var(--gold2);font-size:13px;font-weight:700;cursor:pointer">'+l+'</button>';
+  el.innerHTML=
+    '<div style="margin-bottom:18px">'
+      +'<div style="font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--gold2)">✦ Be Nomad ✦</div>'
+      +'<h2 class="serif gold-text" style="font-size:30px;margin:6px 0 2px">Bonjour 👋</h2>'
+      +'<div style="font-size:13px;color:var(--muted2);text-transform:capitalize">'+dateTxt+'</div>'
+      +'<div style="font-size:12px;color:var(--muted2);margin-top:4px">'+nbL+' livret'+(nbL>1?'s':'')+' · '+vues+' vue'+(vues>1?'s':'')+' / 30j</div>'
+    +'</div>'
+    +'<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">'
+      +kpi('💶',(upsellCents/100).toFixed(0)+'€','Upsell du mois')
+      +kpi('🆕',dyn.aTraiter,'À traiter')
+      +kpi('🛎️',dyn.arr===null?'…':dyn.arr.length,'Arrivées aujourd\'hui')
+      +kpi('📅',dyn.aVenir,'Réservations à venir')
+    +'</div>'
+    +'<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px">'
+      +'<div style="flex:1;min-width:260px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 18px"><div style="font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--gold2);margin-bottom:10px">🛎️ Arrivées du jour</div>'+arrHtml+'</div>'
+      +'<div style="flex:1;min-width:260px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 18px"><div style="font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--gold2);margin-bottom:10px">📦 Livraisons du jour</div>'+delivHtml+'</div>'
+    +'</div>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px">'
+      +sc('openReservations()','📅 Réservations')+sc('openDemandes()','📋 Mes demandes')+sc('openCatalogue()','🛎️ Mes services')+sc('openNewOrder()','➕ Nouvelle commande')
+    +'</div>';
+}
 let lvData=[],lvViews={},lvView=((typeof localStorage!=='undefined'&&localStorage.getItem('lv_view'))||'cartes'),lvReorder=false,lvSearch='';
 function rl(livrets,views={}){lvData=livrets||[];lvViews=views||{};renderLivrets();}
 function lvActifOf(l){return l.actif!==false;}
