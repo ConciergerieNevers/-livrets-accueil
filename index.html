@@ -1499,6 +1499,7 @@ function ncClose(){const ov=document.getElementById('nc-modal');if(ov)ov.style.d
 // ===== Réservations (depuis SuperHote, mises en cache) =====
 let resaData=[],resaLivrets=[],resaSearch='',resaStatus='all',resaLivretFilter='all',resaSyncing=false;
 function resaNorm(s){return (s||'').toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
+function resaCutoff(){return '2026-05-01';}
 function resaDate(iso){if(!iso)return'—';try{return new Date(iso+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'2-digit'});}catch(e){return iso;}}
 function resaLivretFor(rentalId){return resaLivrets.find(l=>String(l.superhote_rental_id)===String(rentalId));}
 function resaStatusOf(r){
@@ -1516,7 +1517,7 @@ async function openReservations(){
   resaSearch='';resaStatus='all';resaLivretFilter='all';
   try{
     const [rr,lr]=await Promise.all([
-      axios.get(`${API}/sh_reservations?select=*&order=checkin.desc&limit=3000`,{headers:hd()}),
+      axios.get(`${API}/sh_reservations?select=*&checkout=gte.${resaCutoff()}&order=checkin.asc&limit=3000`,{headers:hd()}),
       axios.get(`${API}/livrets?select=id,nom,slug,superhote_rental_id`,{headers:hd()})
     ]);
     resaData=rr.data||[];resaLivrets=lr.data||[];
@@ -1531,7 +1532,7 @@ async function autoSyncRecent(){
   if(btn&&!resaSyncing)btn.textContent='Mise à jour…';
   try{
     await axios.get(`${SB}/functions/v1/guest-lookup?sync=1`,{headers:{'apikey':KEY,'Authorization':`Bearer ${cu.access_token}`}});
-    const rr=await axios.get(`${API}/sh_reservations?select=*&order=checkin.desc&limit=3000`,{headers:hd()});
+    const rr=await axios.get(`${API}/sh_reservations?select=*&checkout=gte.${resaCutoff()}&order=checkin.asc&limit=3000`,{headers:hd()});
     resaData=rr.data||[];
     if(document.getElementById('resa-rows'))renderResaList();else renderResa();
   }catch(e){}
@@ -1551,7 +1552,6 @@ function resaCardHtml(r){
   return '<div class="sc" style="margin-bottom:10px">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px"><span style="font-weight:700;color:#fff">'+nom+'</span>'+badge+'</div>'
     +'<div style="font-size:12px;color:var(--muted2)">📅 '+resaDate(r.checkin)+' → '+resaDate(r.checkout)+'</div>'
-    +'<div style="font-size:12px;color:var(--muted2);margin-top:2px">📍 '+lieu+'</div>'
     +'<div style="display:flex;gap:8px;margin-top:10px">'+linkBtn+orderBtn+'</div>'
     +'</div>';
 }
@@ -1564,9 +1564,14 @@ function renderResaList(){
     if(q){const lv=resaLivretFor(r.rental_id);const hay=resaNorm((r.first_name||'')+' '+(r.last_name||'')+' '+(r.checkin||'')+' '+(r.checkout||'')+' '+(lv?lv.nom:'')+' '+(r.booking_id||''));if(!hay.includes(q))return false;}
     return true;
   });
-  list.sort((a,b)=>(''+(b.checkin||'')).localeCompare(''+(a.checkin||'')));
   if(!list.length){box.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-style:italic">Aucune réservation trouvée.</div>';return;}
-  box.innerHTML='<div style="font-size:11px;color:var(--muted2);margin-bottom:10px">'+list.length+' réservation'+(list.length>1?'s':'')+'</div>'+list.slice(0,400).map(resaCardHtml).join('');
+  const groups={},order=[];
+  list.forEach(r=>{const lv=resaLivretFor(r.rental_id);const key=lv?lv.nom:('Logement #'+r.rental_id+' (non lié)');if(!groups[key]){groups[key]=[];order.push(key);}groups[key].push(r);});
+  order.sort((a,b)=>a.localeCompare(b,'fr'));
+  order.forEach(k=>groups[k].sort((a,b)=>(''+(a.checkin||'')).localeCompare(''+(b.checkin||''))));
+  let html='<div style="font-size:11px;color:var(--muted2);margin-bottom:12px">'+list.length+' réservation'+(list.length>1?'s':'')+' · '+order.length+' logement'+(order.length>1?'s':'')+'</div>';
+  html+=order.map(k=>'<div style="margin-bottom:20px"><div style="font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--gold2);margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--border-gold)">🏠 '+k.replace(/</g,'&lt;')+' · '+groups[k].length+'</div>'+groups[k].map(resaCardHtml).join('')+'</div>').join('');
+  box.innerHTML=html;
 }
 function renderResa(){
   const box=document.getElementById('resa-list');if(!box)return;
