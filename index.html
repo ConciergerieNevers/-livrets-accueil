@@ -927,14 +927,8 @@ body{top:0!important}
       <div class="vs">
         <div class="vs-label">Services à la carte</div>
         <div id="voy-cart" class="vc" style="display:none;margin-bottom:16px;border:1px solid var(--border-gold)">
-          <div class="vc-title" style="display:flex;align-items:center;gap:8px">🛒 Mon panier</div>
-          <div id="voy-cart-items"></div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-            <span style="color:var(--muted2);font-size:13px">Total</span>
-            <span id="voy-cart-total" style="color:var(--gold2);font-weight:700;font-size:18px">0€</span>
-          </div>
-          <button id="voy-cart-pay" onclick="payCart()" style="width:100%;margin-top:14px;padding:15px;border:none;border-radius:12px;background:linear-gradient(135deg,#b8922a 0%,#e2c06e 50%,#d4a843 100%);color:#060606;font-weight:700;font-size:14px;cursor:pointer">💳 Payer le panier</button>
-          <button onclick="clearVoyCart()" style="width:100%;margin-top:8px;background:none;border:none;color:var(--muted2);font-size:13px;cursor:pointer;text-decoration:underline">Vider le panier</button>
+          <div class="vc-title" id="voy-cart-title" style="display:flex;align-items:center;gap:8px">🛒 Mon panier</div>
+          <div id="voy-cart-body"></div>
         </div>
         <div id="voy-services"></div>
         <a id="voy-autre-demande" class="voy-mail" href="#" style="margin-top:16px">✉️ Une autre demande ? Écrivez-nous</a>
@@ -3188,15 +3182,15 @@ function showResa(resa,ci,co,guestUrl){
   if(modif){if(guestUrl&&/^https?:\/\//i.test(guestUrl)){modif.href=guestUrl;modif.style.display='flex';}else{modif.style.display='none';}}
   zone.style.display='';
 }
-let cart=[],voyServices=[],voyCartKey='cart_x';
+let cart=[],voyServices=[],voyCartKey='cart_x',cartStep=1,cartDemande='',cartDemOn=false;
 function priceToCentsClient(t){const s=(t||'').replace(/\s/g,'').replace(',','.');const m=s.match(/(\d+(\.\d+)?)/);return m?Math.round(parseFloat(m[1])*100):0;}
 function saveCart(){try{localStorage.setItem(voyCartKey,JSON.stringify(cart));}catch(e){}}
 function newLineId(){return 'L'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
-function addToCart(id){const s=(voyServices||[]).find(x=>String(x.id)===String(id));if(!s)return;const c=priceToCentsClient(s.prix);if(c<=0)return;const dem=!!s.demande_date;const ex=!dem&&cart.find(x=>String(x.id)===String(id)&&!x.demande_date);if(ex){ex.qty++;}else{cart.push({lineId:newLineId(),id:s.id,titre:s.titre||'Service',cents:c,qty:1,demande_date:dem,jours_dispo:s.jours_dispo||[0,1,2,3,4,5,6],delai_jours:s.delai_jours||0,heure_limite:(s.heure_limite==null?null:s.heure_limite),date:'',heure:''});}saveCart();renderCart();toast(dem?'Ajouté · choisis sa date 👇':'Ajouté au panier');}
+function addToCart(id){const s=(voyServices||[]).find(x=>String(x.id)===String(id));if(!s)return;const c=priceToCentsClient(s.prix);if(c<=0)return;const dem=!!s.demande_date;const ex=!dem&&cart.find(x=>String(x.id)===String(id)&&!x.demande_date);if(ex){ex.qty++;}else{cart.push({lineId:newLineId(),id:s.id,titre:s.titre||'Service',cents:c,qty:1,demande_date:dem,jours_dispo:s.jours_dispo||[0,1,2,3,4,5,6],delai_jours:s.delai_jours||0,heure_limite:(s.heure_limite==null?null:s.heure_limite),date:'',heure:''});}cartStep=1;saveCart();renderCart();toast(dem?'Ajouté · choisis sa date 👇':'Ajouté au panier');}
 function changeQty(lineId,d){const c=cart.find(x=>x.lineId===lineId);if(!c)return;c.qty+=d;if(c.qty<=0)cart=cart.filter(x=>x.lineId!==lineId);saveCart();renderCart();}
 function removeCartLine(lineId){cart=cart.filter(x=>x.lineId!==lineId);saveCart();renderCart();}
-function addAnotherDay(lineId){const c=cart.find(x=>x.lineId===lineId);if(!c)return;cart.push({lineId:newLineId(),id:c.id,titre:c.titre,cents:c.cents,qty:1,demande_date:true,jours_dispo:c.jours_dispo,delai_jours:c.delai_jours||0,heure_limite:(c.heure_limite==null?null:c.heure_limite),date:'',heure:''});saveCart();renderCart();toast('Nouvelle ligne · choisis sa date 👇');}
-function clearVoyCart(){cart=[];saveCart();renderCart();}
+function addAnotherDay(lineId){const c=cart.find(x=>x.lineId===lineId);if(!c)return;cart.push({lineId:newLineId(),id:c.id,titre:c.titre,cents:c.cents,qty:1,demande_date:true,jours_dispo:c.jours_dispo,delai_jours:c.delai_jours||0,heure_limite:(c.heure_limite==null?null:c.heure_limite),date:'',heure:''});cartStep=1;saveCart();renderCart();toast('Nouvelle ligne · choisis sa date 👇');}
+function clearVoyCart(){cart=[];cartStep=1;cartDemande='';cartDemOn=false;saveCart();renderCart();}
 const JOURS_LBL=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 function joursTxt(arr){if(!arr||arr.length>=7)return'tous les jours';return [1,2,3,4,5,6,0].filter(d=>arr.includes(d)).map(d=>JOURS_LBL[d]).join(', ')||'aucun jour';}
 function cartDateError(c){if(!c.demande_date||!c.date)return'';const dt=new Date(c.date+'T12:00:00');if(!(c.jours_dispo||[0,1,2,3,4,5,6]).includes(dt.getDay()))return '❌ Service non disponible ce jour-là';if(typeof bookableDay==='function'&&!bookableDay(c,dt))return '❌ Trop tard pour réserver ce service';return'';}
@@ -3239,14 +3233,9 @@ let cartMasterDate='',cartMasterHeure='';
 function intersectionJours(items){let r=[0,1,2,3,4,5,6];items.forEach(c=>{const j=c.jours_dispo||[0,1,2,3,4,5,6];r=r.filter(d=>j.includes(d));});return r;}
 function applyMasterToAll(){if(!cartMasterDate){alert('Choisis d\'abord une date.');return;}cart.forEach(c=>{if(c.demande_date){c.date=cartMasterDate;if(cartMasterHeure)c.heure=cartMasterHeure;}});saveCart();renderCart();toast('Appliqué à tous les services');}
 function cartHead(){const di=cart.filter(c=>c.demande_date);if(di.length<2)return'';const inter=intersectionJours(di);return '<div style="padding:10px;background:var(--bg3);border-radius:10px;margin-bottom:12px;border:1px solid var(--border-gold)"><div style="font-size:11px;color:var(--muted2);margin-bottom:6px">📅 Même jour pour tous ? · <span style="color:var(--gold2)">Jours communs : '+joursTxt(inter)+'</span></div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input type="date" value="'+cartMasterDate+'" onchange="cartMasterDate=this.value" style="flex:1;min-width:120px;padding:9px;border-radius:8px;border:1px solid var(--border-gold);background:#141414;color:#fff"><select onchange="cartMasterHeure=this.value" style="flex:1;min-width:110px;padding:9px;border-radius:8px;border:1px solid var(--border-gold);background:#141414;color:#fff">'+heureOptions(cartMasterHeure)+'</select><button onclick="applyMasterToAll()" style="padding:9px 14px;border:none;border-radius:8px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap">Appliquer à tous</button></div><div style="font-size:11px;color:var(--muted2);margin-top:6px">Ou choisis des dates différentes service par service ci-dessous 👇</div></div>';}
-function renderCart(){
-  const box=document.getElementById('voy-cart');if(!box)return;
-  const items=document.getElementById('voy-cart-items'),tot=document.getElementById('voy-cart-total');
-  if(!cart.length){box.style.display='none';return;}
-  let total=0;
-  cart.forEach(c=>{if(!c.lineId)c.lineId=newLineId();const sv=(voyServices||[]).find(x=>String(x.id)===String(c.id));if(sv){c.demande_date=!!sv.demande_date;c.jours_dispo=sv.jours_dispo||[0,1,2,3,4,5,6];c.delai_jours=sv.delai_jours||0;c.heure_limite=(sv.heure_limite==null?null:sv.heure_limite);}});
-  items.innerHTML=cart.map(c=>{
-    const line=c.cents*c.qty;total+=line;
+function cartItemsHtml(){
+  return cart.map(c=>{
+    const line=c.cents*c.qty;
     const ctrl='<div style="display:flex;align-items:center;gap:6px"><button onclick="changeQty(\''+c.lineId+'\',-1)" style="width:26px;height:26px;border-radius:8px;border:1px solid var(--border-gold);background:var(--bg3);color:var(--gold2);cursor:pointer;font-size:16px;line-height:1">−</button><span style="min-width:18px;text-align:center;color:#fff">'+c.qty+'</span><button onclick="changeQty(\''+c.lineId+'\',1)" style="width:26px;height:26px;border-radius:8px;border:1px solid var(--border-gold);background:var(--bg3);color:var(--gold2);cursor:pointer;font-size:16px;line-height:1">+</button></div>';
     let h='<div style="padding:10px 0;border-bottom:1px solid var(--border)">';
     h+='<div style="display:flex;align-items:center;gap:8px"><div style="flex:1"><div style="font-size:14px;color:#fff">'+c.titre+'</div><div style="font-size:12px;color:var(--muted2)">'+(c.cents/100).toFixed(2)+'€ / unité</div></div>'+ctrl+'<div style="min-width:54px;text-align:right;color:var(--gold2);font-weight:600;font-size:13px">'+(line/100).toFixed(2)+'€</div></div>';
@@ -3262,11 +3251,50 @@ function renderCart(){
     }
     h+='</div>';return h;
   }).join('');
-  tot.textContent=(total/100).toFixed(2)+'€';box.style.display='';
 }
+function recapHtml(total){
+  const rows=cart.map(c=>{
+    const line=c.cents*c.qty;
+    let when='';
+    if(c.demande_date&&c.date){when='<div style="font-size:12px;color:var(--gold2);margin-top:2px;text-transform:capitalize">📅 '+fmtDateLong(c.date)+(c.heure?(' · 🕐 '+parseInt(c.heure)+'h'):'')+'</div>';}
+    return '<div style="display:flex;align-items:flex-start;gap:8px;padding:10px 0;border-bottom:1px solid var(--border)"><div style="flex:1"><div style="font-size:14px;color:#fff">'+c.titre+' <span style="color:var(--muted2)">× '+c.qty+'</span></div>'+when+'</div><div style="min-width:54px;text-align:right;color:var(--gold2);font-weight:600;font-size:13px">'+(line/100).toFixed(2)+'€</div></div>';
+  }).join('');
+  return rows
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)"><span style="color:var(--muted2);font-size:13px">Total à payer</span><span style="color:var(--gold2);font-weight:700;font-size:18px">'+(total/100).toFixed(2)+'€</span></div>'
+    +'<label style="display:flex;align-items:center;gap:8px;margin-top:16px;cursor:pointer;color:#e8e2d4;font-size:13px"><input type="checkbox" '+(cartDemOn?'checked':'')+' onclick="toggleDemande(this.checked)"> 📝 J\'ai une demande particulière</label>'
+    +(cartDemOn?'<textarea oninput="cartDemande=this.value" placeholder="Précisez votre demande (allergie, horaire flexible, instructions de livraison…)" style="width:100%;margin-top:8px;min-height:72px;padding:10px;border-radius:10px;border:1px solid var(--border-gold);background:#141414;color:#fff;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box">'+(cartDemande||'').replace(/</g,'&lt;')+'</textarea>':'')
+    +'<div style="font-size:11px;color:var(--muted2);margin-top:14px;text-align:center;line-height:1.5">🔒 Vos coordonnées (nom, e-mail, téléphone) vous seront demandées à l\'étape de paiement sécurisée. Une facture vous sera envoyée par e-mail.</div>'
+    +'<button id="voy-cart-pay" onclick="payCart()" style="width:100%;margin-top:12px;padding:15px;border:none;border-radius:12px;background:linear-gradient(135deg,#b8922a 0%,#e2c06e 50%,#d4a843 100%);color:#060606;font-weight:700;font-size:14px;cursor:pointer">💳 Payer '+(total/100).toFixed(2)+'€</button>'
+    +'<button onclick="backToCart()" style="width:100%;margin-top:8px;background:none;border:none;color:var(--muted2);font-size:13px;cursor:pointer;text-decoration:underline">← Retour au panier</button>';
+}
+function renderCart(){
+  const box=document.getElementById('voy-cart');if(!box)return;
+  const body=document.getElementById('voy-cart-body'),titleEl=document.getElementById('voy-cart-title');
+  if(!cart.length){box.style.display='none';cartStep=1;return;}
+  cart.forEach(c=>{if(!c.lineId)c.lineId=newLineId();const sv=(voyServices||[]).find(x=>String(x.id)===String(c.id));if(sv){c.demande_date=!!sv.demande_date;c.jours_dispo=sv.jours_dispo||[0,1,2,3,4,5,6];c.delai_jours=sv.delai_jours||0;c.heure_limite=(sv.heure_limite==null?null:sv.heure_limite);}});
+  let total=0;cart.forEach(c=>total+=c.cents*c.qty);
+  if(cartStep===2){
+    if(titleEl)titleEl.innerHTML='📋 Récapitulatif de votre commande';
+    body.innerHTML=recapHtml(total);
+  }else{
+    if(titleEl)titleEl.innerHTML='🛒 Mon panier';
+    body.innerHTML=cartItemsHtml()
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)"><span style="color:var(--muted2);font-size:13px">Total</span><span style="color:var(--gold2);font-weight:700;font-size:18px">'+(total/100).toFixed(2)+'€</span></div>'
+      +'<button onclick="goToRecap()" style="width:100%;margin-top:14px;padding:15px;border:none;border-radius:12px;background:linear-gradient(135deg,#b8922a 0%,#e2c06e 50%,#d4a843 100%);color:#060606;font-weight:700;font-size:14px;cursor:pointer">Suivant →</button>'
+      +'<button onclick="clearVoyCart()" style="width:100%;margin-top:8px;background:none;border:none;color:var(--muted2);font-size:13px;cursor:pointer;text-decoration:underline">Vider le panier</button>';
+  }
+  box.style.display='';
+}
+function goToRecap(){
+  for(const c of cart){if(c.demande_date){if(!c.date||!c.heure){alert('Choisis une date et une heure pour : '+c.titre);return;}if(cartDateError(c)){alert(c.titre+' : service non disponible le jour choisi.');return;}}}
+  cartStep=2;calOpen=null;heureOpen=null;renderCart();
+  const box=document.getElementById('voy-cart');if(box)box.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function backToCart(){cartStep=1;calOpen=null;heureOpen=null;renderCart();}
+function toggleDemande(on){cartDemOn=!!on;if(!on)cartDemande='';renderCart();}
 async function payCart(){if(!cart.length)return;
   for(const c of cart){if(c.demande_date){if(!c.date||!c.heure){alert('Choisis une date et une heure pour : '+c.titre);return;}if(cartDateError(c)){alert(c.titre+' : service non disponible le jour choisi.');return;}}}
-  const btn=document.getElementById('voy-cart-pay');if(btn){btn.disabled=true;btn.textContent='Redirection…';}try{const qp=new URLSearchParams(window.location.search);let reload;if(qp.get('r')){reload=location.origin+'/?'+new URLSearchParams({r:qp.get('r'),k:qp.get('k')||'',d:qp.get('d')||''}).toString();}else if(currentLivretData&&currentLivretData.slug){reload=location.origin+'/livret/'+currentLivretData.slug;}else{reload=location.origin+'/';}const r=await axios.post(`${SB}/functions/v1/create-checkout`,{livret_id:currentLivretId,return_url:reload,items:cart.map(c=>({id:c.id,qty:c.qty,date:c.date||'',heure:c.heure||''}))},{headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`,'Content-Type':'application/json'}});if(r.data&&r.data.ok&&r.data.url){window.location.href=r.data.url;}else{alert('Paiement indisponible pour le moment.');if(btn){btn.disabled=false;btn.textContent='💳 Payer le panier';}}}catch(e){console.error(e);alert('Erreur lors du paiement.');if(btn){btn.disabled=false;btn.textContent='💳 Payer le panier';}}}
+  const btn=document.getElementById('voy-cart-pay');if(btn){btn.disabled=true;btn.textContent='Redirection…';}try{const qp=new URLSearchParams(window.location.search);let reload;if(qp.get('r')){reload=location.origin+'/?'+new URLSearchParams({r:qp.get('r'),k:qp.get('k')||'',d:qp.get('d')||''}).toString();}else if(currentLivretData&&currentLivretData.slug){reload=location.origin+'/livret/'+currentLivretData.slug;}else{reload=location.origin+'/';}const r=await axios.post(`${SB}/functions/v1/create-checkout`,{livret_id:currentLivretId,return_url:reload,demande:(cartDemande||'').slice(0,500),items:cart.map(c=>({id:c.id,qty:c.qty,date:c.date||'',heure:c.heure||''}))},{headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`,'Content-Type':'application/json'}});if(r.data&&r.data.ok&&r.data.url){window.location.href=r.data.url;}else{alert('Paiement indisponible pour le moment.');if(btn){btn.disabled=false;btn.textContent='💳 Payer';}}}catch(e){console.error(e);alert('Erreur lors du paiement.');if(btn){btn.disabled=false;btn.textContent='💳 Payer';}}}
 async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,checkinTime,checkoutTime){
   show('voyageur-screen');
   document.getElementById('voy-loading').style.display='block';
@@ -3495,7 +3523,7 @@ function rv(l,adresses,equipements,back,services){
   try{cart=JSON.parse(localStorage.getItem(voyCartKey='cart_'+(currentLivretId||'x'))||'[]');}catch(e){cart=[];}
   renderCart();
   const _pp=new URLSearchParams(location.search);
-  if(_pp.get('paid')==='1'){cart=[];saveCart();renderCart();toast('Merci ! Votre paiement a bien été reçu ✅');}
+  if(_pp.get('paid')==='1'){cart=[];cartStep=1;cartDemande='';cartDemOn=false;saveCart();renderCart();toast('Merci ! Votre paiement a bien été reçu ✅');}
   else if(_pp.get('canceled')==='1'){toast('Paiement annulé');}
   // Lien « autre demande » → mail
   const mailTo=l.contact_email||'primoconciergerie58@gmail.com';
