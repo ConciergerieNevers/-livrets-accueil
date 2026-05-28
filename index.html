@@ -603,8 +603,8 @@ body{top:0!important}
   <div class="adm-body">
     <div class="adm-hero">
       <div class="adm-hero-text">
-        <h2 class="serif gold-text">Commandes de services</h2>
-        <p>Les services commandés par tes voyageurs (paiement, dates, demandes).</p>
+        <h2 class="serif gold-text">Tableau de bord</h2>
+        <p>Vue d'ensemble de tes services : chiffre d'affaires, classements et commandes.</p>
       </div>
     </div>
     <div id="dem-loading" class="loading">Chargement…</div>
@@ -1196,7 +1196,8 @@ async function register(){
 function logout(){cu=null;cs();show('login-screen');}
 function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','demandes-screen'].forEach(s=>document.getElementById(s).style.display=s===id?'block':'none');}
 
-// ===== Mes demandes (commandes de services) =====
+// ===== Mes demandes (tableau de bord) =====
+let demData=[],demFilter='all',demChartMode='mois';
 async function openDemandes(){
   show('demandes-screen');
   document.getElementById('dem-loading').style.display='block';
@@ -1204,28 +1205,149 @@ async function openDemandes(){
   try{
     const r=await axios.get(`${API}/commandes?select=*&order=created_at.desc`,{headers:hd()});
     document.getElementById('dem-loading').style.display='none';
-    renderDemandes(r.data||[]);
+    demData=r.data||[];
+    renderDemandes();
   }catch(e){document.getElementById('dem-loading').textContent='Erreur de chargement.';}
 }
-function renderDemandes(list){
-  const box=document.getElementById('dem-list');if(!box)return;
-  if(!list.length){box.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucune commande pour le moment.</div>';return;}
-  box.innerHTML=list.map(c=>{
-    const paye=c.statut==='paye';
-    const badge=paye?'<span style="background:rgba(80,200,120,0.18);color:#7fe0a0;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">✅ Payé</span>':'<span style="background:rgba(226,192,110,0.15);color:var(--gold2);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">⏳ En attente</span>';
-    const d=c.created_at?new Date(c.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}):'';
-    const items=(c.items||[]).map(i=>'<div style="font-size:13px;color:#ddd">• '+(i.qty>1?i.qty+'× ':'')+((i.titre||'').replace(/</g,'&lt;'))+(i.date?(' — '+i.date+(i.heure?(' à '+i.heure):'')):'')+'</div>').join('');
-    const total=c.total_cents!=null?(c.total_cents/100).toFixed(2)+'€':'';
-    const contact=[c.guest_nom,c.guest_email,c.guest_tel].filter(Boolean).map(x=>(''+x).replace(/</g,'&lt;')).join(' · ')||'<span style="color:var(--muted)">infos client après paiement</span>';
-    return '<div class="sc" style="margin-bottom:14px">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:12px;color:var(--muted2)">📅 '+d+' · '+((c.livret_nom||'').replace(/</g,'&lt;'))+'</div>'+badge+'</div>'
-      +'<div style="font-weight:600;color:#fff;margin-bottom:6px">'+contact+'</div>'
-      +items
-      +(c.demande?'<div style="margin-top:8px;padding:8px 10px;background:var(--bg3);border-radius:8px;font-size:13px;color:#e8e2d4">📝 '+(''+c.demande).replace(/</g,'&lt;')+'</div>':'')
-      +'<div style="margin-top:8px;text-align:right;color:var(--gold2);font-weight:700">'+total+'</div>'
-      +'</div>';
-  }).join('');
+function demStatut(c){
+  if(c.statut==='rembourse'||c.statut==='rembourse_partiel')return 'rembourse';
+  if(c.statut==='paye')return 'paye';
+  return 'attente';
 }
+function demEur(cents){return (Math.round(cents)/100).toFixed(2).replace('.',',')+'€';}
+function demPaid(){return demData.filter(c=>demStatut(c)==='paye');}
+function setDemFilter(f){demFilter=f;renderDemandes();}
+function setDemChart(m){demChartMode=m;renderDemandes();}
+async function deleteDemande(id){
+  if(!confirm('Supprimer définitivement cette commande non aboutie ?'))return;
+  try{
+    await axios.delete(`${API}/commandes?id=eq.${id}`,{headers:{...hd(),'Prefer':'return=minimal'}});
+    demData=demData.filter(x=>x.id!==id);
+    closeDemDetail();renderDemandes();toast('Commande supprimée');
+  }catch(e){alert('Suppression impossible.');}
+}
+function demKpiHtml(){
+  const paid=demPaid();
+  const ca=paid.reduce((s,c)=>s+(c.total_cents||0),0);
+  const nb=paid.length, moy=nb?ca/nb:0;
+  const remb=demData.filter(c=>demStatut(c)==='rembourse');
+  const rembSum=remb.reduce((s,c)=>s+(c.total_cents||0),0);
+  const card=(ico,val,lbl)=>'<div style="flex:1;min-width:130px;background:var(--card);border:1px solid var(--border-gold);border-radius:14px;padding:14px 16px"><div style="font-size:21px;font-weight:800;color:var(--gold3);line-height:1.1">'+val+'</div><div style="font-size:10px;color:var(--muted2);letter-spacing:.5px;margin-top:3px">'+ico+' '+lbl+'</div></div>';
+  return '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">'
+    +card('💶',demEur(ca),'CA encaissé')+card('🛒',nb,'Commandes payées')
+    +card('📊',demEur(moy),'Panier moyen')+card('↩️',remb.length+' · '+demEur(rembSum),'Remboursé')+'</div>';
+}
+function demBuckets(){
+  const paid=demPaid(), now=new Date(), buckets=[];
+  const monday=(dt)=>{const x=new Date(dt);const day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);x.setHours(0,0,0,0);return x;};
+  if(demChartMode==='mois'){
+    for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);buckets.push({key:d.getFullYear()+'-'+d.getMonth(),label:d.toLocaleDateString('fr-FR',{month:'short'}).replace('.',''),cents:0});}
+    paid.forEach(c=>{const d=new Date(c.created_at);const b=buckets.find(x=>x.key===d.getFullYear()+'-'+d.getMonth());if(b)b.cents+=c.total_cents||0;});
+  }else{
+    const cur=monday(now);
+    for(let i=11;i>=0;i--){const d=new Date(cur);d.setDate(d.getDate()-i*7);buckets.push({key:d.toISOString().slice(0,10),label:d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}),cents:0});}
+    paid.forEach(c=>{const k=monday(new Date(c.created_at)).toISOString().slice(0,10);const b=buckets.find(x=>x.key===k);if(b)b.cents+=c.total_cents||0;});
+  }
+  return buckets;
+}
+function demChartHtml(){
+  const b=demBuckets(), max=Math.max(1,...b.map(x=>x.cents));
+  const bars=b.map(x=>{
+    const h=x.cents>0?Math.max(Math.round((x.cents/max)*92),4):2;
+    return '<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px">'
+      +(x.cents>0?'<div style="font-size:9px;color:var(--gold2);white-space:nowrap">'+Math.round(x.cents/100)+'€</div>':'<div style="height:12px"></div>')
+      +'<div title="'+demEur(x.cents)+'" style="width:62%;min-width:7px;height:'+h+'px;border-radius:5px 5px 0 0;background:'+(x.cents>0?'linear-gradient(180deg,#e2c06e,#b8922a)':'var(--bg3)')+'"></div>'
+      +'<div style="font-size:9px;color:var(--muted2);white-space:nowrap">'+x.label+'</div></div>';
+  }).join('');
+  const tg=(m,l)=>'<button onclick="setDemChart(\''+m+'\')" style="padding:5px 12px;border-radius:16px;border:1px solid '+(demChartMode===m?'var(--gold2)':'var(--border)')+';background:'+(demChartMode===m?'rgba(226,192,110,0.15)':'transparent')+';color:'+(demChartMode===m?'var(--gold2)':'var(--muted2)')+';font-size:11px;font-weight:700;cursor:pointer">'+l+'</button>';
+  return '<div class="sc" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:8px"><div style="font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold2)">📈 Chiffre d\'affaires</div><div style="display:flex;gap:6px">'+tg('mois','Mois')+tg('semaine','Semaine')+'</div></div><div style="display:flex;align-items:flex-end;gap:4px;min-height:120px">'+bars+'</div></div>';
+}
+function demRankHtml(title,icon,rows){
+  if(!rows.length)return '';
+  const max=Math.max(1,...rows.map(r=>r.val));
+  const body=rows.slice(0,8).map((r,n)=>{
+    const w=Math.round((r.val/max)*100);
+    return '<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;color:#fff;margin-bottom:4px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span style="color:var(--muted2)">'+(n+1)+'.</span> '+r.label+'</span><span style="color:var(--gold2);font-weight:700;white-space:nowrap">'+r.right+'</span></div><div style="height:6px;border-radius:6px;background:var(--bg3);overflow:hidden"><div style="height:100%;width:'+w+'%;background:linear-gradient(90deg,#b8922a,#e2c06e)"></div></div></div>';
+  }).join('');
+  return '<div class="sc" style="margin-bottom:14px"><div style="font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold2);margin-bottom:14px">'+icon+' '+title+'</div>'+body+'</div>';
+}
+function demTopServices(){
+  const map={};
+  demPaid().forEach(c=>(c.items||[]).forEach(i=>{
+    const t=(i.titre||'Service').replace(/</g,'&lt;'),q=parseInt(i.qty)||1;
+    if(!map[t])map[t]={qty:0};map[t].qty+=q;
+  }));
+  return Object.entries(map).map(([t,v])=>({label:t,right:v.qty+'×',val:v.qty})).sort((a,b)=>b.val-a.val);
+}
+function demByLivret(){
+  const map={};
+  demPaid().forEach(c=>{const t=(c.livret_nom||'—').replace(/</g,'&lt;');if(!map[t])map[t]={nb:0,cents:0};map[t].nb++;map[t].cents+=c.total_cents||0;});
+  return Object.entries(map).map(([t,v])=>({label:t,right:demEur(v.cents),val:v.cents})).sort((a,b)=>b.val-a.val);
+}
+function demBadge(st,c,big){
+  const pad=big?'5px 12px':'3px 10px';
+  if(st==='paye'){
+    const txt='✅ Payé'+((c&&c.invoice_url)?' · 🧾 Facture':'');
+    if(c&&c.invoice_url)return '<a href="'+c.invoice_url+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="background:rgba(80,200,120,0.18);color:#7fe0a0;padding:'+pad+';border-radius:20px;font-size:11px;font-weight:700;text-decoration:none">'+txt+'</a>';
+    return '<span style="background:rgba(80,200,120,0.18);color:#7fe0a0;padding:'+pad+';border-radius:20px;font-size:11px;font-weight:700">✅ Payé</span>';
+  }
+  if(st==='rembourse')return '<span style="background:rgba(90,160,230,0.18);color:#8fc1f0;padding:'+pad+';border-radius:20px;font-size:11px;font-weight:700">↩️ Remboursé</span>';
+  return '<span style="background:rgba(226,192,110,0.15);color:var(--gold2);padding:'+pad+';border-radius:20px;font-size:11px;font-weight:700">⚠️ Non aboutie</span>';
+}
+function demCardHtml(c){
+  const st=demStatut(c);
+  const d=c.created_at?new Date(c.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+  const total=c.total_cents!=null?demEur(c.total_cents):'';
+  const contact=[c.guest_nom,c.guest_email].filter(Boolean).map(x=>(''+x).replace(/</g,'&lt;')).join(' · ')||'<span style="color:var(--muted)">infos après paiement</span>';
+  const nb=(c.items||[]).reduce((s,i)=>s+(parseInt(i.qty)||1),0);
+  const del=(st==='attente')?'<button onclick="event.stopPropagation();deleteDemande(\''+c.id+'\')" style="background:none;border:none;color:#e0556b;font-size:12px;cursor:pointer;text-decoration:underline;padding:0">🗑 Supprimer</button>':'<span style="font-size:12px;color:var(--muted)">Voir le détail →</span>';
+  return '<div class="sc" onclick="openDemDetail(\''+c.id+'\')" style="margin-bottom:12px;cursor:pointer">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px"><div style="font-size:12px;color:var(--muted2)">📅 '+d+'</div>'+demBadge(st,c)+'</div>'
+    +'<div style="font-weight:600;color:#fff">'+contact+'</div>'
+    +'<div style="font-size:12px;color:var(--muted2);margin-top:3px">'+((c.livret_nom||'').replace(/</g,'&lt;'))+' · '+nb+' service'+(nb>1?'s':'')+'</div>'
+    +'<div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:12px">'+del+'<span style="color:var(--gold2);font-weight:700">'+total+'</span></div>'
+    +'</div>';
+}
+function renderDemandes(){
+  const box=document.getElementById('dem-list');if(!box)return;
+  if(!demData.length){box.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucune commande pour le moment.</div>';return;}
+  const counts={all:demData.length,paye:0,rembourse:0,attente:0};
+  demData.forEach(c=>counts[demStatut(c)]++);
+  let html=demKpiHtml()+demChartHtml();
+  html+=demRankHtml('Services les plus réservés','🏆',demTopServices());
+  html+=demRankHtml('Par logement','🏠',demByLivret());
+  const tab=(key,label)=>'<button onclick="setDemFilter(\''+key+'\')" style="padding:8px 14px;border-radius:20px;border:1px solid '+(demFilter===key?'var(--gold2)':'var(--border)')+';background:'+(demFilter===key?'rgba(226,192,110,0.15)':'transparent')+';color:'+(demFilter===key?'var(--gold2)':'var(--muted2)')+';font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">'+label+' ('+counts[key]+')</button>';
+  html+='<div style="font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold2);margin:22px 0 12px">🧾 Commandes</div>';
+  html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'+tab('all','Toutes')+tab('paye','✅ Payées')+tab('rembourse','↩️ Remboursées')+tab('attente','⚠️ Non abouties')+'</div>';
+  const list=demData.filter(c=>demFilter==='all'||demStatut(c)===demFilter);
+  if(!list.length){box.innerHTML=html+'<div style="text-align:center;padding:30px;color:var(--muted);font-style:italic">Aucune commande ici.</div>';return;}
+  html+=list.map(demCardHtml).join('');
+  box.innerHTML=html;
+}
+function openDemDetail(id){
+  const c=demData.find(x=>x.id===id);if(!c)return;
+  const st=demStatut(c);
+  const d=c.created_at?new Date(c.created_at).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+  const items=(c.items||[]).map(i=>'<div style="display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><div><div style="color:#fff;font-size:14px">'+(i.qty>1?'<b>'+i.qty+'× </b>':'')+((i.titre||'').replace(/</g,'&lt;'))+'</div>'+(i.date?'<div style="font-size:12px;color:var(--gold2);margin-top:2px">📅 '+i.date+(i.heure?(' à '+i.heure):'')+'</div>':'')+'</div><div style="color:var(--gold2);font-size:13px;white-space:nowrap">'+((i.prix||'').replace(/</g,'&lt;'))+'</div></div>').join('');
+  const rows=(lbl,val)=>val?'<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 0;font-size:13px"><span style="color:var(--muted2)">'+lbl+'</span><span style="color:#fff;text-align:right">'+(''+val).replace(/</g,'&lt;')+'</span></div>':'';
+  const total=c.total_cents!=null?demEur(c.total_cents):'';
+  let ov=document.getElementById('dem-detail');
+  if(!ov){ov=document.createElement('div');ov.id='dem-detail';document.body.appendChild(ov);}
+  ov.setAttribute('style','position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.6);overflow-y:auto;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px');
+  ov.onclick=function(e){if(e.target===ov)closeDemDetail();};
+  ov.innerHTML='<div style="max-width:520px;width:100%;margin:auto;background:var(--card);border:1px solid var(--border-gold);border-radius:20px;padding:22px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px"><div class="serif" style="font-size:20px;color:var(--gold3)">Détail de la commande</div><button onclick="closeDemDetail()" style="width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:#fff;font-size:18px;cursor:pointer;line-height:1">✕</button></div>'
+    +'<div style="margin-bottom:14px">'+demBadge(st,c,true)+'</div>'
+    +'<div style="background:var(--bg3);border-radius:12px;padding:6px 14px;margin-bottom:14px">'+rows('Date',d)+rows('Logement',c.livret_nom)+rows('Client',c.guest_nom)+rows('E-mail',c.guest_email)+rows('Téléphone',c.guest_tel)+'</div>'
+    +'<div style="font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);margin-bottom:4px">Services</div>'+items
+    +(c.demande?'<div style="margin-top:12px;padding:10px 12px;background:var(--bg3);border-radius:10px;font-size:13px;color:#e8e2d4">📝 '+(''+c.demande).replace(/</g,'&lt;')+'</div>':'')
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--border-gold)"><span style="color:var(--muted2);font-size:13px">Total</span><span style="color:var(--gold2);font-weight:700;font-size:20px">'+total+'</span></div>'
+    +((c.invoice_url)?'<a href="'+c.invoice_url+'" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:14px;padding:13px;border-radius:12px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-weight:700;font-size:14px;text-decoration:none">🧾 Voir / télécharger la facture</a>':'')
+    +((st==='attente')?'<button onclick="deleteDemande(\''+c.id+'\')" style="width:100%;margin-top:10px;background:none;border:none;color:#e0556b;font-size:13px;cursor:pointer;text-decoration:underline">🗑 Supprimer cette commande non aboutie</button>':'')
+    +'</div>';
+  ov.style.display='flex';document.body.style.overflow='hidden';
+}
+function closeDemDetail(){const ov=document.getElementById('dem-detail');if(ov)ov.style.display='none';document.body.style.overflow='';}
 
 // ===== Catalogue de services =====
 let catalogue=[],allLivrets=[],catSearch='';
