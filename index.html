@@ -3147,10 +3147,14 @@ function heureOptions(sel){let o='<option value="">Heure…</option>';for(let h=
 function setCartDate(lineId,v){const c=cart.find(x=>x.lineId===lineId);if(!c)return;c.date=v;saveCart();const e=document.getElementById('cart-err-'+lineId);if(e)e.textContent=cartDateError(c);}
 function setCartHeure(lineId,v){const c=cart.find(x=>x.lineId===lineId);if(!c)return;c.heure=v;saveCart();}
 let calOpen=null,calMonth={y:new Date().getFullYear(),m:new Date().getMonth()};
-function toggleCal(lineId){if(calOpen===lineId){calOpen=null;}else{calOpen=lineId;const c=cart.find(x=>x.lineId===lineId);const base=(c&&c.date)?new Date(c.date+'T12:00:00'):new Date();calMonth={y:base.getFullYear(),m:base.getMonth()};}renderCart();}
+function toggleCal(lineId){if(calOpen===lineId){calOpen=null;}else{calOpen=lineId;const c=cart.find(x=>x.lineId===lineId);const base=(c&&c.date)?new Date(c.date+'T12:00:00'):new Date();calMonth={y:base.getFullYear(),m:base.getMonth()};}heureOpen=null;renderCart();}
 function calNav(delta){let m=calMonth.m+delta,y=calMonth.y;while(m<0){m+=12;y--;}while(m>11){m-=12;y++;}calMonth={y,m};renderCart();}
 function pickCalDay(lineId,iso){const c=cart.find(x=>x.lineId===lineId);if(!c)return;c.date=iso;saveCart();calOpen=null;renderCart();}
 function bookableDay(c,dt){const now=new Date();const dl=parseInt(c.delai_jours)||0;const dd=new Date(dt);dd.setDate(dd.getDate()-dl);if(c.heure_limite!=null&&c.heure_limite!==''){dd.setHours(parseInt(c.heure_limite),0,0,0);}else{dd.setHours(23,59,59,999);}return now<dd;}
+let heureOpen=null;
+function toggleHeure(lineId){heureOpen=(heureOpen===lineId?null:lineId);calOpen=null;renderCart();}
+function pickHeure(lineId,v){const c=cart.find(x=>x.lineId===lineId);if(!c)return;c.heure=v;saveCart();heureOpen=null;renderCart();}
+function heureGrid(c){let html='<div style="margin-top:8px;background:#0e0e0e;border:1px solid var(--border-gold);border-radius:12px;padding:10px"><div style="font-size:11px;color:var(--muted2);margin-bottom:8px">Choisis l\'heure souhaitée</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">';for(let h=7;h<=20;h++){const v=(h<10?'0'+h:''+h)+':00';const sel=c.heure===v;html+='<div onclick="pickHeure(\''+c.lineId+'\',\''+v+'\')" style="padding:9px 0;border-radius:8px;text-align:center;cursor:pointer;font-size:13px;'+(sel?'background:linear-gradient(135deg,#b8922a,#e2c06e);color:#060606;font-weight:700':'color:#fff;background:#1a1a1a')+'">'+h+'h</div>';}html+='</div></div>';return html;}
 function calGrid(c){
   const today=new Date();today.setHours(0,0,0,0);
   const y=calMonth.y,m=calMonth.m;
@@ -3183,7 +3187,7 @@ function renderCart(){
   const items=document.getElementById('voy-cart-items'),tot=document.getElementById('voy-cart-total');
   if(!cart.length){box.style.display='none';return;}
   let total=0;
-  cart.forEach(c=>{if(!c.lineId)c.lineId=newLineId();});
+  cart.forEach(c=>{if(!c.lineId)c.lineId=newLineId();const sv=(voyServices||[]).find(x=>String(x.id)===String(c.id));if(sv){c.demande_date=!!sv.demande_date;c.jours_dispo=sv.jours_dispo||[0,1,2,3,4,5,6];c.delai_jours=sv.delai_jours||0;c.heure_limite=(sv.heure_limite==null?null:sv.heure_limite);}});
   items.innerHTML=cart.map(c=>{
     const line=c.cents*c.qty;total+=line;
     const ctrl='<div style="display:flex;align-items:center;gap:6px"><button onclick="changeQty(\''+c.lineId+'\',-1)" style="width:26px;height:26px;border-radius:8px;border:1px solid var(--border-gold);background:var(--bg3);color:var(--gold2);cursor:pointer;font-size:16px;line-height:1">−</button><span style="min-width:18px;text-align:center;color:#fff">'+c.qty+'</span><button onclick="changeQty(\''+c.lineId+'\',1)" style="width:26px;height:26px;border-radius:8px;border:1px solid var(--border-gold);background:var(--bg3);color:var(--gold2);cursor:pointer;font-size:16px;line-height:1">+</button></div>';
@@ -3192,8 +3196,9 @@ function renderCart(){
     if(c.demande_date){
       h+='<div style="margin-top:8px;padding:10px;background:var(--bg3);border-radius:10px">'
         +'<div style="font-size:11px;color:var(--muted2);margin-bottom:6px">Date &amp; heure souhaitées · <span style="color:var(--gold2)">Dispo : '+joursTxt(c.jours_dispo)+'</span></div>'
-        +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" onclick="toggleCal(\''+c.lineId+'\')" style="flex:1;min-width:130px;padding:9px;border-radius:8px;border:1px solid var(--border-gold);background:#141414;color:'+(c.date?'#fff':'#9a9a9a')+';text-align:left;cursor:pointer;text-transform:capitalize">'+(c.date?fmtDateLong(c.date):'📅 Choisir la date')+'</button><select onchange="setCartHeure(\''+c.lineId+'\',this.value)" style="flex:1;min-width:110px;padding:9px;border-radius:8px;border:1px solid var(--border-gold);background:#141414;color:#fff">'+heureOptions(c.heure)+'</select></div>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" onclick="toggleCal(\''+c.lineId+'\')" style="flex:1;min-width:130px;padding:9px;border-radius:8px;border:1px solid var(--border-gold);background:#141414;color:'+(c.date?'#fff':'#9a9a9a')+';text-align:left;cursor:pointer;text-transform:capitalize">'+(c.date?fmtDateLong(c.date):'📅 Choisir la date')+'</button><button type="button" onclick="toggleHeure(\''+c.lineId+'\')" style="flex:1;min-width:110px;padding:9px;border-radius:8px;border:1px solid var(--border-gold);background:#141414;color:'+(c.heure?'#fff':'#9a9a9a')+';text-align:left;cursor:pointer">'+(c.heure?('🕐 '+parseInt(c.heure)+'h'):'🕐 Heure souhaitée')+'</button></div>'
         +(calOpen===c.lineId?calGrid(c):'')
+        +(heureOpen===c.lineId?heureGrid(c):'')
         +'<div id="cart-err-'+c.lineId+'" style="color:#ff6b6b;font-size:12px;margin-top:5px">'+cartDateError(c)+'</div>'
         +'<div style="display:flex;gap:16px;margin-top:8px"><button onclick="addAnotherDay(\''+c.lineId+'\')" style="background:none;border:none;color:var(--gold2);font-size:12.5px;cursor:pointer;padding:0">+ Ajouter ce service un autre jour</button><button onclick="removeCartLine(\''+c.lineId+'\')" style="background:none;border:none;color:var(--muted2);font-size:12.5px;cursor:pointer;text-decoration:underline;padding:0">Retirer</button></div>'
         +'</div>';
