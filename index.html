@@ -1200,6 +1200,8 @@ function catEditHtml(s){
     <div class="fg"><label class="fl2">Photo</label>${s.image_url?`<img src="${s.image_url}" style="width:84px;height:84px;object-fit:cover;border-radius:12px;display:block;margin-bottom:8px">`:''}<input type="file" accept="image/*" onchange="uploadImage(this,'cat-${id}')"></div>
     <div class="fg"><label class="fl2" style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="catf-demdate-${id}" ${s.demande_date?'checked':''}> 📅 Demander une date et heure de livraison</label></div>
     <div class="fg"><label class="fl2">Jours de disponibilité</label><div id="catf-jours-${id}" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">${[['Lun',1],['Mar',2],['Mer',3],['Jeu',4],['Ven',5],['Sam',6],['Dim',0]].map(([lbl,d])=>`<label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" data-d="${d}" ${(s.jours_dispo||[0,1,2,3,4,5,6]).includes(d)?'checked':''}>${lbl}</label>`).join('')}</div></div>
+    <div class="fg"><label class="fl2">Délai de réservation (combien de temps à l'avance)</label><select class="fi" id="catf-delai-${id}">${[[0,'Le jour même'],[1,'La veille (1 jour avant)'],[2,'2 jours avant'],[3,'3 jours avant'],[4,'4 jours avant'],[5,'5 jours avant'],[7,'1 semaine avant']].map(([v,l])=>`<option value="${v}" ${(s.delai_jours||0)==v?'selected':''}>${l}</option>`).join('')}</select></div>
+    <div class="fg"><label class="fl2">Heure limite de réservation</label><select class="fi" id="catf-hlimite-${id}"><option value="">Aucune (toute la journée)</option>${Array.from({length:18},(_,i)=>i+6).map(h=>`<option value="${h}" ${(s.heure_limite!=null&&s.heure_limite==h)?'selected':''}>${h}h</option>`).join('')}</select></div>
     <div class="fg"><label class="fl2">Logements qui proposent ce service</label><div style="margin-top:4px">${checks}</div></div>
     <div style="display:flex;gap:10px;margin-top:10px">
       <button class="adm-add" onclick="saveCatService('${id}')">💾 Enregistrer</button>
@@ -1258,9 +1260,12 @@ async function saveCatService(id){
   s.demande_date=document.getElementById('catf-demdate-'+id)?.checked||false;
   const _j=document.getElementById('catf-jours-'+id);
   s.jours_dispo=_j?[..._j.querySelectorAll('input')].filter(c=>c.checked).map(c=>parseInt(c.dataset.d)):(s.jours_dispo||[0,1,2,3,4,5,6]);
+  s.delai_jours=parseInt(document.getElementById('catf-delai-'+id)?.value)||0;
+  const _hl=document.getElementById('catf-hlimite-'+id)?.value;
+  s.heure_limite=(_hl===''||_hl==null)?null:parseInt(_hl);
   if(!s.titre){alert('Mets au moins un titre.');return;}
   if(!cu||!cu.access_token){alert('Session expirée, reconnecte-toi.');return;}
-  const payload={titre:s.titre,categorie:s.categorie||null,description:s.description||null,prix:s.prix||null,image_url:s.image_url||null,livret_ids:s.livret_ids||[],demande_date:s.demande_date,jours_dispo:s.jours_dispo,ordre:s.ordre||0};
+  const payload={titre:s.titre,categorie:s.categorie||null,description:s.description||null,prix:s.prix||null,image_url:s.image_url||null,livret_ids:s.livret_ids||[],demande_date:s.demande_date,jours_dispo:s.jours_dispo,delai_jours:s.delai_jours,heure_limite:s.heure_limite,ordre:s.ordre||0};
   try{
     if(s._new){const r=await axios.post(`${API}/catalogue_services`,payload,{headers:{...hd(),'Prefer':'return=representation'}});s.id=r.data[0].id;delete s._new;}
     else{await axios.patch(`${API}/catalogue_services?id=eq.${s.id}`,payload,{headers:{...hd(),'Prefer':'return=minimal'}});}
@@ -3130,17 +3135,45 @@ let cart=[],voyServices=[],voyCartKey='cart_x';
 function priceToCentsClient(t){const s=(t||'').replace(/\s/g,'').replace(',','.');const m=s.match(/(\d+(\.\d+)?)/);return m?Math.round(parseFloat(m[1])*100):0;}
 function saveCart(){try{localStorage.setItem(voyCartKey,JSON.stringify(cart));}catch(e){}}
 function newLineId(){return 'L'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
-function addToCart(id){const s=(voyServices||[]).find(x=>String(x.id)===String(id));if(!s)return;const c=priceToCentsClient(s.prix);if(c<=0)return;const dem=!!s.demande_date;const ex=!dem&&cart.find(x=>String(x.id)===String(id)&&!x.demande_date);if(ex){ex.qty++;}else{cart.push({lineId:newLineId(),id:s.id,titre:s.titre||'Service',cents:c,qty:1,demande_date:dem,jours_dispo:s.jours_dispo||[0,1,2,3,4,5,6],date:'',heure:''});}saveCart();renderCart();toast(dem?'Ajouté · choisis sa date 👇':'Ajouté au panier');}
+function addToCart(id){const s=(voyServices||[]).find(x=>String(x.id)===String(id));if(!s)return;const c=priceToCentsClient(s.prix);if(c<=0)return;const dem=!!s.demande_date;const ex=!dem&&cart.find(x=>String(x.id)===String(id)&&!x.demande_date);if(ex){ex.qty++;}else{cart.push({lineId:newLineId(),id:s.id,titre:s.titre||'Service',cents:c,qty:1,demande_date:dem,jours_dispo:s.jours_dispo||[0,1,2,3,4,5,6],delai_jours:s.delai_jours||0,heure_limite:(s.heure_limite==null?null:s.heure_limite),date:'',heure:''});}saveCart();renderCart();toast(dem?'Ajouté · choisis sa date 👇':'Ajouté au panier');}
 function changeQty(lineId,d){const c=cart.find(x=>x.lineId===lineId);if(!c)return;c.qty+=d;if(c.qty<=0)cart=cart.filter(x=>x.lineId!==lineId);saveCart();renderCart();}
 function removeCartLine(lineId){cart=cart.filter(x=>x.lineId!==lineId);saveCart();renderCart();}
-function addAnotherDay(lineId){const c=cart.find(x=>x.lineId===lineId);if(!c)return;cart.push({lineId:newLineId(),id:c.id,titre:c.titre,cents:c.cents,qty:1,demande_date:true,jours_dispo:c.jours_dispo,date:'',heure:''});saveCart();renderCart();toast('Nouvelle ligne · choisis sa date 👇');}
+function addAnotherDay(lineId){const c=cart.find(x=>x.lineId===lineId);if(!c)return;cart.push({lineId:newLineId(),id:c.id,titre:c.titre,cents:c.cents,qty:1,demande_date:true,jours_dispo:c.jours_dispo,delai_jours:c.delai_jours||0,heure_limite:(c.heure_limite==null?null:c.heure_limite),date:'',heure:''});saveCart();renderCart();toast('Nouvelle ligne · choisis sa date 👇');}
 function clearVoyCart(){cart=[];saveCart();renderCart();}
 const JOURS_LBL=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 function joursTxt(arr){if(!arr||arr.length>=7)return'tous les jours';return [1,2,3,4,5,6,0].filter(d=>arr.includes(d)).map(d=>JOURS_LBL[d]).join(', ')||'aucun jour';}
-function cartDateError(c){if(!c.demande_date||!c.date)return'';const d=new Date(c.date+'T12:00:00').getDay();return (c.jours_dispo||[0,1,2,3,4,5,6]).includes(d)?'':'❌ Service non disponible ce jour-là';}
+function cartDateError(c){if(!c.demande_date||!c.date)return'';const dt=new Date(c.date+'T12:00:00');if(!(c.jours_dispo||[0,1,2,3,4,5,6]).includes(dt.getDay()))return '❌ Service non disponible ce jour-là';if(typeof bookableDay==='function'&&!bookableDay(c,dt))return '❌ Trop tard pour réserver ce service';return'';}
 function heureOptions(sel){let o='<option value="">Heure…</option>';for(let h=7;h<=20;h++){const v=(h<10?'0'+h:''+h)+':00';o+='<option value="'+v+'"'+(sel===v?' selected':'')+'>'+h+'h</option>';}return o;}
 function setCartDate(lineId,v){const c=cart.find(x=>x.lineId===lineId);if(!c)return;c.date=v;saveCart();const e=document.getElementById('cart-err-'+lineId);if(e)e.textContent=cartDateError(c);}
 function setCartHeure(lineId,v){const c=cart.find(x=>x.lineId===lineId);if(!c)return;c.heure=v;saveCart();}
+let calOpen=null,calMonth={y:new Date().getFullYear(),m:new Date().getMonth()};
+function toggleCal(lineId){if(calOpen===lineId){calOpen=null;}else{calOpen=lineId;const c=cart.find(x=>x.lineId===lineId);const base=(c&&c.date)?new Date(c.date+'T12:00:00'):new Date();calMonth={y:base.getFullYear(),m:base.getMonth()};}renderCart();}
+function calNav(delta){let m=calMonth.m+delta,y=calMonth.y;while(m<0){m+=12;y--;}while(m>11){m-=12;y++;}calMonth={y,m};renderCart();}
+function pickCalDay(lineId,iso){const c=cart.find(x=>x.lineId===lineId);if(!c)return;c.date=iso;saveCart();calOpen=null;renderCart();}
+function bookableDay(c,dt){const now=new Date();const dl=parseInt(c.delai_jours)||0;const dd=new Date(dt);dd.setDate(dd.getDate()-dl);if(c.heure_limite!=null&&c.heure_limite!==''){dd.setHours(parseInt(c.heure_limite),0,0,0);}else{dd.setHours(23,59,59,999);}return now<dd;}
+function calGrid(c){
+  const today=new Date();today.setHours(0,0,0,0);
+  const y=calMonth.y,m=calMonth.m;
+  const startDow=(new Date(y,m,1).getDay()+6)%7;
+  const dim=new Date(y,m+1,0).getDate();
+  const moisN=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  const jd=c.jours_dispo||[0,1,2,3,4,5,6];
+  let html='<div style="margin-top:8px;background:#0e0e0e;border:1px solid var(--border-gold);border-radius:12px;padding:10px">';
+  html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><button type="button" onclick="calNav(-1)" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border-gold);background:#1a1a1a;color:var(--gold2);cursor:pointer">‹</button><span style="color:#fff;font-weight:600;font-size:13px;text-transform:capitalize">'+moisN[m]+' '+y+'</span><button type="button" onclick="calNav(1)" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border-gold);background:#1a1a1a;color:var(--gold2);cursor:pointer">›</button></div>';
+  html+='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center">';
+  ['L','M','M','J','V','S','D'].forEach(d=>{html+='<div style="font-size:10px;color:var(--muted2);padding:2px 0">'+d+'</div>';});
+  for(let i=0;i<startDow;i++)html+='<div></div>';
+  for(let day=1;day<=dim;day++){
+    const dt=new Date(y,m,day),dow=dt.getDay();
+    const iso=y+'-'+String(m+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    const past=dt<today,allowed=jd.includes(dow),sel=c.date===iso,late=allowed&&!past&&!bookableDay(c,dt);
+    if(allowed&&!past&&!late){html+='<div onclick="pickCalDay(\''+c.lineId+'\',\''+iso+'\')" style="padding:7px 0;border-radius:6px;cursor:pointer;font-size:13px;'+(sel?'background:linear-gradient(135deg,#b8922a,#e2c06e);color:#060606;font-weight:700':'color:#fff;background:#1a1a1a')+'">'+day+'</div>';}
+    else if(past){html+='<div style="padding:7px 0;border-radius:6px;font-size:13px;color:#555">'+day+'</div>';}
+    else{html+='<div title="'+(late?'Trop tard pour réserver':'Non disponible')+'" style="padding:7px 0;border-radius:6px;font-size:13px;color:#e0556b;text-decoration:line-through;opacity:0.55">'+day+'</div>';}
+  }
+  html+='</div></div>';
+  return html;
+}
 let cartMasterDate='',cartMasterHeure='';
 function intersectionJours(items){let r=[0,1,2,3,4,5,6];items.forEach(c=>{const j=c.jours_dispo||[0,1,2,3,4,5,6];r=r.filter(d=>j.includes(d));});return r;}
 function applyMasterToAll(){if(!cartMasterDate){alert('Choisis d\'abord une date.');return;}cart.forEach(c=>{if(c.demande_date){c.date=cartMasterDate;if(cartMasterHeure)c.heure=cartMasterHeure;}});saveCart();renderCart();toast('Appliqué à tous les services');}
@@ -3159,7 +3192,8 @@ function renderCart(){
     if(c.demande_date){
       h+='<div style="margin-top:8px;padding:10px;background:var(--bg3);border-radius:10px">'
         +'<div style="font-size:11px;color:var(--muted2);margin-bottom:6px">Date &amp; heure souhaitées · <span style="color:var(--gold2)">Dispo : '+joursTxt(c.jours_dispo)+'</span></div>'
-        +'<div style="display:flex;gap:8px;flex-wrap:wrap"><input type="date" value="'+(c.date||'')+'" onchange="setCartDate(\''+c.lineId+'\',this.value);this.blur()" style="flex:1;min-width:130px;padding:9px;border-radius:8px;border:1px solid var(--border-gold);background:#141414;color:#fff"><select onchange="setCartHeure(\''+c.lineId+'\',this.value)" style="flex:1;min-width:110px;padding:9px;border-radius:8px;border:1px solid var(--border-gold);background:#141414;color:#fff">'+heureOptions(c.heure)+'</select></div>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" onclick="toggleCal(\''+c.lineId+'\')" style="flex:1;min-width:130px;padding:9px;border-radius:8px;border:1px solid var(--border-gold);background:#141414;color:'+(c.date?'#fff':'#9a9a9a')+';text-align:left;cursor:pointer;text-transform:capitalize">'+(c.date?fmtDateLong(c.date):'📅 Choisir la date')+'</button><select onchange="setCartHeure(\''+c.lineId+'\',this.value)" style="flex:1;min-width:110px;padding:9px;border-radius:8px;border:1px solid var(--border-gold);background:#141414;color:#fff">'+heureOptions(c.heure)+'</select></div>'
+        +(calOpen===c.lineId?calGrid(c):'')
         +'<div id="cart-err-'+c.lineId+'" style="color:#ff6b6b;font-size:12px;margin-top:5px">'+cartDateError(c)+'</div>'
         +'<div style="display:flex;gap:16px;margin-top:8px"><button onclick="addAnotherDay(\''+c.lineId+'\')" style="background:none;border:none;color:var(--gold2);font-size:12.5px;cursor:pointer;padding:0">+ Ajouter ce service un autre jour</button><button onclick="removeCartLine(\''+c.lineId+'\')" style="background:none;border:none;color:var(--muted2);font-size:12.5px;cursor:pointer;text-decoration:underline;padding:0">Retirer</button></div>'
         +'</div>';
