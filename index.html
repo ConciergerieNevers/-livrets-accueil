@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Livrets d'accueil</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700;800&family=Dancing+Script:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@vimeo/player@2.20.1/dist/player.min.js"></script>
@@ -3839,7 +3839,7 @@ function startIntro(){
   ov.style.opacity='1';ov.style.transition='';
   ov.innerHTML='<div style="max-width:440px">'
     +'<div style="font-size:11px;letter-spacing:5px;text-transform:uppercase;color:var(--gold2);opacity:0;animation:introIn .6s ease .1s forwards,introGlow 2.4s ease 1s infinite">✦ Be Nomad ✦</div>'
-    +'<div id="intro-hi" class="serif" style="font-size:clamp(28px,8vw,38px);color:var(--gold3);margin:20px 0 8px;line-height:1.12;opacity:0;animation:introIn .6s ease .5s forwards">Bienvenue</div>'
+    +'<div id="intro-hi" style="font-family:\'Dancing Script\',cursive;font-weight:700;font-size:clamp(46px,14vw,76px);color:var(--gold3);margin:14px 0 4px;line-height:1.05;opacity:0;animation:introIn .8s ease .5s forwards,introGlow 2.8s ease 1.2s infinite">Bienvenue</div>'
     +'<div id="intro-dest" style="font-size:17px;color:var(--text);min-height:22px;opacity:0;animation:introIn .6s ease .9s forwards"></div>'
     +'<div style="margin:30px auto 0;width:32px;height:32px;border:2px solid rgba(226,192,110,0.25);border-top-color:var(--gold2);border-radius:50%;animation:introSpin .8s linear infinite"></div>'
     +'</div>';
@@ -3853,7 +3853,7 @@ function finishIntro(prenom,dest){
   if(hi)hi.textContent=prenom?('Bienvenue '+prenom):'Bienvenue';
   if(de)de.textContent=dest||'';
   if(window._introMax)clearTimeout(window._introMax);
-  const wait=Math.max(0,1700-(Date.now()-(window._introStart||0)));
+  const wait=Math.max(0,3000-(Date.now()-(window._introStart||0)));
   setTimeout(hideIntro,wait);
 }
 function hideIntro(){const ov=document.getElementById('voy-intro');if(!ov)return;ov.style.transition='opacity .6s ease';ov.style.opacity='0';setTimeout(function(){ov.style.display='none';},650);}
