@@ -3129,28 +3129,39 @@ function showResa(resa,ci,co,guestUrl){
 let cart=[],voyServices=[],voyCartKey='cart_x';
 function priceToCentsClient(t){const s=(t||'').replace(/\s/g,'').replace(',','.');const m=s.match(/(\d+(\.\d+)?)/);return m?Math.round(parseFloat(m[1])*100):0;}
 function saveCart(){try{localStorage.setItem(voyCartKey,JSON.stringify(cart));}catch(e){}}
-function addToCart(id){const s=(voyServices||[]).find(x=>String(x.id)===String(id));if(!s)return;const c=priceToCentsClient(s.prix);if(c<=0)return;const ex=cart.find(x=>String(x.id)===String(id));if(ex)ex.qty++;else cart.push({id:s.id,titre:s.titre||'Service',cents:c,qty:1,demande_date:!!s.demande_date,jours_dispo:s.jours_dispo||[0,1,2,3,4,5,6],date:'',heure:''});saveCart();renderCart();toast('Ajouté au panier');}
-function changeQty(id,d){const c=cart.find(x=>String(x.id)===String(id));if(!c)return;c.qty+=d;if(c.qty<=0)cart=cart.filter(x=>String(x.id)!==String(id));saveCart();renderCart();}
+function newLineId(){return 'L'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function addToCart(id){const s=(voyServices||[]).find(x=>String(x.id)===String(id));if(!s)return;const c=priceToCentsClient(s.prix);if(c<=0)return;const dem=!!s.demande_date;const ex=!dem&&cart.find(x=>String(x.id)===String(id)&&!x.demande_date);if(ex){ex.qty++;}else{cart.push({lineId:newLineId(),id:s.id,titre:s.titre||'Service',cents:c,qty:1,demande_date:dem,jours_dispo:s.jours_dispo||[0,1,2,3,4,5,6],date:'',heure:''});}saveCart();renderCart();toast(dem?'Ajouté · choisis sa date 👇':'Ajouté au panier');}
+function changeQty(lineId,d){const c=cart.find(x=>x.lineId===lineId);if(!c)return;c.qty+=d;if(c.qty<=0)cart=cart.filter(x=>x.lineId!==lineId);saveCart();renderCart();}
+function removeCartLine(lineId){cart=cart.filter(x=>x.lineId!==lineId);saveCart();renderCart();}
 function clearVoyCart(){cart=[];saveCart();renderCart();}
 const JOURS_LBL=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 function joursTxt(arr){if(!arr||arr.length>=7)return'tous les jours';return [1,2,3,4,5,6,0].filter(d=>arr.includes(d)).map(d=>JOURS_LBL[d]).join(', ')||'aucun jour';}
 function cartDateError(c){if(!c.demande_date||!c.date)return'';const d=new Date(c.date+'T12:00:00').getDay();return (c.jours_dispo||[0,1,2,3,4,5,6]).includes(d)?'':'❌ Service non disponible ce jour-là';}
-function setCartDate(id,v){const c=cart.find(x=>String(x.id)===String(id));if(!c)return;c.date=v;saveCart();const e=document.getElementById('cart-err-'+id);if(e)e.textContent=cartDateError(c);}
-function setCartHeure(id,v){const c=cart.find(x=>String(x.id)===String(id));if(!c)return;c.heure=v;saveCart();}
+function heureOptions(sel){let o='<option value="">Heure…</option>';for(let h=7;h<=20;h++){const v=(h<10?'0'+h:''+h)+':00';o+='<option value="'+v+'"'+(sel===v?' selected':'')+'>'+h+'h</option>';}return o;}
+function setCartDate(lineId,v){const c=cart.find(x=>x.lineId===lineId);if(!c)return;c.date=v;saveCart();const e=document.getElementById('cart-err-'+lineId);if(e)e.textContent=cartDateError(c);}
+function setCartHeure(lineId,v){const c=cart.find(x=>x.lineId===lineId);if(!c)return;c.heure=v;saveCart();}
+let cartMasterDate='',cartMasterHeure='';
+function intersectionJours(items){let r=[0,1,2,3,4,5,6];items.forEach(c=>{const j=c.jours_dispo||[0,1,2,3,4,5,6];r=r.filter(d=>j.includes(d));});return r;}
+function applyMasterToAll(){if(!cartMasterDate){alert('Choisis d\'abord une date.');return;}cart.forEach(c=>{if(c.demande_date){c.date=cartMasterDate;if(cartMasterHeure)c.heure=cartMasterHeure;}});saveCart();renderCart();toast('Appliqué à tous les services');}
+function cartHead(){const di=cart.filter(c=>c.demande_date);if(di.length<2)return'';const inter=intersectionJours(di);return '<div style="padding:10px;background:var(--bg3);border-radius:10px;margin-bottom:12px;border:1px solid var(--border-gold)"><div style="font-size:11px;color:var(--muted2);margin-bottom:6px">📅 Même jour pour tous ? · <span style="color:var(--gold2)">Jours communs : '+joursTxt(inter)+'</span></div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input type="date" value="'+cartMasterDate+'" onchange="cartMasterDate=this.value" style="flex:1;min-width:120px;padding:9px;border-radius:8px;border:1px solid var(--border-gold);background:#141414;color:#fff"><select onchange="cartMasterHeure=this.value" style="flex:1;min-width:110px;padding:9px;border-radius:8px;border:1px solid var(--border-gold);background:#141414;color:#fff">'+heureOptions(cartMasterHeure)+'</select><button onclick="applyMasterToAll()" style="padding:9px 14px;border:none;border-radius:8px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap">Appliquer à tous</button></div><div style="font-size:11px;color:var(--muted2);margin-top:6px">Ou choisis des dates différentes service par service ci-dessous 👇</div></div>';}
 function renderCart(){
   const box=document.getElementById('voy-cart');if(!box)return;
   const items=document.getElementById('voy-cart-items'),tot=document.getElementById('voy-cart-total');
   if(!cart.length){box.style.display='none';return;}
   let total=0;
-  items.innerHTML=cart.map(c=>{
+  cart.forEach(c=>{if(!c.lineId)c.lineId=newLineId();});
+  items.innerHTML=cartHead()+cart.map(c=>{
     const line=c.cents*c.qty;total+=line;
+    const ctrl=c.demande_date
+      ?'<button onclick="removeCartLine(\''+c.lineId+'\')" style="background:none;border:1px solid var(--border-gold);color:var(--gold2);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:12px;white-space:nowrap">✕ Retirer</button>'
+      :'<div style="display:flex;align-items:center;gap:6px"><button onclick="changeQty(\''+c.lineId+'\',-1)" style="width:26px;height:26px;border-radius:8px;border:1px solid var(--border-gold);background:var(--bg3);color:var(--gold2);cursor:pointer;font-size:16px;line-height:1">−</button><span style="min-width:18px;text-align:center;color:#fff">'+c.qty+'</span><button onclick="changeQty(\''+c.lineId+'\',1)" style="width:26px;height:26px;border-radius:8px;border:1px solid var(--border-gold);background:var(--bg3);color:var(--gold2);cursor:pointer;font-size:16px;line-height:1">+</button></div>';
     let h='<div style="padding:10px 0;border-bottom:1px solid var(--border)">';
-    h+='<div style="display:flex;align-items:center;gap:8px"><div style="flex:1"><div style="font-size:14px;color:#fff">'+c.titre+'</div><div style="font-size:12px;color:var(--muted2)">'+(c.cents/100).toFixed(2)+'€ / unité</div></div><div style="display:flex;align-items:center;gap:6px"><button onclick="changeQty(\''+c.id+'\',-1)" style="width:26px;height:26px;border-radius:8px;border:1px solid var(--border-gold);background:var(--bg3);color:var(--gold2);cursor:pointer;font-size:16px;line-height:1">−</button><span style="min-width:18px;text-align:center;color:#fff">'+c.qty+'</span><button onclick="changeQty(\''+c.id+'\',1)" style="width:26px;height:26px;border-radius:8px;border:1px solid var(--border-gold);background:var(--bg3);color:var(--gold2);cursor:pointer;font-size:16px;line-height:1">+</button></div><div style="min-width:54px;text-align:right;color:var(--gold2);font-weight:600;font-size:13px">'+(line/100).toFixed(2)+'€</div></div>';
+    h+='<div style="display:flex;align-items:center;gap:8px"><div style="flex:1"><div style="font-size:14px;color:#fff">'+c.titre+'</div><div style="font-size:12px;color:var(--muted2)">'+(c.cents/100).toFixed(2)+'€'+(c.demande_date?'':' / unité')+'</div></div>'+ctrl+'<div style="min-width:54px;text-align:right;color:var(--gold2);font-weight:600;font-size:13px">'+(line/100).toFixed(2)+'€</div></div>';
     if(c.demande_date){
       h+='<div style="margin-top:8px;padding:10px;background:var(--bg3);border-radius:10px">'
         +'<div style="font-size:11px;color:var(--muted2);margin-bottom:6px">Date &amp; heure souhaitées · <span style="color:var(--gold2)">Dispo : '+joursTxt(c.jours_dispo)+'</span></div>'
-        +'<div style="display:flex;gap:8px;flex-wrap:wrap"><input type="date" value="'+(c.date||'')+'" onchange="setCartDate(\''+c.id+'\',this.value)" style="flex:1;min-width:130px;padding:9px;border-radius:8px;border:1px solid var(--border-gold);background:#141414;color:#fff"><input type="time" value="'+(c.heure||'')+'" onchange="setCartHeure(\''+c.id+'\',this.value)" style="flex:1;min-width:100px;padding:9px;border-radius:8px;border:1px solid var(--border-gold);background:#141414;color:#fff"></div>'
-        +'<div id="cart-err-'+c.id+'" style="color:#ff6b6b;font-size:12px;margin-top:5px">'+cartDateError(c)+'</div>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap"><input type="date" value="'+(c.date||'')+'" onchange="setCartDate(\''+c.lineId+'\',this.value)" style="flex:1;min-width:130px;padding:9px;border-radius:8px;border:1px solid var(--border-gold);background:#141414;color:#fff"><select onchange="setCartHeure(\''+c.lineId+'\',this.value)" style="flex:1;min-width:110px;padding:9px;border-radius:8px;border:1px solid var(--border-gold);background:#141414;color:#fff">'+heureOptions(c.heure)+'</select></div>'
+        +'<div id="cart-err-'+c.lineId+'" style="color:#ff6b6b;font-size:12px;margin-top:5px">'+cartDateError(c)+'</div>'
         +'</div>';
     }
     h+='</div>';return h;
