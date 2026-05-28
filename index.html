@@ -3880,7 +3880,7 @@ function startIntro(){
   ov.style.opacity='1';ov.style.transition='';
   ov.innerHTML='<div style="max-width:440px">'
     +'<div style="font-size:11px;letter-spacing:5px;text-transform:uppercase;color:var(--gold2);opacity:0;animation:introIn .6s ease .1s forwards,introGlow 2.4s ease 1s infinite">✦ Be Nomad ✦</div>'
-    +'<div id="intro-hi" style="display:inline-block;font-family:\'Dancing Script\',cursive;font-weight:700;font-size:clamp(46px,14vw,76px);color:var(--gold3);margin:14px 0 4px;line-height:1.1;min-height:1.1em"></div>'
+    +'<div id="intro-hi" style="font-family:\'Dancing Script\',cursive;font-weight:700;font-size:clamp(46px,14vw,76px);color:var(--gold3);margin:14px 0 4px;line-height:1.1;opacity:0;animation:introIn .8s ease .4s forwards,introGlow 2.8s ease 1.2s infinite">Bienvenue</div>'
     +'<div id="intro-dest" style="font-size:17px;color:var(--text);min-height:22px;opacity:0;animation:introIn .6s ease .9s forwards"></div>'
     +'<div style="margin:30px auto 0;width:32px;height:32px;border:2px solid rgba(226,192,110,0.25);border-top-color:var(--gold2);border-radius:50%;animation:introSpin .8s linear infinite"></div>'
     +'</div>';
@@ -3891,7 +3891,7 @@ function startIntro(){
 }
 function finishIntro(prenom,dest){
   const hi=document.getElementById('intro-hi'),de=document.getElementById('intro-dest');
-  if(hi){hi.textContent=prenom?('Bienvenue '+prenom):'Bienvenue';hi.style.opacity='1';hi.style.animation='none';void hi.offsetWidth;hi.style.animation='introWrite 1.6s ease forwards, introGlow 3s ease 1.8s infinite';}
+  if(hi)hi.textContent=prenom?('Bienvenue '+prenom):'Bienvenue';
   if(de)de.textContent=dest||'';
   if(window._introMax)clearTimeout(window._introMax);
   const wait=Math.max(0,3000-(Date.now()-(window._introStart||0)));
