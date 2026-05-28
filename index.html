@@ -553,6 +553,9 @@ body{top:0!important}
         <button class="adm-add-s" onclick="openCatalogue()">
           🛎️ Mes services
         </button>
+        <button class="adm-add-s" onclick="openReservations()">
+          📅 Réservations
+        </button>
         <button class="adm-add-s" onclick="openDemandes()">
           📋 Mes demandes
         </button>
@@ -609,6 +612,29 @@ body{top:0!important}
     </div>
     <div id="dem-loading" class="loading">Chargement…</div>
     <div id="dem-list"></div>
+  </div>
+</div>
+
+<!-- RESERVATIONS -->
+<div id="reservations-screen" style="display:none">
+  <nav class="adm-nav">
+    <div class="adm-nav-left">
+      <button class="adm-logout" onclick="showAdmin()">← Retour</button>
+      <div class="adm-nav-title serif">Réservations</div>
+    </div>
+    <div class="adm-nav-right">
+      <button class="adm-logout" id="resa-sync-btn" onclick="syncReservations()">🔄 Synchroniser</button>
+    </div>
+  </nav>
+  <div class="adm-body">
+    <div class="adm-hero">
+      <div class="adm-hero-text">
+        <h2 class="serif gold-text">Réservations</h2>
+        <p>Tous tes voyageurs (passés, en cours, à venir). Recherche, lien du livret et commande sur-mesure.</p>
+      </div>
+    </div>
+    <div id="resa-loading" class="loading">Chargement…</div>
+    <div id="resa-list"></div>
   </div>
 </div>
 
@@ -1194,7 +1220,7 @@ async function register(){
   catch{alert('Erreur.');}
 }
 function logout(){cu=null;cs();show('login-screen');}
-function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','demandes-screen'].forEach(s=>document.getElementById(s).style.display=s===id?'block':'none');}
+function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','demandes-screen','reservations-screen'].forEach(s=>document.getElementById(s).style.display=s===id?'block':'none');}
 
 // ===== Mes demandes (tableau de bord) =====
 let demData=[],demFilter='all',demChartMode='mois',demView='dash',planMode='semaine',planRef=null,planGroup='personne';
@@ -1414,8 +1440,8 @@ async function refundItem(idx){
 function closeDemDetail(){demDetailId=null;demEditIdx=-1;const ov=document.getElementById('dem-detail');if(ov)ov.style.display='none';document.body.style.overflow='';}
 // ===== Nouvelle commande sur-mesure (admin) =====
 let ncLivrets=[],ncCatalogue=[],ncLines=[],ncLivret='',ncBooking='',ncBusy=false,ncUrl='';
-async function openNewOrder(){
-  ncLines=[];ncLivret='';ncBooking='';ncUrl='';ncBusy=false;
+async function openNewOrder(prefill){
+  ncLines=[];ncLivret=(prefill&&prefill.livret)||'';ncBooking=(prefill&&prefill.booking)||'';ncUrl='';ncBusy=false;
   try{
     const [lr,cr]=await Promise.all([
       axios.get(`${API}/livrets?select=id,nom&order=nom.asc`,{headers:hd()}),
@@ -1470,6 +1496,106 @@ async function ncGenerate(){
 }
 function ncCopy(){if(!ncUrl)return;navigator.clipboard.writeText(ncUrl).then(()=>toast('🔗 Lien copié !'));}
 function ncClose(){const ov=document.getElementById('nc-modal');if(ov)ov.style.display='none';document.body.style.overflow='';openDemandes();}
+// ===== Réservations (depuis SuperHote, mises en cache) =====
+let resaData=[],resaLivrets=[],resaSearch='',resaStatus='all',resaLivretFilter='all',resaSyncing=false;
+function resaNorm(s){return (s||'').toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
+function resaDate(iso){if(!iso)return'—';try{return new Date(iso+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'2-digit'});}catch(e){return iso;}}
+function resaLivretFor(rentalId){return resaLivrets.find(l=>String(l.superhote_rental_id)===String(rentalId));}
+function resaStatusOf(r){
+  const today=new Date();today.setHours(0,0,0,0);
+  const ci=r.checkin?new Date(r.checkin+'T12:00:00'):null;
+  const co=r.checkout?new Date(r.checkout+'T12:00:00'):null;
+  if(co&&co<today)return 'passe';
+  if(ci&&ci>today)return 'avenir';
+  return 'encours';
+}
+async function openReservations(){
+  show('reservations-screen');
+  document.getElementById('resa-loading').style.display='block';
+  document.getElementById('resa-list').innerHTML='';
+  resaSearch='';resaStatus='all';resaLivretFilter='all';
+  try{
+    const [rr,lr]=await Promise.all([
+      axios.get(`${API}/sh_reservations?select=*&order=checkin.desc&limit=3000`,{headers:hd()}),
+      axios.get(`${API}/livrets?select=id,nom,slug,superhote_rental_id`,{headers:hd()})
+    ]);
+    resaData=rr.data||[];resaLivrets=lr.data||[];
+    document.getElementById('resa-loading').style.display='none';
+    renderResa();
+  }catch(e){document.getElementById('resa-loading').textContent='Erreur de chargement.';}
+}
+function setResaStatus(s){resaStatus=s;renderResa();}
+function resaCardHtml(r){
+  const lv=resaLivretFor(r.rental_id);
+  const st=resaStatusOf(r);
+  const badge=st==='encours'?'<span style="background:rgba(80,200,120,0.18);color:#7fe0a0;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700">● En cours</span>'
+    :st==='avenir'?'<span style="background:rgba(226,192,110,0.15);color:var(--gold2);padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700">À venir</span>'
+    :'<span style="background:var(--bg3);color:var(--muted2);padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700">Passée</span>';
+  const nom=(((r.first_name||'')+' '+(r.last_name||'')).trim()||'—').replace(/</g,'&lt;');
+  const lieu=(lv?lv.nom:('Logement #'+r.rental_id+' (non lié)')).toString().replace(/</g,'&lt;');
+  const linkBtn=lv?'<button onclick="resaCopyLink(\''+r.booking_id+'\')" style="flex:1;padding:9px;border:1px solid var(--border-gold);border-radius:8px;background:var(--bg3);color:var(--gold2);font-size:12px;font-weight:700;cursor:pointer">🔗 Lien du livret</button>':'';
+  const orderBtn=lv?'<button onclick="resaNewOrder(\''+r.booking_id+'\')" style="flex:1;padding:9px;border:none;border-radius:8px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-size:12px;font-weight:700;cursor:pointer">➕ Commande</button>':'<span style="font-size:11px;color:var(--muted);align-self:center">Lie ce logement à un livret pour agir</span>';
+  return '<div class="sc" style="margin-bottom:10px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px"><span style="font-weight:700;color:#fff">'+nom+'</span>'+badge+'</div>'
+    +'<div style="font-size:12px;color:var(--muted2)">📅 '+resaDate(r.checkin)+' → '+resaDate(r.checkout)+'</div>'
+    +'<div style="font-size:12px;color:var(--muted2);margin-top:2px">📍 '+lieu+'</div>'
+    +'<div style="display:flex;gap:8px;margin-top:10px">'+linkBtn+orderBtn+'</div>'
+    +'</div>';
+}
+function renderResaList(){
+  const box=document.getElementById('resa-rows');if(!box)return;
+  const q=resaNorm(resaSearch);
+  let list=resaData.filter(r=>{
+    if(resaStatus!=='all'&&resaStatusOf(r)!==resaStatus)return false;
+    if(resaLivretFilter!=='all'){const lv=resaLivretFor(r.rental_id);if(!lv||String(lv.id)!==String(resaLivretFilter))return false;}
+    if(q){const lv=resaLivretFor(r.rental_id);const hay=resaNorm((r.first_name||'')+' '+(r.last_name||'')+' '+(r.checkin||'')+' '+(r.checkout||'')+' '+(lv?lv.nom:'')+' '+(r.booking_id||''));if(!hay.includes(q))return false;}
+    return true;
+  });
+  list.sort((a,b)=>(''+(b.checkin||'')).localeCompare(''+(a.checkin||'')));
+  if(!list.length){box.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-style:italic">Aucune réservation trouvée.</div>';return;}
+  box.innerHTML='<div style="font-size:11px;color:var(--muted2);margin-bottom:10px">'+list.length+' réservation'+(list.length>1?'s':'')+'</div>'+list.slice(0,400).map(resaCardHtml).join('');
+}
+function renderResa(){
+  const box=document.getElementById('resa-list');if(!box)return;
+  if(!resaData.length){box.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-style:italic;line-height:1.7">Aucune réservation en mémoire.<br>Clique sur <b style="color:var(--gold2)">🔄 Synchroniser</b> (en haut) pour récupérer tes réservations SuperHote.</div>';return;}
+  const livOpts='<option value="all">Tous les logements</option>'+resaLivrets.filter(l=>l.superhote_rental_id).map(l=>'<option value="'+l.id+'"'+(String(resaLivretFilter)===String(l.id)?' selected':'')+'>'+((l.nom||'').replace(/</g,'&lt;'))+'</option>').join('');
+  const tab=(k,l)=>'<button onclick="setResaStatus(\''+k+'\')" style="padding:7px 12px;border-radius:18px;border:1px solid '+(resaStatus===k?'var(--gold2)':'var(--border)')+';background:'+(resaStatus===k?'rgba(226,192,110,0.15)':'transparent')+';color:'+(resaStatus===k?'var(--gold2)':'var(--muted2)')+';font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">'+l+'</button>';
+  let html='<input value="'+(resaSearch||'').replace(/"/g,'&quot;')+'" oninput="resaSearch=this.value;renderResaList()" placeholder="🔍 Rechercher (nom, date, logement, n° résa)…" style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--border-gold);background:#141414;color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:12px">';
+  html+='<select onchange="resaLivretFilter=this.value;renderResa()" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--border-gold);background:#141414;color:#fff;font-size:13px;margin-bottom:12px">'+livOpts+'</select>';
+  html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'+tab('all','Toutes')+tab('encours','● En cours')+tab('avenir','À venir')+tab('passe','Passées')+'</div>';
+  html+='<div id="resa-rows"></div>';
+  box.innerHTML=html;renderResaList();
+}
+function resaCopyLink(bid){
+  const r=resaData.find(x=>String(x.booking_id)===String(bid));if(!r)return;
+  const link=BASE+'/?'+new URLSearchParams({r:String(r.booking_id),k:r.last_name||'',d:r.checkin||''}).toString();
+  navigator.clipboard.writeText(link).then(()=>toast('🔗 Lien du livret copié !'));
+}
+function resaNewOrder(bid){
+  const r=resaData.find(x=>String(x.booking_id)===String(bid));if(!r)return;
+  const lv=resaLivretFor(r.rental_id);if(!lv){alert('Ce logement n\'est pas lié à un livret.');return;}
+  openNewOrder({livret:lv.id,booking:String(r.booking_id)});
+}
+async function syncReservations(){
+  if(resaSyncing)return;
+  if(!cu||!cu.access_token){alert('Session expirée, reconnecte-toi.');return;}
+  resaSyncing=true;
+  const btn=document.getElementById('resa-sync-btn');
+  let page=1,last=0,total=0,guard=0;
+  try{
+    while(guard++<300){
+      if(btn)btn.textContent='Synchro…'+(last?(' '+page+'/'+last):'');
+      const r=await axios.get(`${SB}/functions/v1/guest-lookup?sync=${page}`,{headers:{'apikey':KEY,'Authorization':`Bearer ${cu.access_token}`}});
+      if(!r.data||!r.data.ok)break;
+      total+=r.data.synced||0;last=r.data.last_page||last;
+      if(r.data.done||!r.data.next)break;
+      page=r.data.next;
+    }
+    toast(total+' réservation'+(total>1?'s':'')+' synchronisée'+(total>1?'s':'')+' ✅');
+  }catch(e){alert('Synchro interrompue, réessaie.');}
+  resaSyncing=false;if(btn)btn.textContent='🔄 Synchroniser';
+  openReservations();
+}
 // ===== Planning de livraison =====
 function planYmd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function planMonday(d){const x=new Date(d);const day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);x.setHours(12,0,0,0);return x;}
