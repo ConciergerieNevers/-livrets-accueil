@@ -597,6 +597,14 @@ body{top:0!important}
           </div>
         </div>
       </div>
+      <div class="sc">
+        <div class="sc-title">Connexion SuperHote</div>
+        <div class="fg">
+          <label class="fl2">Logement SuperHote lié <span style="opacity:.6;font-weight:400">(livret auto par voyageur)</span></label>
+          <select class="fi" id="f-superhote-rental"><option value="">— Non lié —</option></select>
+          <small style="display:block;margin-top:6px;opacity:.65">Choisis le logement SuperHote correspondant. Chaque voyageur de ce logement verra ce livret avec son nom et ses dates.</small>
+        </div>
+      </div>
     </div>
 
     <div id="tv" style="display:none">
@@ -750,6 +758,7 @@ body{top:0!important}
         <div class="lang-menu" id="lang-menu"></div>
       </div>
       <div class="vh-badge"><span class="vh-badge-dot"></span><span class="notranslate">Livret d'accueil</span></div>
+      <div id="voy-guest" class="notranslate" style="display:none"></div>
       <h1 id="voy-nom" class="notranslate">—</h1>
       <p class="vh-sub" id="voy-bienvenue">Bienvenue !</p>
     </div>
@@ -1064,6 +1073,8 @@ const hdf=()=>({'apikey':KEY,'Authorization':`Bearer ${cu?.access_token||KEY}`})
 
 window.addEventListener('DOMContentLoaded',()=>{
   setupCropEvents();
+  const qp=new URLSearchParams(window.location.search);
+  if(qp.get('r')){lbres(qp.get('r'),qp.get('k')||'',qp.get('d')||'');return;}
   const p=window.location.pathname;
   if(p.startsWith('/livret/')){lbs(p.replace('/livret/',''));return;}
   const sv=ls();
@@ -1480,6 +1491,20 @@ async function del(id,nom){
   ll();
 }
 
+async function loadSuperhoteRentals(selectedId){
+  const sel=document.getElementById('f-superhote-rental');if(!sel)return;
+  const cur=(selectedId||'').toString();
+  const addLinked=()=>{if(cur&&sel.value!==cur){const o=document.createElement('option');o.value=cur;o.textContent='Logement '+cur+' (lié)';sel.appendChild(o);sel.value=cur;}};
+  sel.innerHTML='<option value="">— Non lié —</option><option value="" disabled>Chargement de tes logements…</option>';
+  try{
+    const r=await axios.get(`${SB}/functions/v1/guest-lookup?rentals=1`,{headers:{'apikey':KEY,'Authorization':`Bearer ${cu?.access_token||KEY}`}});
+    if(r.data&&r.data.ok&&Array.isArray(r.data.rentals)){
+      let html='<option value="">— Non lié —</option>';
+      r.data.rentals.forEach(rt=>{const lab=((rt.name||('Logement '+rt.id))+(rt.city?(' · '+rt.city):'')).replace(/</g,'&lt;');html+=`<option value="${rt.id}">${lab}</option>`;});
+      sel.innerHTML=html;sel.value=cur;addLinked();
+    }else{sel.innerHTML='<option value="">— Non lié —</option>';addLinked();}
+  }catch(e){console.warn('SuperHote rentals load failed',e);sel.innerHTML='<option value="">— Non lié (liste indisponible) —</option>';addLinked();}
+}
 async function openEditor(id){
   clid=id;adr=[];equip=[];serv=[];btnv=[];procEtapes=[];imgFond='';logoUrl='';resetLogoPreview();
   ['f-nom','f-slug','f-bienvenue','f-vimeo','f-procedure','f-adresse','f-hote','f-lat','f-lng','f-wifi-nom','f-wifi-mdp','f-checkin','f-checkout','f-parking','f-regles','f-poubelles','f-contact-nom','f-contact-tel','f-contact-email','f-cta1-texte','f-cta2-texte','f-cta3-texte','f-lien-avis-google','f-lien-reservation','f-lien-autres'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
@@ -1528,7 +1553,8 @@ async function openEditor(id){
     serv=sr.data;
     btnv=Array.isArray(l.boutons_video)?l.boutons_video:[];
     procEtapes=Array.isArray(l.procedure_etapes)?l.procedure_etapes:[];
-  }else{document.getElementById('editor-title').textContent='Nouveau livret';}
+    loadSuperhoteRentals(l.superhote_rental_id||'');
+  }else{document.getElementById('editor-title').textContent='Nouveau livret';loadSuperhoteRentals('');}
   ra();re();rs();rbv();rpe();show('editor-screen');
 }
 
@@ -2736,6 +2762,7 @@ async function saveLivret(){
     contact_email:document.getElementById('f-contact-email').value,
     image_fond:imgFond||null,
     logo_url:logoUrl||null,
+    superhote_rental_id:(document.getElementById('f-superhote-rental')?.value||'').trim()||null,
     lien_avis_google:document.getElementById('f-lien-avis-google').value||null,
     lien_reservation_directe:document.getElementById('f-lien-reservation').value||null,
     lien_autres_logements:document.getElementById('f-lien-autres').value||null,
@@ -2832,6 +2859,51 @@ async function lbs(slug){
     rv(l,ar.data,er.data,false,sr.data);
     trackView(l.id,'home');
   }catch(e){console.error(e);document.getElementById('voy-loading').textContent='Erreur.';}
+}
+
+// ===== Mode voyageur SuperHote (lien ?r=<booking_id>&k=<nom>&d=<date>) =====
+const SH_FN=`${SB}/functions/v1/guest-lookup`;
+function fmtDateFr(iso){
+  if(!iso)return'';
+  const m=String(iso).split('-');
+  if(m.length<3)return iso;
+  const d=parseInt(m[2],10),mo=parseInt(m[1],10);
+  const mois=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  return d+' '+(mois[mo-1]||'');
+}
+function showGuestBanner(g){
+  const el=document.getElementById('voy-guest');if(!el)return;
+  const nom=[g.first_name,g.last_name].filter(Boolean).join(' ').trim();
+  if(!nom){el.style.display='none';return;}
+  const dates=(g.checkin&&g.checkout)?('Séjour du '+fmtDateFr(g.checkin)+' au '+fmtDateFr(g.checkout)):'';
+  el.innerHTML='<div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px;margin:14px auto 2px;padding:11px 22px;border-radius:16px;background:linear-gradient(135deg,rgba(201,168,76,0.20),rgba(226,192,110,0.10));border:1px solid rgba(226,192,110,0.45);box-shadow:0 6px 24px rgba(201,168,76,0.18);">'
+    +'<span style="font-size:16px;font-weight:700;color:#f5e4a8;letter-spacing:.2px">👋 Bienvenue '+nom+'</span>'
+    +(dates?('<span style="font-size:12.5px;color:#e2c06e">'+dates+'</span>'):'')
+    +'</div>';
+  el.style.display='block';
+}
+async function lbres(bookingId,lastName,checkinDate){
+  show('voyageur-screen');
+  document.getElementById('voy-loading').style.display='block';
+  document.getElementById('voy-content').style.display='none';
+  try{
+    const fn=`${SH_FN}?r=${encodeURIComponent(bookingId)}&k=${encodeURIComponent(lastName||'')}&d=${encodeURIComponent(checkinDate||'')}`;
+    let g=null;
+    try{const gr=await axios.get(fn,{headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`}});g=gr.data;}
+    catch(err){g=err.response?err.response.data:null;}
+    if(!g||!g.ok){document.getElementById('voy-loading').textContent='Lien invalide ou expiré. Contactez votre hôte.';return;}
+    const lr=await axios.get(`${API}/livrets?superhote_rental_id=eq.${encodeURIComponent(g.rental_id)}&select=*`,{headers:{'apikey':KEY}});
+    if(!lr.data.length){document.getElementById('voy-loading').textContent='Votre livret d\'accueil n\'est pas encore disponible. Contactez votre hôte.';return;}
+    const l=lr.data[0];
+    const [ar,er,sr]=await Promise.all([
+      axios.get(`${API}/adresses?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}),
+      axios.get(`${API}/equipements?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
+      axios.get(`${API}/services?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]}))
+    ]);
+    rv(l,ar.data,er.data,false,sr.data);
+    showGuestBanner(g);
+    trackView(l.id,'home');
+  }catch(e){console.error(e);document.getElementById('voy-loading').textContent='Erreur de chargement du livret.';}
 }
 
 function rv(l,adresses,equipements,back,services){
