@@ -552,6 +552,9 @@ body{top:0!important}
         <button class="adm-add-s" onclick="openCatalogue()">
           🛎️ Mes services
         </button>
+        <button class="adm-add-s" onclick="openDemandes()">
+          📋 Mes demandes
+        </button>
         <button class="adm-add" onclick="openEditor(null)">
           + Nouveau livret
         </button>
@@ -582,6 +585,29 @@ body{top:0!important}
     </div>
     <div id="cat-loading" class="loading">Chargement…</div>
     <div id="cat-list"></div>
+  </div>
+</div>
+
+<!-- MES DEMANDES -->
+<div id="demandes-screen" style="display:none">
+  <nav class="adm-nav">
+    <div class="adm-nav-left">
+      <button class="adm-logout" onclick="showAdmin()">← Retour</button>
+      <div class="adm-nav-title serif">Mes demandes</div>
+    </div>
+    <div class="adm-nav-right">
+      <button class="adm-logout" onclick="openDemandes()">↻ Actualiser</button>
+    </div>
+  </nav>
+  <div class="adm-body">
+    <div class="adm-hero">
+      <div class="adm-hero-text">
+        <h2 class="serif gold-text">Commandes de services</h2>
+        <p>Les services commandés par tes voyageurs (paiement, dates, demandes).</p>
+      </div>
+    </div>
+    <div id="dem-loading" class="loading">Chargement…</div>
+    <div id="dem-list"></div>
   </div>
 </div>
 
@@ -1163,7 +1189,38 @@ async function register(){
   catch{alert('Erreur.');}
 }
 function logout(){cu=null;cs();show('login-screen');}
-function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen'].forEach(s=>document.getElementById(s).style.display=s===id?'block':'none');}
+function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','demandes-screen'].forEach(s=>document.getElementById(s).style.display=s===id?'block':'none');}
+
+// ===== Mes demandes (commandes de services) =====
+async function openDemandes(){
+  show('demandes-screen');
+  document.getElementById('dem-loading').style.display='block';
+  document.getElementById('dem-list').innerHTML='';
+  try{
+    const r=await axios.get(`${API}/commandes?select=*&order=created_at.desc`,{headers:hd()});
+    document.getElementById('dem-loading').style.display='none';
+    renderDemandes(r.data||[]);
+  }catch(e){document.getElementById('dem-loading').textContent='Erreur de chargement.';}
+}
+function renderDemandes(list){
+  const box=document.getElementById('dem-list');if(!box)return;
+  if(!list.length){box.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucune commande pour le moment.</div>';return;}
+  box.innerHTML=list.map(c=>{
+    const paye=c.statut==='paye';
+    const badge=paye?'<span style="background:rgba(80,200,120,0.18);color:#7fe0a0;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">✅ Payé</span>':'<span style="background:rgba(226,192,110,0.15);color:var(--gold2);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">⏳ En attente</span>';
+    const d=c.created_at?new Date(c.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}):'';
+    const items=(c.items||[]).map(i=>'<div style="font-size:13px;color:#ddd">• '+(i.qty>1?i.qty+'× ':'')+((i.titre||'').replace(/</g,'&lt;'))+(i.date?(' — '+i.date+(i.heure?(' à '+i.heure):'')):'')+'</div>').join('');
+    const total=c.total_cents!=null?(c.total_cents/100).toFixed(2)+'€':'';
+    const contact=[c.guest_nom,c.guest_email,c.guest_tel].filter(Boolean).map(x=>(''+x).replace(/</g,'&lt;')).join(' · ')||'<span style="color:var(--muted)">infos client après paiement</span>';
+    return '<div class="sc" style="margin-bottom:14px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:12px;color:var(--muted2)">📅 '+d+' · '+((c.livret_nom||'').replace(/</g,'&lt;'))+'</div>'+badge+'</div>'
+      +'<div style="font-weight:600;color:#fff;margin-bottom:6px">'+contact+'</div>'
+      +items
+      +(c.demande?'<div style="margin-top:8px;padding:8px 10px;background:var(--bg3);border-radius:8px;font-size:13px;color:#e8e2d4">📝 '+(''+c.demande).replace(/</g,'&lt;')+'</div>':'')
+      +'<div style="margin-top:8px;text-align:right;color:var(--gold2);font-weight:700">'+total+'</div>'
+      +'</div>';
+  }).join('');
+}
 
 // ===== Catalogue de services =====
 let catalogue=[],allLivrets=[],catSearch='';
