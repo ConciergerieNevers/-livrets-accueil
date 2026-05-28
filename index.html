@@ -407,6 +407,7 @@ textarea.fi{resize:vertical;min-height:80px;}
 @keyframes introIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 @keyframes introOut{to{opacity:0;visibility:hidden}}
 @keyframes introGlow{0%,100%{text-shadow:0 0 10px rgba(226,192,110,0.3)}50%{text-shadow:0 0 26px rgba(226,192,110,0.7)}}
+@keyframes introSpin{to{transform:rotate(360deg)}}
 .toast{position:fixed;bottom:110px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--text);color:var(--bg);padding:12px 24px;border-radius:30px;font-size:12px;font-weight:800;opacity:0;transition:all 0.25s;pointer-events:none;z-index:999;white-space:nowrap;font-family:var(--font-sans);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 .loading{text-align:center;padding:60px;color:var(--muted);font-size:14px;font-family:var(--font-serif);}
@@ -3721,6 +3722,7 @@ async function lv(id){
 
 async function lbs(slug){
   show('voyageur-screen');
+  startIntro();
   document.getElementById('voy-loading').style.display='block';
   document.getElementById('voy-content').style.display='none';
   try{
@@ -3735,7 +3737,7 @@ async function lbs(slug){
       axios.get(`${API}/catalogue_services?livret_ids=cs.{${l.id}}&actif=eq.true&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]}))
     ]);
     rv(l,ar.data,er.data,false,[...(cat.data||[])]);
-    showIntro(l,'');
+    finishIntro('',l.nom);
     trackView(l.id,'home');
   }catch(e){console.error(e);document.getElementById('voy-loading').textContent='Erreur.';}
 }
@@ -3830,26 +3832,31 @@ function changeQty(lineId,d){const c=cart.find(x=>x.lineId===lineId);if(!c)retur
 function removeCartLine(lineId){cart=cart.filter(x=>x.lineId!==lineId);saveCart();renderCart();}
 function addAnotherDay(lineId){const c=cart.find(x=>x.lineId===lineId);if(!c)return;cart.push({lineId:newLineId(),id:c.id,titre:c.titre,cents:c.cents,qty:1,demande_date:true,jours_dispo:c.jours_dispo,delai_jours:c.delai_jours||0,heure_limite:(c.heure_limite==null?null:c.heure_limite),date:'',heure:''});cartStep=1;saveCart();renderCart();toast('Nouvelle ligne · choisis sa date 👇');}
 function clearVoyCart(){cart=[];cartStep=1;cartDemande='';cartDemOn=false;cartCGV=false;saveCart();renderCart();}
-function showIntro(l,prenom){
-  if(!l||!l.id)return;
-  try{if(localStorage.getItem('intro_'+l.id))return;}catch(e){}
+function startIntro(){
   let ov=document.getElementById('voy-intro');
   if(!ov){ov=document.createElement('div');ov.id='voy-intro';document.body.appendChild(ov);}
-  ov.setAttribute('style','position:fixed;inset:0;z-index:11000;background:radial-gradient(130% 90% at 50% 28%,#1c1500 0%,#060606 62%);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;cursor:pointer;animation:introOut .9s ease 3.4s forwards');
-  const dest=(''+(l.nom||'')).replace(/</g,'&lt;');
-  const hi=prenom?('Bienvenue '+(''+prenom).replace(/</g,'&lt;')):'Bienvenue';
+  ov.setAttribute('style','position:fixed;inset:0;z-index:11000;background:radial-gradient(130% 90% at 50% 28%,#1c1500 0%,#060606 62%);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center');
+  ov.style.opacity='1';ov.style.transition='';
   ov.innerHTML='<div style="max-width:440px">'
-    +'<div style="font-size:11px;letter-spacing:5px;text-transform:uppercase;color:var(--gold2);opacity:0;animation:introIn .7s ease .2s forwards,introGlow 2.4s ease 1s infinite">✦ Be Nomad ✦</div>'
-    +'<div class="serif" style="font-size:clamp(28px,8vw,38px);color:var(--gold3);margin:20px 0 8px;line-height:1.12;opacity:0;animation:introIn .7s ease .7s forwards">'+hi+'</div>'
-    +'<div style="font-size:17px;color:var(--text);opacity:0;animation:introIn .7s ease 1.2s forwards">'+dest+'</div>'
-    +'<div style="margin-top:30px;font-size:11px;color:var(--muted2);opacity:0;animation:introIn 1s ease 2.2s forwards">Toucher pour entrer</div>'
+    +'<div style="font-size:11px;letter-spacing:5px;text-transform:uppercase;color:var(--gold2);opacity:0;animation:introIn .6s ease .1s forwards,introGlow 2.4s ease 1s infinite">✦ Be Nomad ✦</div>'
+    +'<div id="intro-hi" class="serif" style="font-size:clamp(28px,8vw,38px);color:var(--gold3);margin:20px 0 8px;line-height:1.12;opacity:0;animation:introIn .6s ease .5s forwards">Bienvenue</div>'
+    +'<div id="intro-dest" style="font-size:17px;color:var(--text);min-height:22px;opacity:0;animation:introIn .6s ease .9s forwards"></div>'
+    +'<div style="margin:30px auto 0;width:32px;height:32px;border:2px solid rgba(226,192,110,0.25);border-top-color:var(--gold2);border-radius:50%;animation:introSpin .8s linear infinite"></div>'
     +'</div>';
-  ov.onclick=function(){closeIntro(l.id);};
   ov.style.display='flex';
-  if(window._introT)clearTimeout(window._introT);
-  window._introT=setTimeout(function(){closeIntro(l.id);},4400);
+  window._introStart=Date.now();
+  if(window._introMax)clearTimeout(window._introMax);
+  window._introMax=setTimeout(hideIntro,6000);
 }
-function closeIntro(id){const ov=document.getElementById('voy-intro');if(ov)ov.style.display='none';try{localStorage.setItem('intro_'+id,'1');}catch(e){}}
+function finishIntro(prenom,dest){
+  const hi=document.getElementById('intro-hi'),de=document.getElementById('intro-dest');
+  if(hi)hi.textContent=prenom?('Bienvenue '+prenom):'Bienvenue';
+  if(de)de.textContent=dest||'';
+  if(window._introMax)clearTimeout(window._introMax);
+  const wait=Math.max(0,1700-(Date.now()-(window._introStart||0)));
+  setTimeout(hideIntro,wait);
+}
+function hideIntro(){const ov=document.getElementById('voy-intro');if(!ov)return;ov.style.transition='opacity .6s ease';ov.style.opacity='0';setTimeout(function(){ov.style.display='none';},650);}
 const JOURS_LBL=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 function joursTxt(arr){if(!arr||arr.length>=7)return'tous les jours';return [1,2,3,4,5,6,0].filter(d=>arr.includes(d)).map(d=>JOURS_LBL[d]).join(', ')||'aucun jour';}
 function cartDateError(c){if(!c.demande_date||!c.date)return'';const dt=new Date(c.date+'T12:00:00');if(!(c.jours_dispo||[0,1,2,3,4,5,6]).includes(dt.getDay()))return '❌ Service non disponible ce jour-là';if(typeof bookableDay==='function'&&!bookableDay(c,dt))return '❌ Trop tard pour réserver ce service';return'';}
@@ -3990,6 +3997,7 @@ async function payCart(){if(!cart.length)return;
   const btn=document.getElementById('voy-cart-pay');if(btn){btn.disabled=true;btn.textContent='Redirection…';}try{const qp=new URLSearchParams(window.location.search);let reload;if(qp.get('r')){reload=location.origin+'/?'+new URLSearchParams({r:qp.get('r'),k:qp.get('k')||'',d:qp.get('d')||''}).toString();}else if(currentLivretData&&currentLivretData.slug){reload=location.origin+'/livret/'+currentLivretData.slug;}else{reload=location.origin+'/';}const r=await axios.post(`${SB}/functions/v1/create-checkout`,{livret_id:currentLivretId,return_url:reload,booking_id:(qp.get('r')||''),demande:(cartDemande||'').slice(0,500),items:cart.map(c=>({id:c.id,qty:c.qty,date:c.date||'',heure:c.heure||''}))},{headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`,'Content-Type':'application/json'}});if(r.data&&r.data.ok&&r.data.url){window.location.href=r.data.url;}else{alert('Paiement indisponible pour le moment.');if(btn){btn.disabled=false;btn.textContent='💳 Payer';}}}catch(e){console.error(e);alert('Erreur lors du paiement.');if(btn){btn.disabled=false;btn.textContent='💳 Payer';}}}
 async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,checkinTime,checkoutTime){
   show('voyageur-screen');
+  startIntro();
   document.getElementById('voy-loading').style.display='block';
   document.getElementById('voy-content').style.display='none';
   try{
@@ -4013,7 +4021,7 @@ async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,chec
     showResa(g,checkinTime,checkoutTime,guestPageUrl);
     showFacture(invoiceUrl);
     showServiceInvoices(g.invoices||[]);
-    showIntro(l,g.first_name||'');
+    finishIntro(g.first_name||'',l.nom);
     trackView(l.id,'home');
   }catch(e){console.error(e);document.getElementById('voy-loading').textContent='Erreur de chargement du livret.';}
 }
