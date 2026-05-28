@@ -784,18 +784,6 @@ body{top:0!important}
         </div>
       </div>
       <div class="vs">
-        <div class="vs-label">Connexion rapide</div>
-        <div class="vc">
-          <div class="vc-title">Wifi</div>
-          <div class="vr"><span class="lb">Réseau</span><span class="vl notranslate" id="voy-wifi-nom">—</span></div>
-          <div class="vr">
-            <span class="lb">Mot de passe</span>
-            <div style="display:flex;align-items:center;gap:8px">
-              <span class="wifi-code notranslate" id="voy-wifi-mdp">—</span>
-              <button class="copy-btn" onclick="copyWifi()">Copier</button>
-            </div>
-          </div>
-        </div>
         <div class="vc" id="voy-video-card" style="padding:0;overflow:hidden;display:none">
           <div class="video-wrap"><iframe id="voy-iframe" src="" allow="autoplay;fullscreen;picture-in-picture" allowfullscreen></iframe></div>
           <div id="voy-video-chapters" class="vid-chapters" style="display:none"></div>
@@ -840,6 +828,17 @@ body{top:0!important}
           <div class="vr"><span class="lb">Arrivée</span><span class="vl" id="voy-checkin" style="color:var(--gold2)">—</span></div>
           <div class="vr"><span class="lb">Départ</span><span class="vl" id="voy-checkout" style="color:#c08030">—</span></div>
           <div class="vr"><span class="lb">Parking</span><span class="vl" id="voy-parking">—</span></div>
+        </div>
+        <div class="vc">
+          <div class="vc-title">Wifi</div>
+          <div class="vr"><span class="lb">Réseau</span><span class="vl notranslate" id="voy-wifi-nom">—</span></div>
+          <div class="vr">
+            <span class="lb">Mot de passe</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="wifi-code notranslate" id="voy-wifi-mdp">—</span>
+              <button class="copy-btn" onclick="copyWifi()">Copier</button>
+            </div>
+          </div>
         </div>
         <div class="vc" id="voy-poubelles-card" style="display:none">
           <div class="vc-title">Poubelles</div>
