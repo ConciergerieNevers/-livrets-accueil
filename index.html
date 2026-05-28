@@ -1581,7 +1581,8 @@ function renderResa(){
   if(!resaData.length){box.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-style:italic;line-height:1.7">Aucune réservation en mémoire.<br>Clique sur <b style="color:var(--gold2)">🔄 Synchroniser</b> (en haut) pour récupérer tes réservations SuperHote.</div>';return;}
   const livOpts='<option value="all">Tous les logements</option>'+resaLivrets.filter(l=>l.superhote_rental_id).map(l=>'<option value="'+l.id+'"'+(String(resaLivretFilter)===String(l.id)?' selected':'')+'>'+((l.nom||'').replace(/</g,'&lt;'))+'</option>').join('');
   const tab=(k,l)=>'<button onclick="setResaStatus(\''+k+'\')" style="padding:7px 12px;border-radius:18px;border:1px solid '+(resaStatus===k?'var(--gold2)':'var(--border)')+';background:'+(resaStatus===k?'rgba(226,192,110,0.15)':'transparent')+';color:'+(resaStatus===k?'var(--gold2)':'var(--muted2)')+';font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">'+l+'</button>';
-  let html='<input value="'+(resaSearch||'').replace(/"/g,'&quot;')+'" oninput="resaSearch=this.value;renderResaList()" placeholder="🔍 Rechercher (nom, date, logement, n° résa)…" style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--border-gold);background:#141414;color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:12px">';
+  let html='<div style="padding:10px 14px;margin-bottom:14px;border:1px solid var(--border-gold);border-radius:10px;background:rgba(226,192,110,0.06);font-size:11.5px;color:var(--muted2);line-height:1.5">⚠️ Ces liens ouvrent le livret avec le nom + les dates. Les liens <b style="color:var(--gold2)">complets</b> (avec facture séjour + page guest-page) sont <b style="color:var(--gold2)">uniquement</b> ceux envoyés par les <b style="color:var(--gold2)">messages SuperHote</b>.</div>';
+  html+='<input value="'+(resaSearch||'').replace(/"/g,'&quot;')+'" oninput="resaSearch=this.value;renderResaList()" placeholder="🔍 Rechercher (nom, date, logement, n° résa)…" style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--border-gold);background:#141414;color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:12px">';
   html+='<select onchange="resaLivretFilter=this.value;renderResa()" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--border-gold);background:#141414;color:#fff;font-size:13px;margin-bottom:12px">'+livOpts+'</select>';
   html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'+tab('all','Toutes')+tab('encours','● En cours')+tab('avenir','À venir')+tab('passe','Passées')+'</div>';
   html+='<div id="resa-rows"></div>';
@@ -1606,13 +1607,12 @@ async function syncReservations(){
   if(!cu||!cu.access_token){alert('Session expirée, reconnecte-toi.');return;}
   resaSyncing=true;
   const btn=document.getElementById('resa-sync-btn');
-  let page=1,last=0,total=0,fail=0,guard=0,lastErr='',keysShown=false;
+  let page=1,last=0,total=0,fail=0,guard=0,lastErr='';
   try{
     while(guard++<300){
       if(btn)btn.textContent='Synchro…'+(last?(' '+page+'/'+last):'');
       const r=await axios.get(`${SB}/functions/v1/guest-lookup?sync=${page}`,{headers:{'apikey':KEY,'Authorization':`Bearer ${cu.access_token}`}});
       if(!r.data||!r.data.ok){lastErr=(r.data&&(r.data.error||r.data.err))||'réponse invalide';break;}
-      if(!keysShown&&r.data.sample_keys){keysShown=true;alert('🔍 DIAGNOSTIC — Champs renvoyés par SuperHote pour une réservation :\n\n'+r.data.sample_keys.join(', '));}
       total+=r.data.synced||0;fail+=r.data.failed||0;if(r.data.err)lastErr=r.data.err;last=r.data.last_page||last;
       if(r.data.done||!r.data.next)break;
       page=r.data.next;
@@ -1853,53 +1853,96 @@ async function ll(){
   }catch(e){console.error(e);document.getElementById('livrets-loading').textContent='Erreur.';}
 }
 
-function rl(livrets,views={}){
-  document.getElementById('livrets-loading').style.display='none';
-  const g=document.getElementById('livrets-grid');g.style.display='grid';g.innerHTML='';
+let lvData=[],lvViews={},lvView=((typeof localStorage!=='undefined'&&localStorage.getItem('lv_view'))||'cartes'),lvReorder=false;
+function rl(livrets,views={}){lvData=livrets||[];lvViews=views||{};renderLivrets();}
+function lvActifOf(l){return l.actif!==false;}
+function setLvView(v){lvView=v;try{localStorage.setItem('lv_view',v);}catch(e){}renderLivrets();}
+function toggleLvReorder(){lvReorder=!lvReorder;renderLivrets();}
+async function toggleLvActif(id){
+  const l=lvData.find(x=>String(x.id)===String(id));if(!l)return;
+  const newVal=!lvActifOf(l);
+  if(!newVal&&!confirm('Mettre ce livret EN PAUSE ?\nLes voyageurs qui ouvrent son lien verront « temporairement indisponible ».'))return;
+  try{await axios.patch(`${API}/livrets?id=eq.${id}`,{actif:newVal},{headers:{...hd(),'Prefer':'return=minimal'}});l.actif=newVal;renderLivrets();toast(newVal?'✅ Livret réactivé':'⏸ Livret en pause');}
+  catch(e){alert('Impossible de changer le statut.');}
+}
+async function setLvCategorie(id){
+  const l=lvData.find(x=>String(x.id)===String(id));if(!l)return;
+  const v=prompt('Catégorie de ce logement (ex : Nevers, Appartements, Maisons…). Laisse vide pour aucune.',l.categorie||'');
+  if(v===null)return;
+  try{await axios.patch(`${API}/livrets?id=eq.${id}`,{categorie:(v.trim()||null)},{headers:{...hd(),'Prefer':'return=minimal'}});l.categorie=v.trim()||null;renderLivrets();toast('🏷 Catégorie mise à jour');}
+  catch(e){alert('Impossible.');}
+}
+async function saveLvOrder(){
+  const ids=[...document.querySelectorAll('#lv-sortable [data-lvid]')].map(el=>el.getAttribute('data-lvid'));
+  try{for(let i=0;i<ids.length;i++){const l=lvData.find(x=>String(x.id)===ids[i]);if(l){l.ordre=i;await axios.patch(`${API}/livrets?id=eq.${ids[i]}`,{ordre:i},{headers:{...hd(),'Prefer':'return=minimal'}});}}toast('Ordre enregistré');}
+  catch(e){alert('Ordre non enregistré.');}
+}
+function lvCardHtml(l){
+  const pub=`${BASE}/livret/${l.slug}`;
+  const vc=lvViews[l.id]||0;
+  const safeNom=(''+l.nom).replace(/'/g,"\\'");
+  const actif=lvActifOf(l);
+  const tag=actif
+    ?'<div class="lv-card-tag" style="color:#7fe0a0;border-color:rgba(80,200,120,0.3);background:rgba(80,200,120,0.1)"><div class="lv-card-tag-dot" style="background:#7fe0a0"></div>Actif</div>'
+    :'<div class="lv-card-tag" style="color:#e0c060;border-color:rgba(226,192,110,0.4);background:rgba(226,192,110,0.12)"><div class="lv-card-tag-dot" style="background:#e0c060"></div>En pause</div>';
   const shLink=`${BASE}/?r=[BOOKING_ID]&d=[RESERVATION_CHECKIN_DATE]&k=[GUEST_LAST_NAME]&ci=[RESERVATION_CHECKIN_TIME]&co=[RESERVATION_CHECKOUT_TIME]&g=[GUESTPAGE_URL]&f=[INVOICE_LINK]`;
-  livrets.forEach(l=>{
-    const pub=`${BASE}/livret/${l.slug}`;
-    const vc=views[l.id]||0;
-    const c=document.createElement('div');c.className='lv-card';
-    const safeNom=l.nom.replace(/'/g,"\\'");
-    const shBlock=l.superhote_rental_id
-      ?`<div class="lv-pub" style="margin-top:-8px;flex-direction:row;align-items:flex-start" onclick="cpu('${shLink}','🔗 Lien SuperHote copié — colle-le dans le champ personnalisé')">
-          <span style="font-size:15px;flex-shrink:0;line-height:1.4">🔗</span>
-          <div style="flex:1;overflow:hidden">
-            <div style="font-size:10px;color:var(--muted2);font-weight:600;letter-spacing:.3px;margin-bottom:2px">Lien SuperHote · champ personnalisé</div>
-            <div class="lv-pub-url">${shLink}</div>
-          </div>
-          <span class="lv-pub-copy">Copier</span>
-        </div>`
-      :`<div style="margin-top:-8px;margin-bottom:16px;padding:9px 14px;border:1px dashed var(--border-gold);border-radius:10px;font-size:10.5px;color:var(--muted2);line-height:1.5">🔗 Lien SuperHote : lie d'abord ce livret à un logement SuperHote via ✏️ Modifier.</div>`;
-    c.innerHTML=`
-      <div class="lv-card-top">
-        <div class="lv-card-tag"><div class="lv-card-tag-dot"></div>Actif</div>
-        <div class="lv-card-name">${l.nom}</div>
-        <div class="lv-card-slug">/${l.slug}</div>
-      </div>
+  const shBlock=l.superhote_rental_id
+    ?`<div class="lv-pub" style="margin-top:-8px;flex-direction:row;align-items:flex-start" onclick="cpu('${shLink}','🔗 Lien SuperHote copié — colle-le dans le champ personnalisé')"><span style="font-size:15px;flex-shrink:0;line-height:1.4">🔗</span><div style="flex:1;overflow:hidden"><div style="font-size:10px;color:var(--muted2);font-weight:600;letter-spacing:.3px;margin-bottom:2px">Lien SuperHote · champ personnalisé</div><div class="lv-pub-url">${shLink}</div></div><span class="lv-pub-copy">Copier</span></div>`
+    :`<div style="margin-top:-8px;margin-bottom:16px;padding:9px 14px;border:1px dashed var(--border-gold);border-radius:10px;font-size:10.5px;color:var(--muted2);line-height:1.5">🔗 Lien SuperHote : lie d'abord ce livret à un logement SuperHote via ✏️ Modifier.</div>`;
+  return `<div class="lv-card">
+      <div class="lv-card-top">${tag}<div class="lv-card-name">${l.nom}</div><div class="lv-card-slug">/${l.slug}</div></div>
       <div class="lv-card-body">
         <div class="lv-stats-mini"><div class="lv-stat-mini">👁 <b>${vc}</b> vues / 30j</div></div>
-        <div class="lv-pub" onclick="cpu('${pub}')">
-          <svg class="lv-pub-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/></svg>
-          <span class="lv-pub-url">${pub}</span><span class="lv-pub-copy">Copier</span>
-        </div>
+        <div class="lv-pub" onclick="cpu('${pub}')"><svg class="lv-pub-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/></svg><span class="lv-pub-url">${pub}</span><span class="lv-pub-copy">Copier</span></div>
         ${shBlock}
         <div class="lv-actions">
           <button class="lv-btn" onclick="openEditor('${l.id}')">✏️ Modifier</button>
           <button class="lv-btn" onclick="lv('${l.id}')">👁 Voir</button>
+          <button class="lv-btn" onclick="setLvCategorie('${l.id}')">🏷 Catégorie</button>
+          <button class="lv-btn" onclick="toggleLvActif('${l.id}')">${actif?'⏸ Pause':'▶ Réactiver'}</button>
           <button class="lv-btn" onclick="showQR('${l.id}','${safeNom}','${pub}')">📱 QR Code</button>
-          <button class="lv-btn" onclick="downloadFiche('${l.id}','${safeNom}')">📄 Fiche PDF</button>
           <button class="lv-btn" onclick="showStats('${l.id}','${safeNom}')">📊 Stats</button>
           <button class="lv-btn full" onclick="dup('${l.id}','${safeNom}')">📋 Dupliquer</button>
           <button class="lv-btn danger full" onclick="del('${l.id}','${safeNom}')">🗑 Supprimer</button>
         </div>
-      </div>`;
-    g.appendChild(c);
+      </div></div>`;
+}
+function lvRowHtml(l){
+  const actif=lvActifOf(l);
+  const safeNom=(''+l.nom).replace(/'/g,"\\'");
+  return `<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;border:1px solid var(--border);border-radius:12px;margin-bottom:8px;background:var(--card)">
+    <span style="width:9px;height:9px;border-radius:50%;background:${actif?'#7fe0a0':'#e0c060'};flex-shrink:0"></span>
+    <div style="flex:1;min-width:0"><div style="font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.nom}</div><div style="font-size:11px;color:var(--muted2)">/${l.slug}</div></div>
+    <button class="lv-btn" style="width:auto;padding:7px 11px" onclick="openEditor('${l.id}')">✏️</button>
+    <button class="lv-btn" style="width:auto;padding:7px 11px" onclick="lv('${l.id}')">👁</button>
+    <button class="lv-btn" style="width:auto;padding:7px 11px" onclick="setLvCategorie('${l.id}')">🏷</button>
+    <button class="lv-btn" style="width:auto;padding:7px 11px" onclick="toggleLvActif('${l.id}')">${actif?'⏸':'▶'}</button>
+  </div>`;
+}
+function renderLivrets(){
+  const g=document.getElementById('livrets-grid');if(!g)return;
+  document.getElementById('livrets-loading').style.display='none';
+  g.style.display='block';
+  const sorted=[...lvData].sort((a,b)=>((a.ordre||0)-(b.ordre||0))||(''+(a.nom||'')).localeCompare(''+(b.nom||''),'fr'));
+  const vbtn=(v,l)=>'<button onclick="setLvView(\''+v+'\')" style="padding:7px 12px;border-radius:10px;border:1px solid '+(lvView===v?'var(--gold2)':'var(--border)')+';background:'+(lvView===v?'rgba(226,192,110,0.15)':'transparent')+';color:'+(lvView===v?'var(--gold2)':'var(--muted2)')+';font-size:12px;font-weight:700;cursor:pointer">'+l+'</button>';
+  const bar='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px;padding:12px 14px;border:1px solid var(--border-gold);border-radius:12px;background:var(--bg2)"><span style="font-size:12px;color:var(--muted2);font-weight:700">⚙️ Affichage</span>'+vbtn('cartes','▦ Cartes')+vbtn('liste','☰ Liste')+'<button onclick="toggleLvReorder()" style="margin-left:auto;padding:7px 12px;border-radius:10px;border:1px solid '+(lvReorder?'var(--gold2)':'var(--border)')+';background:'+(lvReorder?'rgba(226,192,110,0.15)':'transparent')+';color:'+(lvReorder?'var(--gold2)':'var(--muted2)')+';font-size:12px;font-weight:700;cursor:pointer">'+(lvReorder?'✓ Terminer':'⇅ Réorganiser')+'</button></div>';
+  if(lvReorder){
+    const rows=sorted.map(l=>'<div data-lvid="'+l.id+'" style="display:flex;align-items:center;gap:12px;padding:13px 14px;border:1px solid var(--border-gold);border-radius:12px;margin-bottom:8px;background:var(--card);cursor:grab"><span style="font-size:18px;color:var(--muted2)">☰</span><span style="width:9px;height:9px;border-radius:50%;background:'+(lvActifOf(l)?'#7fe0a0':'#e0c060')+'"></span><div style="flex:1"><div style="font-weight:600;color:#fff">'+l.nom+'</div><div style="font-size:11px;color:var(--muted2)">'+(l.categorie||'Sans catégorie')+'</div></div></div>').join('');
+    g.innerHTML=bar+'<div style="font-size:12px;color:var(--muted2);margin-bottom:10px">Glisse les logements pour changer l\'ordre, puis clique « ✓ Terminer ».</div><div id="lv-sortable">'+rows+'</div>';
+    if(typeof Sortable!=='undefined'){try{new Sortable(document.getElementById('lv-sortable'),{animation:150,onEnd:saveLvOrder});}catch(e){}}
+    return;
+  }
+  const groups={},order=[];
+  sorted.forEach(l=>{const k=(l.categorie&&(''+l.categorie).trim())||'Sans catégorie';if(!groups[k]){groups[k]=[];order.push(k);}groups[k].push(l);});
+  order.sort((a,b)=>((a==='Sans catégorie')-(b==='Sans catégorie'))||a.localeCompare(b,'fr'));
+  const showHeaders=!(order.length===1&&order[0]==='Sans catégorie');
+  let html=bar;
+  order.forEach(k=>{
+    if(showHeaders)html+='<div style="font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--gold2);margin:6px 0 12px">🏷 '+k.replace(/</g,'&lt;')+' · '+groups[k].length+'</div>';
+    html+=(lvView==='liste')?('<div style="margin-bottom:18px">'+groups[k].map(lvRowHtml).join('')+'</div>'):('<div class="livrets-grid" style="margin-bottom:22px">'+groups[k].map(lvCardHtml).join('')+'</div>');
   });
-  const nc=document.createElement('div');nc.className='new-card';nc.onclick=()=>openEditor(null);
-  nc.innerHTML='<div class="new-card-plus"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><p>Nouveau livret</p>';
-  g.appendChild(nc);
+  html+='<div class="new-card" onclick="openEditor(null)" style="max-width:320px"><div class="new-card-plus"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><p>Nouveau livret</p></div>';
+  g.innerHTML=html;
 }
 
 function cpu(u,msg){navigator.clipboard.writeText(u).then(()=>toast(msg||'🔗 Lien copié !'));}
@@ -3623,6 +3666,7 @@ async function lbs(slug){
     const lr=await axios.get(`${API}/livrets?slug=eq.${slug}&select=*`,{headers:{'apikey':KEY}});
     if(!lr.data.length){document.getElementById('voy-loading').textContent='Livret introuvable.';return;}
     const l=lr.data[0];
+    if(l.actif===false){document.getElementById('voy-loading').innerHTML='⏸ Livret temporairement indisponible.<br>Merci de contacter votre hôte.';return;}
     const [ar,er,sr,cat]=await Promise.all([
       axios.get(`${API}/adresses?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}),
       axios.get(`${API}/equipements?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
@@ -3863,6 +3907,7 @@ async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,chec
     const lr=await axios.get(`${API}/livrets?superhote_rental_id=eq.${encodeURIComponent(g.rental_id)}&select=*`,{headers:{'apikey':KEY}});
     if(!lr.data.length){document.getElementById('voy-loading').textContent='Votre livret d\'accueil n\'est pas encore disponible. Contactez votre hôte.';return;}
     const l=lr.data[0];
+    if(l.actif===false){document.getElementById('voy-loading').innerHTML='⏸ Livret temporairement indisponible.<br>Merci de contacter votre hôte.';return;}
     const [ar,er,sr,cat]=await Promise.all([
       axios.get(`${API}/adresses?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}),
       axios.get(`${API}/equipements?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
