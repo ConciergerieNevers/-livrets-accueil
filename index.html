@@ -1165,14 +1165,15 @@ function logout(){cu=null;cs();show('login-screen');}
 function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen'].forEach(s=>document.getElementById(s).style.display=s===id?'block':'none');}
 
 // ===== Catalogue de services =====
-let catalogue=[],allLivrets=[];
+let catalogue=[],allLivrets=[],catSearch='';
 async function openCatalogue(){
   show('catalogue-screen');
   document.getElementById('cat-loading').style.display='block';
   document.getElementById('cat-list').innerHTML='';
+  catSearch='';
   try{
     const [cr,lr]=await Promise.all([
-      axios.get(`${API}/catalogue_services?select=*&order=ordre.asc`,{headers:hd()}),
+      axios.get(`${API}/catalogue_services?select=*&order=categorie.asc,ordre.asc`,{headers:hd()}),
       axios.get(`${API}/livrets?select=id,nom&order=nom.asc`,{headers:hd()})
     ]);
     catalogue=cr.data||[];allLivrets=lr.data||[];
@@ -1180,46 +1181,92 @@ async function openCatalogue(){
     renderCatalogue();
   }catch(e){document.getElementById('cat-loading').textContent='Erreur de chargement.';}
 }
-function addCatService(){catalogue.push({titre:'',description:'',prix:'',image_url:'',lien_paiement:'',livret_ids:[],ordre:catalogue.length});renderCatalogue();window.scrollTo(0,document.body.scrollHeight);}
-function toggleCatLivret(i,lid,on){const s=catalogue[i];s.livret_ids=s.livret_ids||[];if(on){if(!s.livret_ids.includes(lid))s.livret_ids.push(lid);}else{s.livret_ids=s.livret_ids.filter(x=>x!==lid);}}
-function renderCatalogue(){
-  const box=document.getElementById('cat-list');
-  if(!catalogue.length){box.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun service. Cliquez sur « + Nouveau service ».</div>';return;}
-  box.innerHTML=catalogue.map((s,i)=>{
-    const checks=allLivrets.map(lv=>`<label style="display:inline-flex;align-items:center;gap:6px;margin:4px 14px 4px 0;font-size:13px;cursor:pointer"><input type="checkbox" ${(s.livret_ids||[]).includes(lv.id)?'checked':''} onchange="toggleCatLivret(${i},'${lv.id}',this.checked)">${(lv.nom||'').replace(/</g,'&lt;')}</label>`).join('')||'<span style="color:var(--muted);font-size:13px">Aucun livret créé.</span>';
-    return `<div class="sc" style="margin-bottom:16px">
-      <div class="fg"><label class="fl2">Titre du service</label><input class="fi" id="cat-titre-${i}" value="${(s.titre||'').replace(/"/g,'&quot;')}" placeholder="Ex: Ménage mi-séjour"></div>
-      <div class="fg"><label class="fl2">Prix</label><input class="fi" id="cat-prix-${i}" value="${(s.prix||'').replace(/"/g,'&quot;')}" placeholder="Ex: 25€"></div>
-      <div class="fg"><label class="fl2">Description</label><textarea class="fi" id="cat-desc-${i}" placeholder="Détails du service">${(s.description||'').replace(/</g,'&lt;')}</textarea></div>
-      <div class="fg"><label class="fl2">Photo</label>${s.image_url?`<img src="${s.image_url}" style="width:84px;height:84px;object-fit:cover;border-radius:12px;display:block;margin-bottom:8px">`:''}<input type="file" accept="image/*" onchange="uploadImage(this,'cat-${i}')"></div>
-      <div class="fg"><label class="fl2">Logements qui proposent ce service</label><div style="margin-top:4px">${checks}</div></div>
-      <div style="display:flex;gap:10px;margin-top:10px">
-        <button class="adm-add" onclick="saveCatService(${i})">💾 Enregistrer</button>
-        <button class="adm-add-s" onclick="delCatService(${i})">🗑 Supprimer</button>
-      </div>
-    </div>`;
-  }).join('');
+function catById(id){return catalogue.find(s=>String(s.id)===String(id));}
+function addCatService(){
+  const tmp='tmp-'+Date.now();
+  catalogue.unshift({id:tmp,_new:true,titre:'',description:'',prix:'',image_url:'',categorie:'',livret_ids:[],ordre:0});
+  catSearch='';renderCatalogue();setTimeout(()=>editCatRow(tmp,true),60);
 }
-async function saveCatService(i){
-  const s=catalogue[i];
-  s.titre=document.getElementById('cat-titre-'+i).value.trim();
-  s.prix=document.getElementById('cat-prix-'+i).value.trim();
-  s.description=document.getElementById('cat-desc-'+i).value;
+function editCatRow(id,forceOpen){const el=document.getElementById('cat-edit-'+id);if(!el)return;el.style.display=(forceOpen||el.style.display==='none')?'block':'none';}
+function toggleCatLivret(id,lid,on){const s=catById(id);if(!s)return;s.livret_ids=s.livret_ids||[];if(on){if(!s.livret_ids.includes(lid))s.livret_ids.push(lid);}else{s.livret_ids=s.livret_ids.filter(x=>x!==lid);}}
+function catEditHtml(s){
+  const id=s.id;
+  const checks=allLivrets.map(lv=>`<label style="display:inline-flex;align-items:center;gap:6px;margin:4px 14px 4px 0;font-size:13px;cursor:pointer"><input type="checkbox" ${(s.livret_ids||[]).includes(lv.id)?'checked':''} onchange="toggleCatLivret('${id}','${lv.id}',this.checked)">${(lv.nom||'').replace(/</g,'&lt;')}</label>`).join('')||'<span style="color:var(--muted);font-size:13px">Aucun livret.</span>';
+  return `<div class="fg"><label class="fl2">Titre</label><input class="fi" id="catf-titre-${id}" value="${(s.titre||'').replace(/"/g,'&quot;')}" placeholder="Ex: Ménage mi-séjour"></div>
+    <div class="fg"><label class="fl2">Catégorie</label><input class="fi" id="catf-cat-${id}" value="${(s.categorie||'').replace(/"/g,'&quot;')}" placeholder="Ex: Restauration, Ménage, Bien-être" list="cat-cats-dl"></div>
+    <div class="fg"><label class="fl2">Prix</label><input class="fi" id="catf-prix-${id}" value="${(s.prix||'').replace(/"/g,'&quot;')}" placeholder="Ex: 25€"></div>
+    <div class="fg"><label class="fl2">Description</label><textarea class="fi" id="catf-desc-${id}" placeholder="Détails du service">${(s.description||'').replace(/</g,'&lt;')}</textarea></div>
+    <div class="fg"><label class="fl2">Photo</label>${s.image_url?`<img src="${s.image_url}" style="width:84px;height:84px;object-fit:cover;border-radius:12px;display:block;margin-bottom:8px">`:''}<input type="file" accept="image/*" onchange="uploadImage(this,'cat-${id}')"></div>
+    <div class="fg"><label class="fl2">Logements qui proposent ce service</label><div style="margin-top:4px">${checks}</div></div>
+    <div style="display:flex;gap:10px;margin-top:10px">
+      <button class="adm-add" onclick="saveCatService('${id}')">💾 Enregistrer</button>
+      <button class="adm-add-s" onclick="delCatService('${id}')">🗑 Supprimer</button>
+    </div>`;
+}
+function catRowHtml(s){
+  const n=(s.livret_ids||[]).length;
+  const img=s.image_url?`<img src="${s.image_url}" style="width:44px;height:44px;object-fit:cover;border-radius:8px;flex-shrink:0">`:`<div style="width:44px;height:44px;border-radius:8px;background:var(--bg3);flex-shrink:0;display:flex;align-items:center;justify-content:center">🛎️</div>`;
+  return `<div class="cat-row" data-id="${s.id}" style="border:1px solid var(--border);border-radius:12px;margin-bottom:8px;overflow:hidden">
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px">
+      <span class="drag-handle" title="Glisser pour réordonner" style="cursor:grab;color:var(--muted2);font-size:16px">⋮⋮</span>
+      ${img}
+      <div style="flex:1;min-width:0"><div style="color:#fff;font-weight:600">${(s.titre||'(sans titre)').replace(/</g,'&lt;')}</div><div style="font-size:12px;color:var(--muted2)">${s.prix?((s.prix||'').replace(/</g,'&lt;')+' · '):''}${n} logement${n>1?'s':''}</div></div>
+      <button class="adm-add-s" onclick="editCatRow('${s.id}')" style="padding:7px 12px">✏️</button>
+    </div>
+    <div class="cat-edit" id="cat-edit-${s.id}" style="display:none;padding:0 12px 14px">${catEditHtml(s)}</div>
+  </div>`;
+}
+function renderCatalogue(){
+  const box=document.getElementById('cat-list');if(!box)return;
+  const cats=[...new Set(catalogue.map(s=>(s.categorie||'').trim()))].sort((a,b)=>(!a?1:!b?-1:a.localeCompare(b,'fr')));
+  const dl=`<datalist id="cat-cats-dl">${cats.filter(Boolean).map(c=>`<option value="${c.replace(/"/g,'&quot;')}">`).join('')}</datalist>`;
+  let html=dl+`<div style="margin-bottom:16px"><input class="fi" id="cat-search" value="${(catSearch||'').replace(/"/g,'&quot;')}" oninput="catSearch=this.value;renderCatalogue()" placeholder="🔍 Rechercher un service…"></div>`;
+  if(!catalogue.length){box.innerHTML=html+'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun service. Clique sur « + Nouveau service ».</div>';return;}
+  const q=(catSearch||'').toLowerCase().trim();
+  cats.forEach(cat=>{
+    let rows=catalogue.filter(s=>(s.categorie||'').trim()===cat);
+    if(q)rows=rows.filter(s=>(s.titre||'').toLowerCase().includes(q));
+    if(!rows.length)return;
+    html+=`<div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--gold2);margin:18px 0 8px">${cat?cat.replace(/</g,'&lt;'):'Sans catégorie'}</div>`;
+    html+=`<div class="cat-section" data-cat="${(cat||'').replace(/"/g,'&quot;')}">`+rows.map(catRowHtml).join('')+`</div>`;
+  });
+  box.innerHTML=html;
+  if(typeof Sortable!=='undefined')document.querySelectorAll('#cat-list .cat-section').forEach(sec=>{try{new Sortable(sec,{group:'cats',handle:'.drag-handle',animation:150,onEnd:catReorder});}catch(e){}});
+  const si=document.getElementById('cat-search');if(si&&q){si.focus();si.setSelectionRange(si.value.length,si.value.length);}
+}
+async function catReorder(){
+  let ord=0;const patches=[];
+  document.querySelectorAll('#cat-list .cat-section').forEach(sec=>{
+    const cat=sec.getAttribute('data-cat')||'';
+    sec.querySelectorAll(':scope > .cat-row').forEach(row=>{
+      const s=catById(row.getAttribute('data-id'));if(!s)return;
+      s.ordre=ord++;s.categorie=cat;
+      if(s.id&&!s._new)patches.push(axios.patch(`${API}/catalogue_services?id=eq.${s.id}`,{ordre:s.ordre,categorie:s.categorie||null},{headers:{...hd(),'Prefer':'return=minimal'}}));
+    });
+  });
+  await Promise.allSettled(patches);toast('✓ Ordre mis à jour');renderCatalogue();
+}
+async function saveCatService(id){
+  const s=catById(id);if(!s)return;
+  s.titre=(document.getElementById('catf-titre-'+id).value||'').trim();
+  s.categorie=(document.getElementById('catf-cat-'+id).value||'').trim();
+  s.prix=(document.getElementById('catf-prix-'+id).value||'').trim();
+  s.description=document.getElementById('catf-desc-'+id).value;
   if(!s.titre){alert('Mets au moins un titre.');return;}
   if(!cu||!cu.access_token){alert('Session expirée, reconnecte-toi.');return;}
-  const payload={titre:s.titre,description:s.description||null,prix:s.prix||null,image_url:s.image_url||null,lien_paiement:s.lien_paiement||null,livret_ids:s.livret_ids||[],ordre:i};
+  const payload={titre:s.titre,categorie:s.categorie||null,description:s.description||null,prix:s.prix||null,image_url:s.image_url||null,livret_ids:s.livret_ids||[],ordre:s.ordre||0};
   try{
-    if(s.id){await axios.patch(`${API}/catalogue_services?id=eq.${s.id}`,payload,{headers:{...hd(),'Prefer':'return=minimal'}});}
-    else{const r=await axios.post(`${API}/catalogue_services`,payload,{headers:{...hd(),'Prefer':'return=representation'}});s.id=r.data[0].id;}
-    toast('✓ Service enregistré');
+    if(s._new){const r=await axios.post(`${API}/catalogue_services`,payload,{headers:{...hd(),'Prefer':'return=representation'}});s.id=r.data[0].id;delete s._new;}
+    else{await axios.patch(`${API}/catalogue_services?id=eq.${s.id}`,payload,{headers:{...hd(),'Prefer':'return=minimal'}});}
+    toast('✓ Service enregistré');renderCatalogue();
   }catch(e){alert('Erreur : '+(e.response?.data?.message||e.message));}
 }
-async function delCatService(i){
-  const s=catalogue[i];
+async function delCatService(id){
+  const s=catById(id);if(!s)return;
   if(!confirm('Supprimer ce service du catalogue ?'))return;
   try{
-    if(s.id)await axios.delete(`${API}/catalogue_services?id=eq.${s.id}`,{headers:{...hd(),'Prefer':'return=minimal'}});
-    catalogue.splice(i,1);renderCatalogue();toast('Service supprimé');
+    if(s.id&&!s._new)await axios.delete(`${API}/catalogue_services?id=eq.${s.id}`,{headers:{...hd(),'Prefer':'return=minimal'}});
+    catalogue=catalogue.filter(x=>x!==s);renderCatalogue();toast('Service supprimé');
   }catch(e){alert('Erreur suppression : '+(e.response?.data?.message||e.message));}
 }
 function showAdmin(){show('admin-screen');ll();loadAvisBadge();}
@@ -1835,8 +1882,9 @@ async function uploadImage(input,type){
       procEtapes[idx].image_url=publicUrl;rpe();toast('✓ Photo ajoutée');
     }
     else if(type.startsWith('cat-')){
-      const idx=parseInt(type.split('-')[1]);
-      catalogue[idx].image_url=publicUrl;renderCatalogue();toast('✓ Photo ajoutée');
+      const cid=type.slice(4);const s=catById(cid);
+      if(s){s.image_url=publicUrl;renderCatalogue();editCatRow(cid,true);}
+      toast('✓ Photo ajoutée');
     }
     input.value='';
   }catch(e){
