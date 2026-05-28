@@ -1365,6 +1365,7 @@ function renderDemandes(){
 }
 let demDetailId=null,demEditIdx=-1;
 function openDemDetail(id){demDetailId=id;demEditIdx=-1;renderDemDetail();}
+function copyPayLink(id){const c=demData.find(x=>x.id===id);if(!c||!c.checkout_url)return;navigator.clipboard.writeText(c.checkout_url).then(()=>toast('🔗 Lien de paiement copié !'));}
 function demHeureOptions(sel){let o='<option value="">Heure libre</option>';for(let h=7;h<=20;h++)o+='<option value="'+h+'"'+(parseInt(sel)===h?' selected':'')+'>'+h+'h</option>';return o;}
 function demItemRowHtml(c,i,idx,canAct){
   const refused=i.statut==='refuse';
@@ -1405,6 +1406,7 @@ function renderDemDetail(){
     +'<div style="font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);margin-bottom:4px">Services</div>'+items
     +(c.demande?'<div style="margin-top:12px;padding:10px 12px;background:var(--bg3);border-radius:10px;font-size:13px;color:#e8e2d4">📝 '+(''+c.demande).replace(/</g,'&lt;')+'</div>':'')
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--border-gold)"><span style="color:var(--muted2);font-size:13px">Total</span>'+totalLine+'</div>'
+    +((st==='attente'&&c.checkout_url)?'<button onclick="copyPayLink(\''+c.id+'\')" style="width:100%;margin-top:14px;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-weight:700;font-size:14px;cursor:pointer">🔗 Copier le lien de paiement</button><div style="font-size:11px;color:var(--muted2);margin-top:6px;text-align:center">À renvoyer au voyageur s\'il le réclame. Lien Stripe valable ~24h.</div>':'')
     +((c.invoice_url)?'<a href="'+c.invoice_url+'" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:14px;padding:13px;border-radius:12px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-weight:700;font-size:14px;text-decoration:none">🧾 Voir / télécharger la facture</a>':'')
     +'<button onclick="deleteDemande(\''+c.id+'\')" style="width:100%;margin-top:10px;background:none;border:none;color:#e0556b;font-size:13px;cursor:pointer;text-decoration:underline">🗑 Supprimer cette commande</button>'
     +'</div>';
@@ -1547,12 +1549,13 @@ function resaCardHtml(r){
     :'<span style="background:var(--bg3);color:var(--muted2);padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700">Passée</span>';
   const nom=(((r.first_name||'')+' '+(r.last_name||'')).trim()||'—').replace(/</g,'&lt;');
   const lieu=(lv?lv.nom:('Logement #'+r.rental_id+' (non lié)')).toString().replace(/</g,'&lt;');
-  const linkBtn=lv?'<button onclick="resaCopyLink(\''+r.booking_id+'\')" style="flex:1;padding:9px;border:1px solid var(--border-gold);border-radius:8px;background:var(--bg3);color:var(--gold2);font-size:12px;font-weight:700;cursor:pointer">🔗 Lien du livret</button>':'';
-  const orderBtn=lv?'<button onclick="resaNewOrder(\''+r.booking_id+'\')" style="flex:1;padding:9px;border:none;border-radius:8px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-size:12px;font-weight:700;cursor:pointer">➕ Commande</button>':'<span style="font-size:11px;color:var(--muted);align-self:center">Lie ce logement à un livret pour agir</span>';
+  const viewBtn=lv?'<button onclick="resaOpenLink(\''+r.booking_id+'\')" style="flex:1;min-width:120px;padding:9px;border:1px solid var(--border-gold);border-radius:8px;background:var(--bg3);color:var(--gold2);font-size:12px;font-weight:700;cursor:pointer">👁 Voir le livret</button>':'';
+  const linkBtn=lv?'<button onclick="resaCopyLink(\''+r.booking_id+'\')" style="flex:1;min-width:120px;padding:9px;border:1px solid var(--border-gold);border-radius:8px;background:var(--bg3);color:var(--gold2);font-size:12px;font-weight:700;cursor:pointer">🔗 Copier le lien</button>':'';
+  const orderBtn=lv?'<button onclick="resaNewOrder(\''+r.booking_id+'\')" style="flex:1;min-width:120px;padding:9px;border:none;border-radius:8px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-size:12px;font-weight:700;cursor:pointer">➕ Commande</button>':'<span style="font-size:11px;color:var(--muted);align-self:center">Lie ce logement à un livret pour agir</span>';
   return '<div class="sc" style="margin-bottom:10px">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px"><span style="font-weight:700;color:#fff">'+nom+'</span>'+badge+'</div>'
     +'<div style="font-size:12px;color:var(--muted2)">📅 '+resaDate(r.checkin)+' → '+resaDate(r.checkout)+'</div>'
-    +'<div style="display:flex;gap:8px;margin-top:10px">'+linkBtn+orderBtn+'</div>'
+    +'<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+viewBtn+linkBtn+orderBtn+'</div>'
     +'</div>';
 }
 function renderResaList(){
@@ -1584,10 +1587,14 @@ function renderResa(){
   html+='<div id="resa-rows"></div>';
   box.innerHTML=html;renderResaList();
 }
+function resaLink(r){return BASE+'/?'+new URLSearchParams({r:String(r.booking_id),k:r.last_name||'',d:r.checkin||''}).toString();}
 function resaCopyLink(bid){
   const r=resaData.find(x=>String(x.booking_id)===String(bid));if(!r)return;
-  const link=BASE+'/?'+new URLSearchParams({r:String(r.booking_id),k:r.last_name||'',d:r.checkin||''}).toString();
-  navigator.clipboard.writeText(link).then(()=>toast('🔗 Lien du livret copié !'));
+  navigator.clipboard.writeText(resaLink(r)).then(()=>toast('🔗 Lien du livret copié !'));
+}
+function resaOpenLink(bid){
+  const r=resaData.find(x=>String(x.booking_id)===String(bid));if(!r)return;
+  window.open(resaLink(r),'_blank');
 }
 function resaNewOrder(bid){
   const r=resaData.find(x=>String(x.booking_id)===String(bid));if(!r)return;
