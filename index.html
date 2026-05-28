@@ -875,6 +875,15 @@ body{top:0!important}
     <div id="voy-panel-services" class="voy-panel">
       <div class="vs">
         <div class="vs-label">Services à la carte</div>
+        <div id="voy-cart" class="vc" style="display:none;margin-bottom:16px;border:1px solid var(--border-gold)">
+          <div class="vc-title" style="display:flex;align-items:center;gap:8px">🛒 Mon panier</div>
+          <div id="voy-cart-items"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+            <span style="color:var(--muted2);font-size:13px">Total</span>
+            <span id="voy-cart-total" style="color:var(--gold2);font-weight:700;font-size:18px">0€</span>
+          </div>
+          <button id="voy-cart-pay" onclick="payCart()" style="width:100%;margin-top:14px;padding:15px;border:none;border-radius:12px;background:linear-gradient(135deg,#b8922a 0%,#e2c06e 50%,#d4a843 100%);color:#060606;font-weight:700;font-size:14px;cursor:pointer">💳 Payer le panier</button>
+        </div>
         <div id="voy-services"></div>
         <a id="voy-autre-demande" class="voy-mail" href="#" style="margin-top:16px">✉️ Une autre demande ? Écrivez-nous</a>
       </div>
@@ -2943,6 +2952,13 @@ function showResa(resa,ci,co,guestUrl){
   if(modif){if(guestUrl&&/^https?:\/\//i.test(guestUrl)){modif.href=guestUrl;modif.style.display='flex';}else{modif.style.display='none';}}
   zone.style.display='';
 }
+let cart=[],voyServices=[],voyCartKey='cart_x';
+function priceToCentsClient(t){const s=(t||'').replace(/\s/g,'').replace(',','.');const m=s.match(/(\d+(\.\d+)?)/);return m?Math.round(parseFloat(m[1])*100):0;}
+function saveCart(){try{localStorage.setItem(voyCartKey,JSON.stringify(cart));}catch(e){}}
+function addToCart(id){const s=(voyServices||[]).find(x=>String(x.id)===String(id));if(!s)return;const c=priceToCentsClient(s.prix);if(c<=0)return;const ex=cart.find(x=>String(x.id)===String(id));if(ex)ex.qty++;else cart.push({id:s.id,titre:s.titre||'Service',cents:c,qty:1});saveCart();renderCart();toast('Ajouté au panier');}
+function changeQty(id,d){const c=cart.find(x=>String(x.id)===String(id));if(!c)return;c.qty+=d;if(c.qty<=0)cart=cart.filter(x=>String(x.id)!==String(id));saveCart();renderCart();}
+function renderCart(){const box=document.getElementById('voy-cart');if(!box)return;const items=document.getElementById('voy-cart-items'),tot=document.getElementById('voy-cart-total');if(!cart.length){box.style.display='none';return;}let total=0;items.innerHTML=cart.map(c=>{const line=c.cents*c.qty;total+=line;return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)"><div style="flex:1"><div style="font-size:14px;color:#fff">'+c.titre+'</div><div style="font-size:12px;color:var(--muted2)">'+(c.cents/100).toFixed(2)+'€ / unité</div></div><div style="display:flex;align-items:center;gap:6px"><button onclick="changeQty(\''+c.id+'\',-1)" style="width:26px;height:26px;border-radius:8px;border:1px solid var(--border-gold);background:var(--bg3);color:var(--gold2);cursor:pointer;font-size:16px;line-height:1">−</button><span style="min-width:18px;text-align:center;color:#fff">'+c.qty+'</span><button onclick="changeQty(\''+c.id+'\',1)" style="width:26px;height:26px;border-radius:8px;border:1px solid var(--border-gold);background:var(--bg3);color:var(--gold2);cursor:pointer;font-size:16px;line-height:1">+</button></div><div style="min-width:54px;text-align:right;color:var(--gold2);font-weight:600;font-size:13px">'+(line/100).toFixed(2)+'€</div></div>';}).join('');tot.textContent=(total/100).toFixed(2)+'€';box.style.display='';}
+async function payCart(){if(!cart.length)return;const btn=document.getElementById('voy-cart-pay');if(btn){btn.disabled=true;btn.textContent='Redirection…';}try{const qp=new URLSearchParams(window.location.search);let reload;if(qp.get('r')){reload=location.origin+'/?'+new URLSearchParams({r:qp.get('r'),k:qp.get('k')||'',d:qp.get('d')||''}).toString();}else if(currentLivretData&&currentLivretData.slug){reload=location.origin+'/livret/'+currentLivretData.slug;}else{reload=location.origin+'/';}const r=await axios.post(`${SB}/functions/v1/create-checkout`,{livret_id:currentLivretId,return_url:reload,items:cart.map(c=>({id:c.id,qty:c.qty}))},{headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`,'Content-Type':'application/json'}});if(r.data&&r.data.ok&&r.data.url){window.location.href=r.data.url;}else{alert('Paiement indisponible pour le moment.');if(btn){btn.disabled=false;btn.textContent='💳 Payer le panier';}}}catch(e){console.error(e);alert('Erreur lors du paiement.');if(btn){btn.disabled=false;btn.textContent='💳 Payer le panier';}}}
 async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,checkinTime,checkoutTime){
   show('voyageur-screen');
   document.getElementById('voy-loading').style.display='block';
@@ -3165,7 +3181,13 @@ function rv(l,adresses,equipements,back,services){
   }
   // Services payants
   const sv=services||[];
-  document.getElementById('voy-services').innerHTML=sv.length?sv.map(s=>`<div class="eq-card"><div class="sv-row">${s.image_url?`<img src="${s.image_url}" class="sv-img">`:''}<div class="sv-body"><div class="eq-header" style="margin-bottom:6px"><div class="eq-nom" style="font-size:15px">${s.titre||''}</div>${s.prix?`<span style="margin-left:auto;color:var(--gold2);font-weight:700;font-size:14px">${s.prix}</span>`:''}</div><div class="eq-desc" style="margin-bottom:10px">${s.description||''}</div>${s.lien_paiement?`<a class="eq-vid-btn" href="${s.lien_paiement}" target="_blank" rel="noopener" style="align-self:flex-start">💳 Réserver / Payer</a>`:''}</div></div></div>`).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun service proposé pour le moment.</div>';
+  voyServices=sv;
+  document.getElementById('voy-services').innerHTML=sv.length?sv.map(s=>{const _c=priceToCentsClient(s.prix);const _btn=_c>0?`<button class="eq-vid-btn" onclick="addToCart('${s.id}')" style="align-self:flex-start;cursor:pointer;border:none">➕ Ajouter au panier</button>`:(s.lien_paiement?`<a class="eq-vid-btn" href="${s.lien_paiement}" target="_blank" rel="noopener" style="align-self:flex-start">💳 Réserver / Payer</a>`:'');return `<div class="eq-card"><div class="sv-row">${s.image_url?`<img src="${s.image_url}" class="sv-img">`:''}<div class="sv-body"><div class="eq-header" style="margin-bottom:6px"><div class="eq-nom" style="font-size:15px">${s.titre||''}</div>${s.prix?`<span style="margin-left:auto;color:var(--gold2);font-weight:700;font-size:14px">${s.prix}</span>`:''}</div><div class="eq-desc" style="margin-bottom:10px">${s.description||''}</div>${_btn}</div></div></div>`;}).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun service proposé pour le moment.</div>';
+  try{cart=JSON.parse(localStorage.getItem(voyCartKey='cart_'+(currentLivretId||'x'))||'[]');}catch(e){cart=[];}
+  renderCart();
+  const _pp=new URLSearchParams(location.search);
+  if(_pp.get('paid')==='1'){cart=[];saveCart();renderCart();toast('Merci ! Votre paiement a bien été reçu ✅');}
+  else if(_pp.get('canceled')==='1'){toast('Paiement annulé');}
   // Lien « autre demande » → mail
   const mailTo=l.contact_email||'primoconciergerie58@gmail.com';
   const sujet=encodeURIComponent(`Demande depuis le livret ${l.nom||''}`);
