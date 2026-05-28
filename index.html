@@ -3133,6 +3133,7 @@ function newLineId(){return 'L'+Date.now().toString(36)+Math.random().toString(3
 function addToCart(id){const s=(voyServices||[]).find(x=>String(x.id)===String(id));if(!s)return;const c=priceToCentsClient(s.prix);if(c<=0)return;const dem=!!s.demande_date;const ex=!dem&&cart.find(x=>String(x.id)===String(id)&&!x.demande_date);if(ex){ex.qty++;}else{cart.push({lineId:newLineId(),id:s.id,titre:s.titre||'Service',cents:c,qty:1,demande_date:dem,jours_dispo:s.jours_dispo||[0,1,2,3,4,5,6],date:'',heure:''});}saveCart();renderCart();toast(dem?'Ajouté · choisis sa date 👇':'Ajouté au panier');}
 function changeQty(lineId,d){const c=cart.find(x=>x.lineId===lineId);if(!c)return;c.qty+=d;if(c.qty<=0)cart=cart.filter(x=>x.lineId!==lineId);saveCart();renderCart();}
 function removeCartLine(lineId){cart=cart.filter(x=>x.lineId!==lineId);saveCart();renderCart();}
+function addAnotherDay(lineId){const c=cart.find(x=>x.lineId===lineId);if(!c)return;cart.push({lineId:newLineId(),id:c.id,titre:c.titre,cents:c.cents,qty:1,demande_date:true,jours_dispo:c.jours_dispo,date:'',heure:''});saveCart();renderCart();toast('Nouvelle ligne · choisis sa date 👇');}
 function clearVoyCart(){cart=[];saveCart();renderCart();}
 const JOURS_LBL=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 function joursTxt(arr){if(!arr||arr.length>=7)return'tous les jours';return [1,2,3,4,5,6,0].filter(d=>arr.includes(d)).map(d=>JOURS_LBL[d]).join(', ')||'aucun jour';}
@@ -3158,8 +3159,9 @@ function renderCart(){
     if(c.demande_date){
       h+='<div style="margin-top:8px;padding:10px;background:var(--bg3);border-radius:10px">'
         +'<div style="font-size:11px;color:var(--muted2);margin-bottom:6px">Date &amp; heure souhaitées · <span style="color:var(--gold2)">Dispo : '+joursTxt(c.jours_dispo)+'</span></div>'
-        +'<div style="display:flex;gap:8px;flex-wrap:wrap"><input type="date" value="'+(c.date||'')+'" onchange="setCartDate(\''+c.lineId+'\',this.value)" style="flex:1;min-width:130px;padding:9px;border-radius:8px;border:1px solid var(--border-gold);background:#141414;color:#fff"><select onchange="setCartHeure(\''+c.lineId+'\',this.value)" style="flex:1;min-width:110px;padding:9px;border-radius:8px;border:1px solid var(--border-gold);background:#141414;color:#fff">'+heureOptions(c.heure)+'</select></div>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap"><input type="date" value="'+(c.date||'')+'" onchange="setCartDate(\''+c.lineId+'\',this.value);this.blur()" style="flex:1;min-width:130px;padding:9px;border-radius:8px;border:1px solid var(--border-gold);background:#141414;color:#fff"><select onchange="setCartHeure(\''+c.lineId+'\',this.value)" style="flex:1;min-width:110px;padding:9px;border-radius:8px;border:1px solid var(--border-gold);background:#141414;color:#fff">'+heureOptions(c.heure)+'</select></div>'
         +'<div id="cart-err-'+c.lineId+'" style="color:#ff6b6b;font-size:12px;margin-top:5px">'+cartDateError(c)+'</div>'
+        +'<div style="display:flex;gap:16px;margin-top:8px"><button onclick="addAnotherDay(\''+c.lineId+'\')" style="background:none;border:none;color:var(--gold2);font-size:12.5px;cursor:pointer;padding:0">+ Ajouter ce service un autre jour</button><button onclick="removeCartLine(\''+c.lineId+'\')" style="background:none;border:none;color:var(--muted2);font-size:12.5px;cursor:pointer;text-decoration:underline;padding:0">Retirer</button></div>'
         +'</div>';
     }
     h+='</div>';return h;
