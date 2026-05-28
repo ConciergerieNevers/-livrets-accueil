@@ -549,6 +549,9 @@ body{top:0!important}
           📨 Avis négatifs
           <span class="badge" id="avis-badge" style="display:none">0</span>
         </button>
+        <button class="adm-add-s" onclick="openCatalogue()">
+          🛎️ Mes services
+        </button>
         <button class="adm-add" onclick="openEditor(null)">
           + Nouveau livret
         </button>
@@ -556,6 +559,29 @@ body{top:0!important}
     </div>
     <div id="livrets-loading" class="loading">Chargement…</div>
     <div id="livrets-grid" class="livrets-grid" style="display:none"></div>
+  </div>
+</div>
+
+<!-- CATALOGUE SERVICES -->
+<div id="catalogue-screen" style="display:none">
+  <nav class="adm-nav">
+    <div class="adm-nav-left">
+      <button class="adm-logout" onclick="showAdmin()">← Retour</button>
+      <div class="adm-nav-title serif">Mes services</div>
+    </div>
+    <div class="adm-nav-right">
+      <button class="adm-add" onclick="addCatService()">+ Nouveau service</button>
+    </div>
+  </nav>
+  <div class="adm-body">
+    <div class="adm-hero">
+      <div class="adm-hero-text">
+        <h2 class="serif gold-text">Catalogue de services</h2>
+        <p>Créez un service une fois, puis cochez les logements qui le proposent.</p>
+      </div>
+    </div>
+    <div id="cat-loading" class="loading">Chargement…</div>
+    <div id="cat-list"></div>
   </div>
 </div>
 
@@ -1137,7 +1163,68 @@ async function register(){
   catch{alert('Erreur.');}
 }
 function logout(){cu=null;cs();show('login-screen');}
-function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen'].forEach(s=>document.getElementById(s).style.display=s===id?'block':'none');}
+function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen'].forEach(s=>document.getElementById(s).style.display=s===id?'block':'none');}
+
+// ===== Catalogue de services =====
+let catalogue=[],allLivrets=[];
+async function openCatalogue(){
+  show('catalogue-screen');
+  document.getElementById('cat-loading').style.display='block';
+  document.getElementById('cat-list').innerHTML='';
+  try{
+    const [cr,lr]=await Promise.all([
+      axios.get(`${API}/catalogue_services?select=*&order=ordre.asc`,{headers:hd()}),
+      axios.get(`${API}/livrets?select=id,nom&order=nom.asc`,{headers:hd()})
+    ]);
+    catalogue=cr.data||[];allLivrets=lr.data||[];
+    document.getElementById('cat-loading').style.display='none';
+    renderCatalogue();
+  }catch(e){document.getElementById('cat-loading').textContent='Erreur de chargement.';}
+}
+function addCatService(){catalogue.push({titre:'',description:'',prix:'',image_url:'',lien_paiement:'',livret_ids:[],ordre:catalogue.length});renderCatalogue();window.scrollTo(0,document.body.scrollHeight);}
+function toggleCatLivret(i,lid,on){const s=catalogue[i];s.livret_ids=s.livret_ids||[];if(on){if(!s.livret_ids.includes(lid))s.livret_ids.push(lid);}else{s.livret_ids=s.livret_ids.filter(x=>x!==lid);}}
+function renderCatalogue(){
+  const box=document.getElementById('cat-list');
+  if(!catalogue.length){box.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun service. Cliquez sur « + Nouveau service ».</div>';return;}
+  box.innerHTML=catalogue.map((s,i)=>{
+    const checks=allLivrets.map(lv=>`<label style="display:inline-flex;align-items:center;gap:6px;margin:4px 14px 4px 0;font-size:13px;cursor:pointer"><input type="checkbox" ${(s.livret_ids||[]).includes(lv.id)?'checked':''} onchange="toggleCatLivret(${i},'${lv.id}',this.checked)">${(lv.nom||'').replace(/</g,'&lt;')}</label>`).join('')||'<span style="color:var(--muted);font-size:13px">Aucun livret créé.</span>';
+    return `<div class="sc" style="margin-bottom:16px">
+      <div class="fg"><label class="fl2">Titre du service</label><input class="fi" id="cat-titre-${i}" value="${(s.titre||'').replace(/"/g,'&quot;')}" placeholder="Ex: Ménage mi-séjour"></div>
+      <div class="fg"><label class="fl2">Prix</label><input class="fi" id="cat-prix-${i}" value="${(s.prix||'').replace(/"/g,'&quot;')}" placeholder="Ex: 25€"></div>
+      <div class="fg"><label class="fl2">Description</label><textarea class="fi" id="cat-desc-${i}" placeholder="Détails du service">${(s.description||'').replace(/</g,'&lt;')}</textarea></div>
+      <div class="fg"><label class="fl2">Lien de paiement (optionnel)</label><input class="fi" id="cat-lien-${i}" value="${(s.lien_paiement||'').replace(/"/g,'&quot;')}" placeholder="https://..."></div>
+      <div class="fg"><label class="fl2">Photo</label>${s.image_url?`<img src="${s.image_url}" style="width:84px;height:84px;object-fit:cover;border-radius:12px;display:block;margin-bottom:8px">`:''}<input type="file" accept="image/*" onchange="uploadImage(this,'cat-${i}')"></div>
+      <div class="fg"><label class="fl2">Logements qui proposent ce service</label><div style="margin-top:4px">${checks}</div></div>
+      <div style="display:flex;gap:10px;margin-top:10px">
+        <button class="adm-add" onclick="saveCatService(${i})">💾 Enregistrer</button>
+        <button class="adm-add-s" onclick="delCatService(${i})">🗑 Supprimer</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+async function saveCatService(i){
+  const s=catalogue[i];
+  s.titre=document.getElementById('cat-titre-'+i).value.trim();
+  s.prix=document.getElementById('cat-prix-'+i).value.trim();
+  s.description=document.getElementById('cat-desc-'+i).value;
+  s.lien_paiement=document.getElementById('cat-lien-'+i).value.trim();
+  if(!s.titre){alert('Mets au moins un titre.');return;}
+  if(!cu||!cu.access_token){alert('Session expirée, reconnecte-toi.');return;}
+  const payload={titre:s.titre,description:s.description||null,prix:s.prix||null,image_url:s.image_url||null,lien_paiement:s.lien_paiement||null,livret_ids:s.livret_ids||[],ordre:i};
+  try{
+    if(s.id){await axios.patch(`${API}/catalogue_services?id=eq.${s.id}`,payload,{headers:{...hd(),'Prefer':'return=minimal'}});}
+    else{const r=await axios.post(`${API}/catalogue_services`,payload,{headers:{...hd(),'Prefer':'return=representation'}});s.id=r.data[0].id;}
+    toast('✓ Service enregistré');
+  }catch(e){alert('Erreur : '+(e.response?.data?.message||e.message));}
+}
+async function delCatService(i){
+  const s=catalogue[i];
+  if(!confirm('Supprimer ce service du catalogue ?'))return;
+  try{
+    if(s.id)await axios.delete(`${API}/catalogue_services?id=eq.${s.id}`,{headers:{...hd(),'Prefer':'return=minimal'}});
+    catalogue.splice(i,1);renderCatalogue();toast('Service supprimé');
+  }catch(e){alert('Erreur suppression : '+(e.response?.data?.message||e.message));}
+}
 function showAdmin(){show('admin-screen');ll();loadAvisBadge();}
 
 async function loadAvisBadge(){
@@ -1719,6 +1806,10 @@ async function uploadImage(input,type){
     else if(type.startsWith('proc-')){
       const idx=parseInt(type.split('-')[1]);
       procEtapes[idx].image_url=publicUrl;rpe();toast('✓ Photo ajoutée');
+    }
+    else if(type.startsWith('cat-')){
+      const idx=parseInt(type.split('-')[1]);
+      catalogue[idx].image_url=publicUrl;renderCatalogue();toast('✓ Photo ajoutée');
     }
     input.value='';
   }catch(e){
@@ -2891,12 +2982,13 @@ async function lbs(slug){
     const lr=await axios.get(`${API}/livrets?slug=eq.${slug}&select=*`,{headers:{'apikey':KEY}});
     if(!lr.data.length){document.getElementById('voy-loading').textContent='Livret introuvable.';return;}
     const l=lr.data[0];
-    const [ar,er,sr]=await Promise.all([
+    const [ar,er,sr,cat]=await Promise.all([
       axios.get(`${API}/adresses?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}),
       axios.get(`${API}/equipements?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
-      axios.get(`${API}/services?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]}))
+      axios.get(`${API}/services?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
+      axios.get(`${API}/catalogue_services?livret_ids=cs.{${l.id}}&actif=eq.true&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]}))
     ]);
-    rv(l,ar.data,er.data,false,sr.data);
+    rv(l,ar.data,er.data,false,[...(sr.data||[]),...(cat.data||[])]);
     trackView(l.id,'home');
   }catch(e){console.error(e);document.getElementById('voy-loading').textContent='Erreur.';}
 }
@@ -2972,12 +3064,13 @@ async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,chec
     const lr=await axios.get(`${API}/livrets?superhote_rental_id=eq.${encodeURIComponent(g.rental_id)}&select=*`,{headers:{'apikey':KEY}});
     if(!lr.data.length){document.getElementById('voy-loading').textContent='Votre livret d\'accueil n\'est pas encore disponible. Contactez votre hôte.';return;}
     const l=lr.data[0];
-    const [ar,er,sr]=await Promise.all([
+    const [ar,er,sr,cat]=await Promise.all([
       axios.get(`${API}/adresses?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}),
       axios.get(`${API}/equipements?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
-      axios.get(`${API}/services?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]}))
+      axios.get(`${API}/services?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
+      axios.get(`${API}/catalogue_services?livret_ids=cs.{${l.id}}&actif=eq.true&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]}))
     ]);
-    rv(l,ar.data,er.data,false,sr.data);
+    rv(l,ar.data,er.data,false,[...(sr.data||[]),...(cat.data||[])]);
     showGuestBanner(g);
     showResa(g,checkinTime,checkoutTime,guestPageUrl);
     showFacture(invoiceUrl);
