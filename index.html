@@ -930,6 +930,15 @@ body{top:0!important}
           <div class="vc-title" id="voy-cart-title" style="display:flex;align-items:center;gap:8px">🛒 Mon panier</div>
           <div id="voy-cart-body"></div>
         </div>
+        <div id="voy-checkout" style="display:none;position:fixed;inset:0;z-index:9999;background:radial-gradient(120% 80% at 50% 0%,#15110a 0%,var(--bg) 55%);overflow-y:auto;-webkit-overflow-scrolling:touch">
+          <div style="max-width:560px;margin:0 auto;padding:18px 18px 40px">
+            <div style="display:flex;align-items:center;gap:12px;padding:6px 0 18px">
+              <button onclick="backToCart()" aria-label="Retour" style="width:40px;height:40px;border-radius:12px;border:1px solid var(--border-gold);background:var(--bg3);color:var(--gold2);font-size:20px;cursor:pointer;line-height:1;flex-shrink:0">←</button>
+              <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted2)">Finaliser ma commande</div>
+            </div>
+            <div id="voy-checkout-body"></div>
+          </div>
+        </div>
         <div id="voy-services"></div>
         <a id="voy-autre-demande" class="voy-mail" href="#" style="margin-top:16px">✉️ Une autre demande ? Écrivez-nous</a>
       </div>
@@ -1365,11 +1374,22 @@ async function ll(){
 function rl(livrets,views={}){
   document.getElementById('livrets-loading').style.display='none';
   const g=document.getElementById('livrets-grid');g.style.display='grid';g.innerHTML='';
+  const shLink=`${BASE}/?r=[BOOKING_ID]&d=[RESERVATION_CHECKIN_DATE]&k=[GUEST_LAST_NAME]&ci=[RESERVATION_CHECKIN_TIME]&co=[RESERVATION_CHECKOUT_TIME]&g=[GUESTPAGE_URL]&f=[INVOICE_LINK]`;
   livrets.forEach(l=>{
     const pub=`${BASE}/livret/${l.slug}`;
     const vc=views[l.id]||0;
     const c=document.createElement('div');c.className='lv-card';
     const safeNom=l.nom.replace(/'/g,"\\'");
+    const shBlock=l.superhote_rental_id
+      ?`<div class="lv-pub" style="margin-top:-8px;flex-direction:row;align-items:flex-start" onclick="cpu('${shLink}','🔗 Lien SuperHote copié — colle-le dans le champ personnalisé')">
+          <span style="font-size:15px;flex-shrink:0;line-height:1.4">🔗</span>
+          <div style="flex:1;overflow:hidden">
+            <div style="font-size:10px;color:var(--muted2);font-weight:600;letter-spacing:.3px;margin-bottom:2px">Lien SuperHote · champ personnalisé</div>
+            <div class="lv-pub-url">${shLink}</div>
+          </div>
+          <span class="lv-pub-copy">Copier</span>
+        </div>`
+      :`<div style="margin-top:-8px;margin-bottom:16px;padding:9px 14px;border:1px dashed var(--border-gold);border-radius:10px;font-size:10.5px;color:var(--muted2);line-height:1.5">🔗 Lien SuperHote : lie d'abord ce livret à un logement SuperHote via ✏️ Modifier.</div>`;
     c.innerHTML=`
       <div class="lv-card-top">
         <div class="lv-card-tag"><div class="lv-card-tag-dot"></div>Actif</div>
@@ -1382,6 +1402,7 @@ function rl(livrets,views={}){
           <svg class="lv-pub-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/></svg>
           <span class="lv-pub-url">${pub}</span><span class="lv-pub-copy">Copier</span>
         </div>
+        ${shBlock}
         <div class="lv-actions">
           <button class="lv-btn" onclick="openEditor('${l.id}')">✏️ Modifier</button>
           <button class="lv-btn" onclick="lv('${l.id}')">👁 Voir</button>
@@ -1399,7 +1420,7 @@ function rl(livrets,views={}){
   g.appendChild(nc);
 }
 
-function cpu(u){navigator.clipboard.writeText(u).then(()=>toast('🔗 Lien copié !'));}
+function cpu(u,msg){navigator.clipboard.writeText(u).then(()=>toast(msg||'🔗 Lien copié !'));}
 
 function showQR(id,nom,url){
   document.getElementById('qr-livret-nom').textContent=nom;
@@ -3256,42 +3277,53 @@ function recapHtml(total){
   const rows=cart.map(c=>{
     const line=c.cents*c.qty;
     let when='';
-    if(c.demande_date&&c.date){when='<div style="font-size:12px;color:var(--gold2);margin-top:2px;text-transform:capitalize">📅 '+fmtDateLong(c.date)+(c.heure?(' · 🕐 '+parseInt(c.heure)+'h'):'')+'</div>';}
-    return '<div style="display:flex;align-items:flex-start;gap:8px;padding:10px 0;border-bottom:1px solid var(--border)"><div style="flex:1"><div style="font-size:14px;color:#fff">'+c.titre+' <span style="color:var(--muted2)">× '+c.qty+'</span></div>'+when+'</div><div style="min-width:54px;text-align:right;color:var(--gold2);font-weight:600;font-size:13px">'+(line/100).toFixed(2)+'€</div></div>';
+    if(c.demande_date&&c.date){when='<div style="font-size:12.5px;color:var(--gold2);margin-top:3px;text-transform:capitalize">📅 '+fmtDateLong(c.date)+(c.heure?(' · 🕐 '+parseInt(c.heure)+'h'):'')+'</div>';}
+    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:14px 0;border-bottom:1px solid var(--border)"><div style="flex:1"><div style="font-size:15px;color:var(--text);font-weight:500">'+c.titre+' <span style="color:var(--muted2);font-weight:400">× '+c.qty+'</span></div>'+when+'</div><div style="min-width:60px;text-align:right;color:var(--gold2);font-weight:600;font-size:14px">'+(line/100).toFixed(2)+'€</div></div>';
   }).join('');
-  return rows
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)"><span style="color:var(--muted2);font-size:13px">Total à payer</span><span style="color:var(--gold2);font-weight:700;font-size:18px">'+(total/100).toFixed(2)+'€</span></div>'
-    +'<label style="display:flex;align-items:center;gap:8px;margin-top:16px;cursor:pointer;color:#e8e2d4;font-size:13px"><input type="checkbox" '+(cartDemOn?'checked':'')+' onclick="toggleDemande(this.checked)"> 📝 J\'ai une demande particulière</label>'
-    +(cartDemOn?'<textarea oninput="cartDemande=this.value" placeholder="Précisez votre demande (allergie, horaire flexible, instructions de livraison…)" style="width:100%;margin-top:8px;min-height:72px;padding:10px;border-radius:10px;border:1px solid var(--border-gold);background:#141414;color:#fff;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box">'+(cartDemande||'').replace(/</g,'&lt;')+'</textarea>':'')
-    +'<div style="font-size:11px;color:var(--muted2);margin-top:14px;text-align:center;line-height:1.5">🔒 Vos coordonnées (nom, e-mail, téléphone) vous seront demandées à l\'étape de paiement sécurisée. Une facture vous sera envoyée par e-mail.</div>'
-    +'<button id="voy-cart-pay" onclick="payCart()" style="width:100%;margin-top:12px;padding:15px;border:none;border-radius:12px;background:linear-gradient(135deg,#b8922a 0%,#e2c06e 50%,#d4a843 100%);color:#060606;font-weight:700;font-size:14px;cursor:pointer">💳 Payer '+(total/100).toFixed(2)+'€</button>'
-    +'<button onclick="backToCart()" style="width:100%;margin-top:8px;background:none;border:none;color:var(--muted2);font-size:13px;cursor:pointer;text-decoration:underline">← Retour au panier</button>';
+  const lname=(currentLivretData&&currentLivretData.nom)?('<div style="font-size:13px;color:var(--muted2);margin:2px 0 18px">'+(''+currentLivretData.nom).replace(/</g,'&lt;')+'</div>'):'<div style="height:14px"></div>';
+  return '<h2 class="serif" style="font-size:27px;color:var(--gold3);margin:0;line-height:1.15">Votre commande</h2>'
+    +lname
+    +'<div style="background:var(--card);border:1px solid var(--border-gold);border-radius:18px;padding:4px 18px 16px;margin-bottom:16px">'+rows
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--border-gold)"><span style="color:var(--text);font-size:15px;font-weight:600">Total à payer</span><span style="color:var(--gold2);font-weight:700;font-size:23px">'+(total/100).toFixed(2)+'€</span></div></div>'
+    +'<div style="background:var(--card);border:1px solid var(--border);border-radius:18px;padding:16px;margin-bottom:18px">'
+    +'<label style="display:flex;align-items:center;gap:10px;cursor:pointer;color:var(--text);font-size:14px"><input type="checkbox" '+(cartDemOn?'checked':'')+' onclick="toggleDemande(this.checked)" style="width:18px;height:18px;accent-color:var(--gold2)"> 📝 J\'ai une demande particulière</label>'
+    +(cartDemOn?'<textarea oninput="cartDemande=this.value" placeholder="Précisez votre demande (allergie, horaire flexible, instructions de livraison…)" style="width:100%;margin-top:12px;min-height:90px;padding:12px;border-radius:12px;border:1px solid var(--border-gold);background:#141414;color:#fff;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box">'+(cartDemande||'').replace(/</g,'&lt;')+'</textarea>':'')
+    +'</div>'
+    +'<button id="voy-cart-pay" onclick="payCart()" style="width:100%;padding:17px;border:none;border-radius:14px;background:linear-gradient(135deg,#b8922a 0%,#e2c06e 50%,#d4a843 100%);color:#060606;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 8px 26px rgba(201,168,76,0.25)">💳 Payer '+(total/100).toFixed(2)+'€</button>'
+    +'<div style="font-size:11.5px;color:var(--muted2);margin-top:16px;text-align:center;line-height:1.6">🔒 Paiement sécurisé par Stripe. Vos coordonnées (nom, e-mail, téléphone) vous seront demandées juste après. Une facture vous sera envoyée par e-mail.</div>'
+    +'<button onclick="backToCart()" style="width:100%;margin-top:16px;background:none;border:none;color:var(--muted2);font-size:13px;cursor:pointer;text-decoration:underline">← Modifier mon panier</button>';
 }
 function renderCart(){
   const box=document.getElementById('voy-cart');if(!box)return;
   const body=document.getElementById('voy-cart-body'),titleEl=document.getElementById('voy-cart-title');
-  if(!cart.length){box.style.display='none';cartStep=1;return;}
+  if(!cart.length){box.style.display='none';cartStep=1;closeCheckout();return;}
   cart.forEach(c=>{if(!c.lineId)c.lineId=newLineId();const sv=(voyServices||[]).find(x=>String(x.id)===String(c.id));if(sv){c.demande_date=!!sv.demande_date;c.jours_dispo=sv.jours_dispo||[0,1,2,3,4,5,6];c.delai_jours=sv.delai_jours||0;c.heure_limite=(sv.heure_limite==null?null:sv.heure_limite);}});
   let total=0;cart.forEach(c=>total+=c.cents*c.qty);
-  if(cartStep===2){
-    if(titleEl)titleEl.innerHTML='📋 Récapitulatif de votre commande';
-    body.innerHTML=recapHtml(total);
-  }else{
-    if(titleEl)titleEl.innerHTML='🛒 Mon panier';
-    body.innerHTML=cartItemsHtml()
-      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)"><span style="color:var(--muted2);font-size:13px">Total</span><span style="color:var(--gold2);font-weight:700;font-size:18px">'+(total/100).toFixed(2)+'€</span></div>'
-      +'<button onclick="goToRecap()" style="width:100%;margin-top:14px;padding:15px;border:none;border-radius:12px;background:linear-gradient(135deg,#b8922a 0%,#e2c06e 50%,#d4a843 100%);color:#060606;font-weight:700;font-size:14px;cursor:pointer">Suivant →</button>'
-      +'<button onclick="clearVoyCart()" style="width:100%;margin-top:8px;background:none;border:none;color:var(--muted2);font-size:13px;cursor:pointer;text-decoration:underline">Vider le panier</button>';
-  }
+  if(titleEl)titleEl.innerHTML='🛒 Mon panier';
+  body.innerHTML=cartItemsHtml()
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)"><span style="color:var(--muted2);font-size:13px">Total</span><span style="color:var(--gold2);font-weight:700;font-size:18px">'+(total/100).toFixed(2)+'€</span></div>'
+    +'<button onclick="goToRecap()" style="width:100%;margin-top:14px;padding:15px;border:none;border-radius:12px;background:linear-gradient(135deg,#b8922a 0%,#e2c06e 50%,#d4a843 100%);color:#060606;font-weight:700;font-size:14px;cursor:pointer">Suivant →</button>'
+    +'<button onclick="clearVoyCart()" style="width:100%;margin-top:8px;background:none;border:none;color:var(--muted2);font-size:13px;cursor:pointer;text-decoration:underline">Vider le panier</button>';
   box.style.display='';
+  if(cartStep===2)renderCheckout(total);
+}
+function renderCheckout(total){
+  if(total==null){total=0;cart.forEach(c=>total+=c.cents*c.qty);}
+  const ov=document.getElementById('voy-checkout'),cb=document.getElementById('voy-checkout-body');
+  if(!ov||!cb)return;
+  cb.innerHTML=recapHtml(total);
+  ov.style.display='block';
 }
 function goToRecap(){
   for(const c of cart){if(c.demande_date){if(!c.date||!c.heure){alert('Choisis une date et une heure pour : '+c.titre);return;}if(cartDateError(c)){alert(c.titre+' : service non disponible le jour choisi.');return;}}}
-  cartStep=2;calOpen=null;heureOpen=null;renderCart();
-  const box=document.getElementById('voy-cart');if(box)box.scrollIntoView({behavior:'smooth',block:'start'});
+  cartStep=2;calOpen=null;heureOpen=null;
+  renderCheckout();
+  const ov=document.getElementById('voy-checkout');if(ov)ov.scrollTop=0;
+  document.body.style.overflow='hidden';
 }
-function backToCart(){cartStep=1;calOpen=null;heureOpen=null;renderCart();}
-function toggleDemande(on){cartDemOn=!!on;if(!on)cartDemande='';renderCart();}
+function closeCheckout(){const ov=document.getElementById('voy-checkout');if(ov)ov.style.display='none';document.body.style.overflow='';}
+function backToCart(){cartStep=1;calOpen=null;heureOpen=null;closeCheckout();renderCart();}
+function toggleDemande(on){cartDemOn=!!on;if(!on)cartDemande='';renderCheckout();}
 async function payCart(){if(!cart.length)return;
   for(const c of cart){if(c.demande_date){if(!c.date||!c.heure){alert('Choisis une date et une heure pour : '+c.titre);return;}if(cartDateError(c)){alert(c.titre+' : service non disponible le jour choisi.');return;}}}
   const btn=document.getElementById('voy-cart-pay');if(btn){btn.disabled=true;btn.textContent='Redirection…';}try{const qp=new URLSearchParams(window.location.search);let reload;if(qp.get('r')){reload=location.origin+'/?'+new URLSearchParams({r:qp.get('r'),k:qp.get('k')||'',d:qp.get('d')||''}).toString();}else if(currentLivretData&&currentLivretData.slug){reload=location.origin+'/livret/'+currentLivretData.slug;}else{reload=location.origin+'/';}const r=await axios.post(`${SB}/functions/v1/create-checkout`,{livret_id:currentLivretId,return_url:reload,demande:(cartDemande||'').slice(0,500),items:cart.map(c=>({id:c.id,qty:c.qty,date:c.date||'',heure:c.heure||''}))},{headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`,'Content-Type':'application/json'}});if(r.data&&r.data.ok&&r.data.url){window.location.href=r.data.url;}else{alert('Paiement indisponible pour le moment.');if(btn){btn.disabled=false;btn.textContent='💳 Payer';}}}catch(e){console.error(e);alert('Erreur lors du paiement.');if(btn){btn.disabled=false;btn.textContent='💳 Payer';}}}
