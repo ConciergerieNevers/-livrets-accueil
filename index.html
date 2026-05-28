@@ -1606,12 +1606,13 @@ async function syncReservations(){
   if(!cu||!cu.access_token){alert('Session expirée, reconnecte-toi.');return;}
   resaSyncing=true;
   const btn=document.getElementById('resa-sync-btn');
-  let page=1,last=0,total=0,fail=0,guard=0,lastErr='';
+  let page=1,last=0,total=0,fail=0,guard=0,lastErr='',keysShown=false;
   try{
     while(guard++<300){
       if(btn)btn.textContent='Synchro…'+(last?(' '+page+'/'+last):'');
       const r=await axios.get(`${SB}/functions/v1/guest-lookup?sync=${page}`,{headers:{'apikey':KEY,'Authorization':`Bearer ${cu.access_token}`}});
       if(!r.data||!r.data.ok){lastErr=(r.data&&(r.data.error||r.data.err))||'réponse invalide';break;}
+      if(!keysShown&&r.data.sample_keys){keysShown=true;alert('🔍 DIAGNOSTIC — Champs renvoyés par SuperHote pour une réservation :\n\n'+r.data.sample_keys.join(', '));}
       total+=r.data.synced||0;fail+=r.data.failed||0;if(r.data.err)lastErr=r.data.err;last=r.data.last_page||last;
       if(r.data.done||!r.data.next)break;
       page=r.data.next;
