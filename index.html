@@ -1522,7 +1522,20 @@ async function openReservations(){
     resaData=rr.data||[];resaLivrets=lr.data||[];
     document.getElementById('resa-loading').style.display='none';
     renderResa();
+    autoSyncRecent();
   }catch(e){document.getElementById('resa-loading').textContent='Erreur de chargement.';}
+}
+async function autoSyncRecent(){
+  if(!cu||!cu.access_token)return;
+  const btn=document.getElementById('resa-sync-btn');
+  if(btn&&!resaSyncing)btn.textContent='Mise à jour…';
+  try{
+    await axios.get(`${SB}/functions/v1/guest-lookup?sync=1`,{headers:{'apikey':KEY,'Authorization':`Bearer ${cu.access_token}`}});
+    const rr=await axios.get(`${API}/sh_reservations?select=*&order=checkin.desc&limit=3000`,{headers:hd()});
+    resaData=rr.data||[];
+    if(document.getElementById('resa-rows'))renderResaList();else renderResa();
+  }catch(e){}
+  if(btn&&!resaSyncing)btn.textContent='🔄 Synchroniser';
 }
 function setResaStatus(s){resaStatus=s;renderResa();}
 function resaCardHtml(r){
