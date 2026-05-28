@@ -403,6 +403,7 @@ textarea.fi{resize:vertical;min-height:80px;}
 .voy-panel{display:none;padding-bottom:100px;animation:fu 0.22s ease;}
 .voy-panel.active{display:block;}
 @keyframes fu{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes popIn{0%{transform:scale(0);opacity:0}60%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
 .toast{position:fixed;bottom:110px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--text);color:var(--bg);padding:12px 24px;border-radius:30px;font-size:12px;font-weight:800;opacity:0;transition:all 0.25s;pointer-events:none;z-index:999;white-space:nowrap;font-family:var(--font-sans);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 .loading{text-align:center;padding:60px;color:var(--muted);font-size:14px;font-family:var(--font-serif);}
@@ -872,6 +873,7 @@ body{top:0!important}
       <div class="vs" id="voy-facture-zone" style="display:none">
         <div class="vs-label">Mes documents</div>
         <a id="voy-facture-link" href="#" target="_blank" rel="noopener" class="notranslate" style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:6px;padding:15px 20px;border-radius:14px;background:linear-gradient(135deg,#b8922a 0%,#e2c06e 50%,#d4a843 100%);color:#060606;font-size:14px;font-weight:700;text-decoration:none;box-shadow:0 6px 24px rgba(201,168,76,0.3)">📄 Télécharger ma facture</a>
+        <div id="voy-service-invoices"></div>
       </div>
     </div>
 
@@ -3175,10 +3177,30 @@ function showGuestBanner(g){
   el.style.display='block';
 }
 function showFacture(url){
-  const zone=document.getElementById('voy-facture-zone'),link=document.getElementById('voy-facture-link');
-  if(!zone||!link)return;
+  const link=document.getElementById('voy-facture-link');
+  if(!link)return;
   const u=(url||'').trim();
-  if(u&&/^https?:\/\//i.test(u)){link.href=u;zone.style.display='';}else{zone.style.display='none';}
+  if(u&&/^https?:\/\//i.test(u)){link.href=u;link.style.display='flex';}else{link.style.display='none';}
+  updateDocsZone();
+}
+function showServiceInvoices(list){
+  const box=document.getElementById('voy-service-invoices');if(!box)return;
+  const arr=Array.isArray(list)?list.filter(x=>x&&x.url&&/^https?:\/\//i.test(x.url)):[];
+  if(!arr.length){box.innerHTML='';updateDocsZone();return;}
+  box.innerHTML='<div style="font-size:9px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:18px 0 10px">Factures de services</div>'+arr.map(c=>{
+    let d='';try{if(c.date)d=new Date(c.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});}catch(e){}
+    const montant=(typeof c.total_cents==='number'&&c.total_cents>0)?(' · '+(c.total_cents/100).toFixed(2)+'€'):'';
+    return '<a href="'+c.url+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:10px;margin-top:8px;padding:13px 16px;border-radius:12px;background:var(--card);border:1px solid var(--border-gold);color:var(--text);font-size:13px;font-weight:600;text-decoration:none"><span style="font-size:16px;flex-shrink:0">🧾</span><span style="flex:1">Facture services'+(d?(' — '+d):'')+montant+'</span><span style="color:var(--gold2);font-size:12px;flex-shrink:0">Télécharger</span></a>';
+  }).join('');
+  updateDocsZone();
+}
+function updateDocsZone(){
+  const zone=document.getElementById('voy-facture-zone');if(!zone)return;
+  const link=document.getElementById('voy-facture-link');
+  const box=document.getElementById('voy-service-invoices');
+  const hasTravel=link&&link.style.display!=='none';
+  const hasServices=box&&box.innerHTML.trim().length>0;
+  zone.style.display=(hasTravel||hasServices)?'':'none';
 }
 function fmtDateLong(iso){
   if(!iso)return'';
@@ -3325,9 +3347,29 @@ function goToRecap(){
 function closeCheckout(){const ov=document.getElementById('voy-payscreen');if(ov)ov.style.display='none';document.body.style.overflow='';}
 function backToCart(){cartStep=1;calOpen=null;heureOpen=null;closeCheckout();renderCart();}
 function toggleDemande(on){cartDemOn=!!on;if(!on)cartDemande='';renderCheckout();}
+function showPaymentSuccess(){
+  closeCheckout();
+  document.body.style.overflow='hidden';
+  let ov=document.getElementById('voy-success');
+  if(!ov){ov=document.createElement('div');ov.id='voy-success';document.body.appendChild(ov);}
+  ov.setAttribute('style','position:fixed;inset:0;z-index:10000;background:radial-gradient(120% 80% at 50% 0%,#15110a 0%,var(--bg) 55%);overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;align-items:center;justify-content:center');
+  ov.innerHTML='<div style="max-width:520px;margin:0 auto;padding:34px 22px 42px;text-align:center">'
+    +'<div style="width:94px;height:94px;border-radius:50%;margin:0 auto 26px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);display:flex;align-items:center;justify-content:center;box-shadow:0 14px 44px rgba(201,168,76,0.38);animation:popIn .55s cubic-bezier(.2,.9,.3,1.2)"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#060606" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>'
+    +'<h1 class="serif" style="font-size:30px;color:var(--gold3);margin:0 0 14px;line-height:1.15">Paiement confirmé&nbsp;!</h1>'
+    +'<p style="font-size:15px;color:var(--text);line-height:1.65;margin:0 0 18px">Merci pour votre commande&nbsp;! 🎉<br>L\'équipe de la conciergerie va vous recontacter très rapidement pour organiser vos services.</p>'
+    +'<div style="background:var(--card);border:1px solid var(--border-gold);border-radius:16px;padding:16px 18px;margin:0 0 28px;font-size:13.5px;color:var(--muted2);line-height:1.6">📧 Un e-mail de confirmation contenant votre <b style="color:var(--gold2)">facture</b> vient de vous être envoyé.<br><span style="font-size:12px">Pensez à vérifier vos courriers indésirables.</span></div>'
+    +'<button onclick="closeSuccess()" style="width:100%;padding:16px;border:none;border-radius:14px;background:linear-gradient(135deg,#b8922a 0%,#e2c06e 50%,#d4a843 100%);color:#060606;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 8px 26px rgba(201,168,76,0.25)">← Revenir au livret d\'accueil</button>'
+    +'</div>';
+  ov.style.display='flex';ov.scrollTop=0;
+}
+function closeSuccess(){
+  const ov=document.getElementById('voy-success');if(ov)ov.style.display='none';
+  document.body.style.overflow='';
+  try{const u=new URL(location.href);u.searchParams.delete('paid');history.replaceState({},'',u.pathname+u.search+u.hash);}catch(e){}
+}
 async function payCart(){if(!cart.length)return;
   for(const c of cart){if(c.demande_date){if(!c.date||!c.heure){alert('Choisis une date et une heure pour : '+c.titre);return;}if(cartDateError(c)){alert(c.titre+' : service non disponible le jour choisi.');return;}}}
-  const btn=document.getElementById('voy-cart-pay');if(btn){btn.disabled=true;btn.textContent='Redirection…';}try{const qp=new URLSearchParams(window.location.search);let reload;if(qp.get('r')){reload=location.origin+'/?'+new URLSearchParams({r:qp.get('r'),k:qp.get('k')||'',d:qp.get('d')||''}).toString();}else if(currentLivretData&&currentLivretData.slug){reload=location.origin+'/livret/'+currentLivretData.slug;}else{reload=location.origin+'/';}const r=await axios.post(`${SB}/functions/v1/create-checkout`,{livret_id:currentLivretId,return_url:reload,demande:(cartDemande||'').slice(0,500),items:cart.map(c=>({id:c.id,qty:c.qty,date:c.date||'',heure:c.heure||''}))},{headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`,'Content-Type':'application/json'}});if(r.data&&r.data.ok&&r.data.url){window.location.href=r.data.url;}else{alert('Paiement indisponible pour le moment.');if(btn){btn.disabled=false;btn.textContent='💳 Payer';}}}catch(e){console.error(e);alert('Erreur lors du paiement.');if(btn){btn.disabled=false;btn.textContent='💳 Payer';}}}
+  const btn=document.getElementById('voy-cart-pay');if(btn){btn.disabled=true;btn.textContent='Redirection…';}try{const qp=new URLSearchParams(window.location.search);let reload;if(qp.get('r')){reload=location.origin+'/?'+new URLSearchParams({r:qp.get('r'),k:qp.get('k')||'',d:qp.get('d')||''}).toString();}else if(currentLivretData&&currentLivretData.slug){reload=location.origin+'/livret/'+currentLivretData.slug;}else{reload=location.origin+'/';}const r=await axios.post(`${SB}/functions/v1/create-checkout`,{livret_id:currentLivretId,return_url:reload,booking_id:(qp.get('r')||''),demande:(cartDemande||'').slice(0,500),items:cart.map(c=>({id:c.id,qty:c.qty,date:c.date||'',heure:c.heure||''}))},{headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`,'Content-Type':'application/json'}});if(r.data&&r.data.ok&&r.data.url){window.location.href=r.data.url;}else{alert('Paiement indisponible pour le moment.');if(btn){btn.disabled=false;btn.textContent='💳 Payer';}}}catch(e){console.error(e);alert('Erreur lors du paiement.');if(btn){btn.disabled=false;btn.textContent='💳 Payer';}}}
 async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,checkinTime,checkoutTime){
   show('voyageur-screen');
   document.getElementById('voy-loading').style.display='block';
@@ -3351,6 +3393,7 @@ async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,chec
     showGuestBanner(g);
     showResa(g,checkinTime,checkoutTime,guestPageUrl);
     showFacture(invoiceUrl);
+    showServiceInvoices(g.invoices||[]);
     trackView(l.id,'home');
   }catch(e){console.error(e);document.getElementById('voy-loading').textContent='Erreur de chargement du livret.';}
 }
@@ -3556,7 +3599,7 @@ function rv(l,adresses,equipements,back,services){
   try{cart=JSON.parse(localStorage.getItem(voyCartKey='cart_'+(currentLivretId||'x'))||'[]');}catch(e){cart=[];}
   renderCart();
   const _pp=new URLSearchParams(location.search);
-  if(_pp.get('paid')==='1'){cart=[];cartStep=1;cartDemande='';cartDemOn=false;saveCart();renderCart();toast('Merci ! Votre paiement a bien été reçu ✅');}
+  if(_pp.get('paid')==='1'){cart=[];cartStep=1;cartDemande='';cartDemOn=false;saveCart();renderCart();showPaymentSuccess();}
   else if(_pp.get('canceled')==='1'){toast('Paiement annulé');}
   // Lien « autre demande » → mail
   const mailTo=l.contact_email||'primoconciergerie58@gmail.com';
