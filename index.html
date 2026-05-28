@@ -1192,7 +1192,6 @@ function renderCatalogue(){
       <div class="fg"><label class="fl2">Titre du service</label><input class="fi" id="cat-titre-${i}" value="${(s.titre||'').replace(/"/g,'&quot;')}" placeholder="Ex: Ménage mi-séjour"></div>
       <div class="fg"><label class="fl2">Prix</label><input class="fi" id="cat-prix-${i}" value="${(s.prix||'').replace(/"/g,'&quot;')}" placeholder="Ex: 25€"></div>
       <div class="fg"><label class="fl2">Description</label><textarea class="fi" id="cat-desc-${i}" placeholder="Détails du service">${(s.description||'').replace(/</g,'&lt;')}</textarea></div>
-      <div class="fg"><label class="fl2">Lien de paiement (optionnel)</label><input class="fi" id="cat-lien-${i}" value="${(s.lien_paiement||'').replace(/"/g,'&quot;')}" placeholder="https://..."></div>
       <div class="fg"><label class="fl2">Photo</label>${s.image_url?`<img src="${s.image_url}" style="width:84px;height:84px;object-fit:cover;border-radius:12px;display:block;margin-bottom:8px">`:''}<input type="file" accept="image/*" onchange="uploadImage(this,'cat-${i}')"></div>
       <div class="fg"><label class="fl2">Logements qui proposent ce service</label><div style="margin-top:4px">${checks}</div></div>
       <div style="display:flex;gap:10px;margin-top:10px">
@@ -1207,7 +1206,6 @@ async function saveCatService(i){
   s.titre=document.getElementById('cat-titre-'+i).value.trim();
   s.prix=document.getElementById('cat-prix-'+i).value.trim();
   s.description=document.getElementById('cat-desc-'+i).value;
-  s.lien_paiement=document.getElementById('cat-lien-'+i).value.trim();
   if(!s.titre){alert('Mets au moins un titre.');return;}
   if(!cu||!cu.access_token){alert('Session expirée, reconnecte-toi.');return;}
   const payload={titre:s.titre,description:s.description||null,prix:s.prix||null,image_url:s.image_url||null,lien_paiement:s.lien_paiement||null,livret_ids:s.livret_ids||[],ordre:i};
