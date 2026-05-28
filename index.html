@@ -1197,7 +1197,7 @@ function logout(){cu=null;cs();show('login-screen');}
 function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','demandes-screen'].forEach(s=>document.getElementById(s).style.display=s===id?'block':'none');}
 
 // ===== Mes demandes (tableau de bord) =====
-let demData=[],demFilter='all',demChartMode='mois';
+let demData=[],demFilter='all',demChartMode='mois',demView='dash',planMode='semaine',planRef=null,planGroup='personne';
 async function openDemandes(){
   show('demandes-screen');
   document.getElementById('dem-loading').style.display='block';
@@ -1219,7 +1219,9 @@ function demPaid(){return demData.filter(c=>demStatut(c)==='paye');}
 function setDemFilter(f){demFilter=f;renderDemandes();}
 function setDemChart(m){demChartMode=m;renderDemandes();}
 async function deleteDemande(id){
-  if(!confirm('Supprimer définitivement cette commande non aboutie ?'))return;
+  const c=demData.find(x=>x.id===id),st=c?demStatut(c):'';
+  const msg=(st==='paye')?'⚠️ Cette commande est PAYÉE. La supprimer efface seulement la trace de ton tableau de bord (ça ne rembourse pas le client). Confirmer la suppression définitive ?':'Supprimer définitivement cette commande ?';
+  if(!confirm(msg))return;
   try{
     await axios.delete(`${API}/commandes?id=eq.${id}`,{headers:{...hd(),'Prefer':'return=minimal'}});
     demData=demData.filter(x=>x.id!==id);
@@ -1308,12 +1310,16 @@ function demCardHtml(c){
     +'<div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:12px">'+del+'<span style="color:var(--gold2);font-weight:700">'+total+'</span></div>'
     +'</div>';
 }
+function setDemView(v){demView=v;renderDemandes();}
 function renderDemandes(){
   const box=document.getElementById('dem-list');if(!box)return;
   if(!demData.length){box.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucune commande pour le moment.</div>';return;}
+  const sw=(v,l)=>'<button onclick="setDemView(\''+v+'\')" style="flex:1;padding:11px;border-radius:12px;border:1px solid '+(demView===v?'var(--gold2)':'var(--border)')+';background:'+(demView===v?'rgba(226,192,110,0.15)':'transparent')+';color:'+(demView===v?'var(--gold2)':'var(--muted2)')+';font-size:13px;font-weight:700;cursor:pointer">'+l+'</button>';
+  const viewSwitch='<div style="display:flex;gap:8px;margin-bottom:18px">'+sw('dash','📊 Tableau de bord')+sw('planning','📅 Planning')+'</div>';
+  if(demView==='planning'){box.innerHTML=viewSwitch+planningHtml();return;}
   const counts={all:demData.length,paye:0,rembourse:0,attente:0};
   demData.forEach(c=>counts[demStatut(c)]++);
-  let html=demKpiHtml()+demChartHtml();
+  let html=viewSwitch+demKpiHtml()+demChartHtml();
   html+=demRankHtml('Services les plus réservés','🏆',demTopServices());
   html+=demRankHtml('Par logement','🏠',demByLivret());
   const tab=(key,label)=>'<button onclick="setDemFilter(\''+key+'\')" style="padding:8px 14px;border-radius:20px;border:1px solid '+(demFilter===key?'var(--gold2)':'var(--border)')+';background:'+(demFilter===key?'rgba(226,192,110,0.15)':'transparent')+';color:'+(demFilter===key?'var(--gold2)':'var(--muted2)')+';font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">'+label+' ('+counts[key]+')</button>';
@@ -1338,16 +1344,99 @@ function openDemDetail(id){
   ov.innerHTML='<div style="max-width:520px;width:100%;margin:auto;background:var(--card);border:1px solid var(--border-gold);border-radius:20px;padding:22px">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px"><div class="serif" style="font-size:20px;color:var(--gold3)">Détail de la commande</div><button onclick="closeDemDetail()" style="width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:#fff;font-size:18px;cursor:pointer;line-height:1">✕</button></div>'
     +'<div style="margin-bottom:14px">'+demBadge(st,c,true)+'</div>'
-    +'<div style="background:var(--bg3);border-radius:12px;padding:6px 14px;margin-bottom:14px">'+rows('Date',d)+rows('Logement',c.livret_nom)+rows('Client',c.guest_nom)+rows('E-mail',c.guest_email)+rows('Téléphone',c.guest_tel)+'</div>'
+    +'<div style="background:var(--bg3);border-radius:12px;padding:6px 14px;margin-bottom:14px">'+rows(st==='paye'?'Payé le':'Date',d)+rows('Logement',c.livret_nom)+rows('Client',c.guest_nom)+rows('E-mail',c.guest_email)+rows('Téléphone',c.guest_tel)+'</div>'
     +'<div style="font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);margin-bottom:4px">Services</div>'+items
     +(c.demande?'<div style="margin-top:12px;padding:10px 12px;background:var(--bg3);border-radius:10px;font-size:13px;color:#e8e2d4">📝 '+(''+c.demande).replace(/</g,'&lt;')+'</div>':'')
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--border-gold)"><span style="color:var(--muted2);font-size:13px">Total</span><span style="color:var(--gold2);font-weight:700;font-size:20px">'+total+'</span></div>'
     +((c.invoice_url)?'<a href="'+c.invoice_url+'" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:14px;padding:13px;border-radius:12px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-weight:700;font-size:14px;text-decoration:none">🧾 Voir / télécharger la facture</a>':'')
-    +((st==='attente')?'<button onclick="deleteDemande(\''+c.id+'\')" style="width:100%;margin-top:10px;background:none;border:none;color:#e0556b;font-size:13px;cursor:pointer;text-decoration:underline">🗑 Supprimer cette commande non aboutie</button>':'')
+    +'<button onclick="deleteDemande(\''+c.id+'\')" style="width:100%;margin-top:10px;background:none;border:none;color:#e0556b;font-size:13px;cursor:pointer;text-decoration:underline">🗑 Supprimer cette commande</button>'
     +'</div>';
   ov.style.display='flex';document.body.style.overflow='hidden';
 }
 function closeDemDetail(){const ov=document.getElementById('dem-detail');if(ov)ov.style.display='none';document.body.style.overflow='';}
+// ===== Planning de livraison =====
+function planYmd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function planMonday(d){const x=new Date(d);const day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);x.setHours(12,0,0,0);return x;}
+function planEvents(){
+  const evs=[];
+  demPaid().forEach(c=>(c.items||[]).forEach(i=>{
+    if(i.date)evs.push({cid:c.id,date:i.date,heure:i.heure||'',titre:i.titre||'Service',qty:parseInt(i.qty)||1,guest:c.guest_nom||'',livret:c.livret_nom||'',tel:c.guest_tel||''});
+  }));
+  return evs;
+}
+function setPlanMode(m){planMode=m;renderDemandes();}
+function setPlanGroup(g){planGroup=g;renderDemandes();}
+function planDayPersonHtml(evs){
+  const groups={},order=[];
+  evs.forEach(e=>{if(!groups[e.cid]){groups[e.cid]={guest:e.guest,livret:e.livret,items:[]};order.push(e.cid);}groups[e.cid].items.push(e);});
+  return order.map(cid=>{
+    const g=groups[cid];
+    const lines=g.items.map(e=>'<div style="display:flex;gap:8px;align-items:center;margin-top:6px"><span style="background:rgba(226,192,110,0.18);color:var(--gold2);font-weight:700;font-size:11px;padding:2px 9px;border-radius:7px;white-space:nowrap">🕐 '+(parseInt(e.heure)?parseInt(e.heure)+'h':'libre')+'</span><span style="color:#fff;font-size:13px">'+(e.qty>1?e.qty+'× ':'')+(e.titre||'').replace(/</g,'&lt;')+'</span></div>').join('');
+    return '<div class="sc" style="margin-bottom:8px;padding:12px 14px"><div style="font-weight:700;color:#fff;font-size:14px">👤 '+((g.guest||'—').replace(/</g,'&lt;'))+'</div><div style="font-size:12px;color:var(--muted2);margin-top:2px">📍 '+((g.livret||'—').replace(/</g,'&lt;'))+'</div>'+lines+'</div>';
+  }).join('');
+}
+function planGoDay(ds){planRef=new Date(ds+'T12:00:00');planMode='jour';renderDemandes();}
+function planNav(delta){
+  if(!planRef)planRef=new Date();
+  const d=new Date(planRef);
+  if(planMode==='mois')d.setMonth(d.getMonth()+delta);
+  else if(planMode==='semaine')d.setDate(d.getDate()+delta*7);
+  else d.setDate(d.getDate()+delta);
+  planRef=d;renderDemandes();
+}
+function planEventCard(e){
+  const ht=parseInt(e.heure)?parseInt(e.heure)+'h':'horaire libre';
+  return '<div class="sc" style="margin-bottom:8px;padding:12px 14px">'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap"><span style="background:rgba(226,192,110,0.18);color:var(--gold2);font-weight:700;font-size:12px;padding:3px 10px;border-radius:8px;white-space:nowrap">🕐 '+ht+'</span><span style="color:#fff;font-weight:700;font-size:14px">'+(e.qty>1?e.qty+'× ':'')+(e.titre||'').replace(/</g,'&lt;')+'</span></div>'
+    +'<div style="font-size:13px;color:#e8e2d4">👤 '+((e.guest||'—').replace(/</g,'&lt;'))+'</div>'
+    +'<div style="font-size:12px;color:var(--muted2);margin-top:2px">📍 '+((e.livret||'—').replace(/</g,'&lt;'))+'</div>'
+    +'</div>';
+}
+function planDaysHtml(start,count,byDate){
+  const base=new Date(start);base.setHours(12,0,0,0);let out='';
+  for(let i=0;i<count;i++){
+    const d=new Date(base);d.setDate(d.getDate()+i);const ds=planYmd(d);
+    const evs=byDate[ds]||[];
+    out+='<div style="margin-bottom:16px"><div style="font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:capitalize;color:var(--gold2);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">'+d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'short'})+(evs.length?(' · '+evs.length+' livraison'+(evs.length>1?'s':'')):'')+'</div>';
+    out+=evs.length?((planGroup==='personne')?planDayPersonHtml(evs):evs.map(planEventCard).join('')):'<div style="font-size:12px;color:var(--muted);font-style:italic;padding:2px 0">Rien de prévu</div>';
+    out+='</div>';
+  }
+  return out;
+}
+function planMonthHtml(ref,byDate){
+  const y=ref.getFullYear(),m=ref.getMonth();
+  const startOffset=(new Date(y,m,1).getDay()+6)%7, daysInMonth=new Date(y,m+1,0).getDate(), todayStr=planYmd(new Date());
+  let cells=['L','M','M','J','V','S','D'].map(x=>'<div style="text-align:center;font-size:10px;color:var(--muted2);font-weight:700;padding:4px 0">'+x+'</div>').join('');
+  for(let i=0;i<startOffset;i++)cells+='<div></div>';
+  for(let day=1;day<=daysInMonth;day++){
+    const ds=planYmd(new Date(y,m,day)),evs=byDate[ds]||[],isToday=ds===todayStr;
+    const chips=evs.slice(0,2).map(e=>'<div style="font-size:8px;background:rgba(226,192,110,0.18);color:var(--gold2);border-radius:3px;padding:1px 3px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(parseInt(e.heure)?parseInt(e.heure)+'h ':'')+(e.titre||'').replace(/</g,'&lt;')+'</div>').join('');
+    const more=evs.length>2?'<div style="font-size:8px;color:var(--muted2);margin-top:1px">+'+(evs.length-2)+'</div>':'';
+    cells+='<div onclick="planGoDay(\''+ds+'\')" style="min-height:56px;border:1px solid '+(isToday?'var(--gold2)':'var(--border)')+';border-radius:8px;padding:3px;cursor:pointer;background:'+(evs.length?'rgba(226,192,110,0.06)':'transparent')+'"><div style="font-size:11px;font-weight:'+(isToday?'700':'400')+';color:'+(isToday?'var(--gold2)':'#fff')+'">'+day+'</div>'+chips+more+'</div>';
+  }
+  return '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">'+cells+'</div>';
+}
+function planningHtml(){
+  if(!planRef)planRef=new Date();
+  const evs=planEvents(),byDate={};
+  evs.forEach(e=>{(byDate[e.date]=byDate[e.date]||[]).push(e);});
+  Object.values(byDate).forEach(a=>a.sort((x,y)=>(parseInt(x.heure)||0)-(parseInt(y.heure)||0)));
+  const tg=(mo,l)=>'<button onclick="setPlanMode(\''+mo+'\')" style="flex:1;padding:7px;border-radius:14px;border:1px solid '+(planMode===mo?'var(--gold2)':'var(--border)')+';background:'+(planMode===mo?'rgba(226,192,110,0.15)':'transparent')+';color:'+(planMode===mo?'var(--gold2)':'var(--muted2)')+';font-size:12px;font-weight:700;cursor:pointer">'+l+'</button>';
+  let title='',body='';
+  if(planMode==='mois'){title=planRef.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});body=planMonthHtml(planRef,byDate);}
+  else if(planMode==='semaine'){const mon=planMonday(planRef),sun=new Date(mon);sun.setDate(sun.getDate()+6);title='Semaine du '+mon.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' au '+sun.toLocaleDateString('fr-FR',{day:'numeric',month:'short'});body=planDaysHtml(mon,7,byDate);}
+  else{title=planRef.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});body=planDaysHtml(planRef,1,byDate);}
+  const arrow=(t)=>'width:38px;height:38px;border-radius:10px;border:1px solid var(--border-gold);background:var(--bg3);color:var(--gold2);font-size:18px;cursor:pointer;line-height:1;flex-shrink:0';
+  let html='<div style="display:flex;gap:6px;margin-bottom:12px">'+tg('mois','Mois')+tg('semaine','Semaine')+tg('jour','Jour')+'</div>';
+  html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:8px"><button onclick="planNav(-1)" style="'+arrow()+'">‹</button><div style="font-weight:700;color:var(--gold3);text-transform:capitalize;text-align:center;flex:1;font-size:15px">'+title+'</div><button onclick="planNav(1)" style="'+arrow()+'">›</button></div>';
+  if(planMode!=='mois'){
+    const gg=(g,l)=>'<button onclick="setPlanGroup(\''+g+'\')" style="padding:5px 12px;border-radius:14px;border:1px solid '+(planGroup===g?'var(--gold2)':'var(--border)')+';background:'+(planGroup===g?'rgba(226,192,110,0.15)':'transparent')+';color:'+(planGroup===g?'var(--gold2)':'var(--muted2)')+';font-size:11px;font-weight:700;cursor:pointer">'+l+'</button>';
+    html+='<div style="display:flex;gap:6px;justify-content:flex-end;margin-bottom:14px">'+gg('personne','🧍 Par personne')+gg('heure','🕐 Par heure')+'</div>';
+  }
+  html+=body;
+  if(!evs.length)html+='<div style="text-align:center;padding:24px;color:var(--muted);font-style:italic;font-size:13px;line-height:1.6">Aucune livraison planifiée.<br>Les services payés avec une date choisie apparaîtront ici automatiquement.</div>';
+  return html;
+}
 
 // ===== Catalogue de services =====
 let catalogue=[],allLivrets=[],catSearch='';
