@@ -3150,7 +3150,7 @@ function renderCart(){
   if(!cart.length){box.style.display='none';return;}
   let total=0;
   cart.forEach(c=>{if(!c.lineId)c.lineId=newLineId();});
-  items.innerHTML=cartHead()+cart.map(c=>{
+  items.innerHTML=cart.map(c=>{
     const line=c.cents*c.qty;total+=line;
     const ctrl='<div style="display:flex;align-items:center;gap:6px"><button onclick="changeQty(\''+c.lineId+'\',-1)" style="width:26px;height:26px;border-radius:8px;border:1px solid var(--border-gold);background:var(--bg3);color:var(--gold2);cursor:pointer;font-size:16px;line-height:1">−</button><span style="min-width:18px;text-align:center;color:#fff">'+c.qty+'</span><button onclick="changeQty(\''+c.lineId+'\',1)" style="width:26px;height:26px;border-radius:8px;border:1px solid var(--border-gold);background:var(--bg3);color:var(--gold2);cursor:pointer;font-size:16px;line-height:1">+</button></div>';
     let h='<div style="padding:10px 0;border-bottom:1px solid var(--border)">';
