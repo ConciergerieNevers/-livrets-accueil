@@ -408,6 +408,7 @@ textarea.fi{resize:vertical;min-height:80px;}
 @keyframes introOut{to{opacity:0;visibility:hidden}}
 @keyframes introGlow{0%,100%{text-shadow:0 0 10px rgba(226,192,110,0.3)}50%{text-shadow:0 0 26px rgba(226,192,110,0.7)}}
 @keyframes introSpin{to{transform:rotate(360deg)}}
+@keyframes introWrite{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
 .toast{position:fixed;bottom:110px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--text);color:var(--bg);padding:12px 24px;border-radius:30px;font-size:12px;font-weight:800;opacity:0;transition:all 0.25s;pointer-events:none;z-index:999;white-space:nowrap;font-family:var(--font-sans);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 .loading{text-align:center;padding:60px;color:var(--muted);font-size:14px;font-family:var(--font-serif);}
@@ -3839,7 +3840,7 @@ function startIntro(){
   ov.style.opacity='1';ov.style.transition='';
   ov.innerHTML='<div style="max-width:440px">'
     +'<div style="font-size:11px;letter-spacing:5px;text-transform:uppercase;color:var(--gold2);opacity:0;animation:introIn .6s ease .1s forwards,introGlow 2.4s ease 1s infinite">✦ Be Nomad ✦</div>'
-    +'<div id="intro-hi" style="font-family:\'Dancing Script\',cursive;font-weight:700;font-size:clamp(46px,14vw,76px);color:var(--gold3);margin:14px 0 4px;line-height:1.05;opacity:0;animation:introIn .8s ease .5s forwards,introGlow 2.8s ease 1.2s infinite">Bienvenue</div>'
+    +'<div id="intro-hi" style="display:inline-block;font-family:\'Dancing Script\',cursive;font-weight:700;font-size:clamp(46px,14vw,76px);color:var(--gold3);margin:14px 0 4px;line-height:1.1;min-height:1.1em"></div>'
     +'<div id="intro-dest" style="font-size:17px;color:var(--text);min-height:22px;opacity:0;animation:introIn .6s ease .9s forwards"></div>'
     +'<div style="margin:30px auto 0;width:32px;height:32px;border:2px solid rgba(226,192,110,0.25);border-top-color:var(--gold2);border-radius:50%;animation:introSpin .8s linear infinite"></div>'
     +'</div>';
@@ -3850,7 +3851,7 @@ function startIntro(){
 }
 function finishIntro(prenom,dest){
   const hi=document.getElementById('intro-hi'),de=document.getElementById('intro-dest');
-  if(hi)hi.textContent=prenom?('Bienvenue '+prenom):'Bienvenue';
+  if(hi){hi.textContent=prenom?('Bienvenue '+prenom):'Bienvenue';hi.style.opacity='1';hi.style.animation='none';void hi.offsetWidth;hi.style.animation='introWrite 1.6s ease forwards, introGlow 3s ease 1.8s infinite';}
   if(de)de.textContent=dest||'';
   if(window._introMax)clearTimeout(window._introMax);
   const wait=Math.max(0,3000-(Date.now()-(window._introStart||0)));
