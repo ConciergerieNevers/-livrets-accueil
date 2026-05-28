@@ -165,7 +165,7 @@ textarea.fi{resize:vertical;min-height:80px;}
 /* MODALES */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:1000;align-items:center;justify-content:center;padding:24px;}
 .modal-overlay.show{display:flex;}
-.modal-content{background:var(--card);border:1px solid var(--border-gold);border-radius:24px;padding:32px;max-width:420px;width:100%;text-align:center;position:relative;}
+.modal-content{background:var(--card);border:1px solid var(--border-gold);border-radius:24px;padding:32px;max-width:420px;width:100%;text-align:center;position:relative;max-height:calc(100vh - 48px);overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .modal-content.wide{max-width:640px;}
 .modal-title{font-family:var(--font-serif);font-size:22px;font-weight:700;margin-bottom:8px;}
 .modal-sub{font-size:13px;color:var(--muted2);margin-bottom:24px;}
@@ -404,6 +404,9 @@ textarea.fi{resize:vertical;min-height:80px;}
 .voy-panel.active{display:block;}
 @keyframes fu{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes popIn{0%{transform:scale(0);opacity:0}60%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+@keyframes introIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes introOut{to{opacity:0;visibility:hidden}}
+@keyframes introGlow{0%,100%{text-shadow:0 0 10px rgba(226,192,110,0.3)}50%{text-shadow:0 0 26px rgba(226,192,110,0.7)}}
 .toast{position:fixed;bottom:110px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--text);color:var(--bg);padding:12px 24px;border-radius:30px;font-size:12px;font-weight:800;opacity:0;transition:all 0.25s;pointer-events:none;z-index:999;white-space:nowrap;font-family:var(--font-sans);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 .loading{text-align:center;padding:60px;color:var(--muted);font-size:14px;font-family:var(--font-serif);}
@@ -540,7 +543,7 @@ body{top:0!important}
       <div class="adm-hero-stats">
         <div class="adm-stat"><div class="adm-stat-num gold-text serif" id="stat-l">—</div><div class="adm-stat-lbl">Livrets</div></div>
         <div class="adm-stat"><div class="adm-stat-num gold-text serif" id="stat-v">—</div><div class="adm-stat-lbl">Vues 30j</div></div>
-        <div class="adm-stat"><div class="adm-stat-num gold-text serif" id="stat-a">—</div><div class="adm-stat-lbl">Adresses</div></div>
+        <div class="adm-stat"><div class="adm-stat-num gold-text serif" id="stat-a">—</div><div class="adm-stat-lbl">Upsell (mois)</div></div>
       </div>
     </div>
     <div class="adm-section-hdr">
@@ -558,12 +561,14 @@ body{top:0!important}
         </button>
         <button class="adm-add-s" onclick="openDemandes()">
           📋 Mes demandes
+          <span class="badge" id="dem-badge" style="display:none">0</span>
         </button>
         <button class="adm-add" onclick="openEditor(null)">
           + Nouveau livret
         </button>
       </div>
     </div>
+    <input id="lv-search" oninput="lvSearch=this.value;renderLivrets()" placeholder="🔍 Rechercher un logement (nom, slug, catégorie)…" style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--border-gold);background:#141414;color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:16px">
     <div id="livrets-loading" class="loading">Chargement…</div>
     <div id="livrets-grid" class="livrets-grid" style="display:none"></div>
   </div>
@@ -586,6 +591,12 @@ body{top:0!important}
         <h2 class="serif gold-text">Catalogue de services</h2>
         <p>Créez un service une fois, puis cochez les logements qui le proposent.</p>
       </div>
+    </div>
+    <div class="sc" style="margin-bottom:20px">
+      <div class="sc-title">📜 Conditions Générales de Vente (CGV)</div>
+      <p style="font-size:12px;color:var(--muted2);margin:-10px 0 12px">Elles apparaissent en bas des services (petit lien) et le voyageur doit les accepter avant de payer.</p>
+      <textarea id="cgv-text" placeholder="Écris ici tes conditions générales de vente…" style="width:100%;min-height:140px;padding:12px;border-radius:12px;border:1px solid var(--border-gold);background:#141414;color:#fff;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box"></textarea>
+      <button class="btn-p" style="margin-top:10px" onclick="saveCGV()">Enregistrer les CGV</button>
     </div>
     <div id="cat-loading" class="loading">Chargement…</div>
     <div id="cat-list"></div>
@@ -969,6 +980,7 @@ body{top:0!important}
         </div>
         <div id="voy-services"></div>
         <a id="voy-autre-demande" class="voy-mail" href="#" style="margin-top:16px">✉️ Une autre demande ? Écrivez-nous</a>
+        <div style="text-align:center;margin-top:18px"><a onclick="showCGV()" style="font-size:11px;color:var(--muted2);text-decoration:underline;cursor:pointer">Conditions générales de vente</a></div>
       </div>
     </div>
 
@@ -1245,6 +1257,14 @@ function demRefusedCount(c){return (c.items||[]).filter(i=>i.statut==='refuse').
 function demEur(cents){return (Math.round(cents)/100).toFixed(2).replace('.',',')+'€';}
 function demPaid(){return demData.filter(c=>demStatut(c)==='paye');}
 function setDemFilter(f){demFilter=f;renderDemandes();}
+function setDemBadge(n){const b=document.getElementById('dem-badge');if(b){if(n>0){b.textContent=n;b.style.display='';}else b.style.display='none';}}
+async function markTraitee(id,val){
+  const c=demData.find(x=>x.id===id);if(!c)return;
+  try{
+    await axios.patch(`${API}/commandes?id=eq.${id}`,{traitee:val},{headers:{...hd(),'Prefer':'return=minimal'}});
+    c.traitee=val;renderDemDetail();renderDemandes();toast(val?'✅ Demande traitée':'Demande rouverte');
+  }catch(e){alert('Impossible de mettre à jour.');}
+}
 function setDemChart(m){demChartMode=m;renderDemandes();}
 async function deleteDemande(id){
   const c=demData.find(x=>x.id===id),st=c?demStatut(c):'';
@@ -1334,17 +1354,19 @@ function demCardHtml(c){
   const nb=(c.items||[]).reduce((s,i)=>s+(parseInt(i.qty)||1),0);
   const refN=demRefusedCount(c);
   const refNote=refN>0?'<div style="font-size:11px;color:#8fc1f0;margin-top:3px">↩️ '+refN+' service'+(refN>1?'s':'')+' refusé'+(refN>1?'s':'')+' (remboursé)</div>':'';
+  const traiteNote=(st==='paye')?(c.traitee?'<div style="font-size:11px;color:#7fe0a0;margin-top:3px">✓ Traitée</div>':'<div style="font-size:11px;color:var(--gold2);font-weight:700;margin-top:3px">🆕 À traiter</div>'):'';
   const del=(st==='attente')?'<button onclick="event.stopPropagation();deleteDemande(\''+c.id+'\')" style="background:none;border:none;color:#e0556b;font-size:12px;cursor:pointer;text-decoration:underline;padding:0">🗑 Supprimer</button>':'<span style="font-size:12px;color:var(--muted)">Voir le détail →</span>';
   return '<div class="sc" onclick="openDemDetail(\''+c.id+'\')" style="margin-bottom:12px;cursor:pointer">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px"><div style="font-size:12px;color:var(--muted2)">📅 '+d+'</div>'+demBadge(st,c)+'</div>'
     +'<div style="font-weight:600;color:#fff">'+contact+'</div>'
-    +'<div style="font-size:12px;color:var(--muted2);margin-top:3px">'+((c.livret_nom||'').replace(/</g,'&lt;'))+' · '+nb+' service'+(nb>1?'s':'')+'</div>'+refNote
+    +'<div style="font-size:12px;color:var(--muted2);margin-top:3px">'+((c.livret_nom||'').replace(/</g,'&lt;'))+' · '+nb+' service'+(nb>1?'s':'')+'</div>'+refNote+traiteNote
     +'<div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:12px">'+del+'<span style="color:var(--gold2);font-weight:700">'+total+'</span></div>'
     +'</div>';
 }
 function setDemView(v){demView=v;renderDemandes();}
 function renderDemandes(){
   const box=document.getElementById('dem-list');if(!box)return;
+  setDemBadge(demData.filter(c=>demStatut(c)==='paye'&&!c.traitee).length);
   if(!demData.length){box.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucune commande pour le moment.</div>';return;}
   const sw=(v,l)=>'<button onclick="setDemView(\''+v+'\')" style="flex:1;padding:11px;border-radius:12px;border:1px solid '+(demView===v?'var(--gold2)':'var(--border)')+';background:'+(demView===v?'rgba(226,192,110,0.15)':'transparent')+';color:'+(demView===v?'var(--gold2)':'var(--muted2)')+';font-size:13px;font-weight:700;cursor:pointer">'+l+'</button>';
   const viewSwitch='<div style="display:flex;gap:8px;margin-bottom:18px">'+sw('dash','📊 Tableau de bord')+sw('planning','📅 Planning')+'</div>';
@@ -1406,6 +1428,10 @@ function renderDemDetail(){
     +'<div style="font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);margin-bottom:4px">Services</div>'+items
     +(c.demande?'<div style="margin-top:12px;padding:10px 12px;background:var(--bg3);border-radius:10px;font-size:13px;color:#e8e2d4">📝 '+(''+c.demande).replace(/</g,'&lt;')+'</div>':'')
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--border-gold)"><span style="color:var(--muted2);font-size:13px">Total</span>'+totalLine+'</div>'
+    +((st==='paye')?(c.traitee
+      ?'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(80,200,120,0.1);border:1px solid rgba(80,200,120,0.3)"><span style="color:#7fe0a0;font-weight:700;font-size:13px">✓ Demande traitée</span><button onclick="markTraitee(\''+c.id+'\',false)" style="background:none;border:none;color:var(--muted2);font-size:12px;cursor:pointer;text-decoration:underline">Rouvrir</button></div>'
+      :'<button onclick="markTraitee(\''+c.id+'\',true)" style="width:100%;margin-top:14px;padding:14px;border:1px solid rgba(80,200,120,0.35);border-radius:12px;background:rgba(80,200,120,0.18);color:#7fe0a0;font-weight:700;font-size:14px;cursor:pointer">✅ Marquer comme traitée</button>')
+    :'')
     +((st==='attente'&&c.checkout_url)?'<button onclick="copyPayLink(\''+c.id+'\')" style="width:100%;margin-top:14px;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-weight:700;font-size:14px;cursor:pointer">🔗 Copier le lien de paiement</button><div style="font-size:11px;color:var(--muted2);margin-top:6px;text-align:center">À renvoyer au voyageur s\'il le réclame. Lien Stripe valable ~24h.</div>':'')
     +((c.invoice_url)?'<a href="'+c.invoice_url+'" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:14px;padding:13px;border-radius:12px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-weight:700;font-size:14px;text-decoration:none">🧾 Voir / télécharger la facture</a>':'')
     +'<button onclick="deleteDemande(\''+c.id+'\')" style="width:100%;margin-top:10px;background:none;border:none;color:#e0556b;font-size:13px;cursor:pointer;text-decoration:underline">🗑 Supprimer cette commande</button>'
@@ -1714,6 +1740,7 @@ async function openCatalogue(){
   document.getElementById('cat-loading').style.display='block';
   document.getElementById('cat-list').innerHTML='';
   catSearch='';
+  loadCGV();
   try{
     const [cr,lr]=await Promise.all([
       axios.get(`${API}/catalogue_services?select=*&order=categorie.asc,ordre.asc`,{headers:hd()}),
@@ -1723,6 +1750,16 @@ async function openCatalogue(){
     document.getElementById('cat-loading').style.display='none';
     renderCatalogue();
   }catch(e){document.getElementById('cat-loading').textContent='Erreur de chargement.';}
+}
+async function loadCGV(){
+  try{const r=await axios.get(`${API}/parametres?cle=eq.cgv&select=valeur`,{headers:hd()});const t=document.getElementById('cgv-text');if(t)t.value=(r.data&&r.data[0]&&r.data[0].valeur)||'';}catch(e){}
+}
+async function saveCGV(){
+  const t=document.getElementById('cgv-text');if(!t)return;
+  try{
+    await axios.post(`${API}/parametres`,{cle:'cgv',valeur:t.value},{headers:{...hd(),'Prefer':'resolution=merge-duplicates,return=minimal'}});
+    toast('📜 CGV enregistrées');
+  }catch(e){alert('Impossible d\'enregistrer les CGV.');}
 }
 function catById(id){return catalogue.find(s=>String(s.id)===String(id));}
 function addCatService(){
@@ -1838,14 +1875,17 @@ async function ll(){
   document.getElementById('livrets-grid').style.display='none';
   try{
     const since=new Date(Date.now()-30*86400000).toISOString();
-    const [lr,ar,vr]=await Promise.all([
+    const moisDebut=new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString();
+    const [lr,cr,vr]=await Promise.all([
       axios.get(`${API}/livrets?select=*&order=created_at.desc`,{headers:hd()}),
-      axios.get(`${API}/adresses?select=id`,{headers:hd()}),
+      axios.get(`${API}/commandes?select=total_cents,refunded_cents&statut=in.(paye,rembourse_partiel)&created_at=gte.${moisDebut}`,{headers:hd()}).catch(()=>({data:[]})),
       axios.get(`${API}/consultations?select=id&created_at=gte.${since}`,{headers:hd()}).catch(()=>({data:[]}))
     ]);
+    const upsell=(cr.data||[]).reduce((s,c)=>s+((c.total_cents||0)-(c.refunded_cents||0)),0);
     document.getElementById('stat-l').textContent=lr.data.length;
-    document.getElementById('stat-a').textContent=ar.data.length;
     document.getElementById('stat-v').textContent=vr.data.length;
+    document.getElementById('stat-a').textContent=(upsell/100).toFixed(0)+'€';
+    axios.get(`${API}/commandes?select=id&statut=in.(paye,rembourse_partiel)&traitee=eq.false`,{headers:hd()}).then(nr=>setDemBadge((nr.data||[]).length)).catch(()=>{});
     const viewsByLivret={};
     const allViews=await axios.get(`${API}/consultations?select=livret_id&created_at=gte.${since}`,{headers:hd()}).catch(()=>({data:[]}));
     allViews.data.forEach(v=>viewsByLivret[v.livret_id]=(viewsByLivret[v.livret_id]||0)+1);
@@ -1853,7 +1893,7 @@ async function ll(){
   }catch(e){console.error(e);document.getElementById('livrets-loading').textContent='Erreur.';}
 }
 
-let lvData=[],lvViews={},lvView=((typeof localStorage!=='undefined'&&localStorage.getItem('lv_view'))||'cartes'),lvReorder=false;
+let lvData=[],lvViews={},lvView=((typeof localStorage!=='undefined'&&localStorage.getItem('lv_view'))||'cartes'),lvReorder=false,lvSearch='';
 function rl(livrets,views={}){lvData=livrets||[];lvViews=views||{};renderLivrets();}
 function lvActifOf(l){return l.actif!==false;}
 function setLvView(v){lvView=v;try{localStorage.setItem('lv_view',v);}catch(e){}renderLivrets();}
@@ -1872,10 +1912,17 @@ async function setLvCategorie(id){
   try{await axios.patch(`${API}/livrets?id=eq.${id}`,{categorie:(v.trim()||null)},{headers:{...hd(),'Prefer':'return=minimal'}});l.categorie=v.trim()||null;renderLivrets();toast('🏷 Catégorie mise à jour');}
   catch(e){alert('Impossible.');}
 }
-async function saveLvOrder(){
-  const ids=[...document.querySelectorAll('#lv-sortable [data-lvid]')].map(el=>el.getAttribute('data-lvid'));
-  try{for(let i=0;i<ids.length;i++){const l=lvData.find(x=>String(x.id)===ids[i]);if(l){l.ordre=i;await axios.patch(`${API}/livrets?id=eq.${ids[i]}`,{ordre:i},{headers:{...hd(),'Prefer':'return=minimal'}});}}toast('Ordre enregistré');}
-  catch(e){alert('Ordre non enregistré.');}
+async function lvDropEnd(evt){
+  const id=evt&&evt.item&&evt.item.getAttribute('data-lvid');if(!id)return;
+  const toCat=(evt.to&&evt.to.getAttribute('data-cat'))||'';
+  const cat=toCat.trim()?toCat:null;
+  const proms=[];
+  const moved=lvData.find(x=>String(x.id)===String(id));
+  if(moved&&((moved.categorie||null)!==(cat||null))){moved.categorie=cat;proms.push(axios.patch(`${API}/livrets?id=eq.${id}`,{categorie:cat},{headers:{...hd(),'Prefer':'return=minimal'}}));}
+  const ids=[...document.querySelectorAll('#livrets-grid .lv-dropzone [data-lvid]')].map(el=>el.getAttribute('data-lvid'));
+  ids.forEach((lid,i)=>{const l=lvData.find(x=>String(x.id)===lid);if(l&&l.ordre!==i){l.ordre=i;proms.push(axios.patch(`${API}/livrets?id=eq.${lid}`,{ordre:i},{headers:{...hd(),'Prefer':'return=minimal'}}));}});
+  try{await Promise.all(proms);toast('Rangé ✅');}catch(e){alert('Sauvegarde incomplète, réessaie.');}
+  renderLivrets();
 }
 function lvCardHtml(l){
   const pub=`${BASE}/livret/${l.slug}`;
@@ -1927,13 +1974,27 @@ function renderLivrets(){
   const vbtn=(v,l)=>'<button onclick="setLvView(\''+v+'\')" style="padding:7px 12px;border-radius:10px;border:1px solid '+(lvView===v?'var(--gold2)':'var(--border)')+';background:'+(lvView===v?'rgba(226,192,110,0.15)':'transparent')+';color:'+(lvView===v?'var(--gold2)':'var(--muted2)')+';font-size:12px;font-weight:700;cursor:pointer">'+l+'</button>';
   const bar='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px;padding:12px 14px;border:1px solid var(--border-gold);border-radius:12px;background:var(--bg2)"><span style="font-size:12px;color:var(--muted2);font-weight:700">⚙️ Affichage</span>'+vbtn('cartes','▦ Cartes')+vbtn('liste','☰ Liste')+'<button onclick="toggleLvReorder()" style="margin-left:auto;padding:7px 12px;border-radius:10px;border:1px solid '+(lvReorder?'var(--gold2)':'var(--border)')+';background:'+(lvReorder?'rgba(226,192,110,0.15)':'transparent')+';color:'+(lvReorder?'var(--gold2)':'var(--muted2)')+';font-size:12px;font-weight:700;cursor:pointer">'+(lvReorder?'✓ Terminer':'⇅ Réorganiser')+'</button></div>';
   if(lvReorder){
-    const rows=sorted.map(l=>'<div data-lvid="'+l.id+'" style="display:flex;align-items:center;gap:12px;padding:13px 14px;border:1px solid var(--border-gold);border-radius:12px;margin-bottom:8px;background:var(--card);cursor:grab"><span style="font-size:18px;color:var(--muted2)">☰</span><span style="width:9px;height:9px;border-radius:50%;background:'+(lvActifOf(l)?'#7fe0a0':'#e0c060')+'"></span><div style="flex:1"><div style="font-weight:600;color:#fff">'+l.nom+'</div><div style="font-size:11px;color:var(--muted2)">'+(l.categorie||'Sans catégorie')+'</div></div></div>').join('');
-    g.innerHTML=bar+'<div style="font-size:12px;color:var(--muted2);margin-bottom:10px">Glisse les logements pour changer l\'ordre, puis clique « ✓ Terminer ».</div><div id="lv-sortable">'+rows+'</div>';
-    if(typeof Sortable!=='undefined'){try{new Sortable(document.getElementById('lv-sortable'),{animation:150,onEnd:saveLvOrder});}catch(e){}}
+    const rgroups={},rorder=[];
+    sorted.forEach(l=>{const k=(l.categorie&&(''+l.categorie).trim())||'Sans catégorie';if(!rgroups[k]){rgroups[k]=[];rorder.push(k);}rgroups[k].push(l);});
+    if(!rgroups['Sans catégorie']){rgroups['Sans catégorie']=[];rorder.push('Sans catégorie');}
+    rorder.sort((a,b)=>((a==='Sans catégorie')-(b==='Sans catégorie'))||a.localeCompare(b,'fr'));
+    let html=bar+'<div style="font-size:12px;color:var(--muted2);margin-bottom:14px;line-height:1.5">Glisse un logement dans la <b style="color:var(--gold2)">catégorie de ton choix</b>, ou réordonne-le. C\'est sauvegardé automatiquement. Clique « ✓ Terminer » quand c\'est bon.</div>';
+    rorder.forEach(k=>{
+      const catAttr=(k==='Sans catégorie')?'':k.replace(/"/g,'&quot;');
+      html+='<div style="font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--gold2);margin:12px 0 8px">🏷 '+k.replace(/</g,'&lt;')+'</div>';
+      html+='<div class="lv-dropzone" data-cat="'+catAttr+'" style="min-height:54px;border:1px dashed var(--border-gold);border-radius:12px;padding:8px;margin-bottom:14px">'
+        +rgroups[k].map(l=>'<div data-lvid="'+l.id+'" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;background:var(--card);cursor:grab"><span style="font-size:18px;color:var(--muted2)">☰</span><span style="width:9px;height:9px;border-radius:50%;background:'+(lvActifOf(l)?'#7fe0a0':'#e0c060')+'"></span><div style="flex:1"><div style="font-weight:600;color:#fff">'+(''+l.nom).replace(/</g,'&lt;')+'</div></div></div>').join('')
+        +(rgroups[k].length?'':'<div style="font-size:11px;color:var(--muted);text-align:center;padding:10px;font-style:italic">Dépose un logement ici</div>')
+        +'</div>';
+    });
+    g.innerHTML=html;
+    if(typeof Sortable!=='undefined'){document.querySelectorAll('#livrets-grid .lv-dropzone').forEach(z=>{try{new Sortable(z,{group:'lvmove',animation:150,onEnd:lvDropEnd});}catch(e){}});}
     return;
   }
+  const q=resaNorm(lvSearch||'');
+  const shown=q?sorted.filter(l=>resaNorm((l.nom||'')+' '+(l.slug||'')+' '+(l.categorie||'')).includes(q)):sorted;
   const groups={},order=[];
-  sorted.forEach(l=>{const k=(l.categorie&&(''+l.categorie).trim())||'Sans catégorie';if(!groups[k]){groups[k]=[];order.push(k);}groups[k].push(l);});
+  shown.forEach(l=>{const k=(l.categorie&&(''+l.categorie).trim())||'Sans catégorie';if(!groups[k]){groups[k]=[];order.push(k);}groups[k].push(l);});
   order.sort((a,b)=>((a==='Sans catégorie')-(b==='Sans catégorie'))||a.localeCompare(b,'fr'));
   const showHeaders=!(order.length===1&&order[0]==='Sans catégorie');
   let html=bar;
@@ -3674,6 +3735,7 @@ async function lbs(slug){
       axios.get(`${API}/catalogue_services?livret_ids=cs.{${l.id}}&actif=eq.true&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]}))
     ]);
     rv(l,ar.data,er.data,false,[...(cat.data||[])]);
+    showIntro(l,'');
     trackView(l.id,'home');
   }catch(e){console.error(e);document.getElementById('voy-loading').textContent='Erreur.';}
 }
@@ -3749,7 +3811,17 @@ function showResa(resa,ci,co,guestUrl){
   if(modif){if(guestUrl&&/^https?:\/\//i.test(guestUrl)){modif.href=guestUrl;modif.style.display='flex';}else{modif.style.display='none';}}
   zone.style.display='';
 }
-let cart=[],voyServices=[],voyCartKey='cart_x',cartStep=1,cartDemande='',cartDemOn=false;
+let cart=[],voyServices=[],voyCartKey='cart_x',cartStep=1,cartDemande='',cartDemOn=false,voyCGV=null,cartCGV=false;
+async function showCGV(){
+  if(voyCGV===null){try{const r=await axios.get(`${API}/parametres?cle=eq.cgv&select=valeur`,{headers:{'apikey':KEY}});voyCGV=(r.data&&r.data[0]&&r.data[0].valeur)||'';}catch(e){voyCGV='';}}
+  let ov=document.getElementById('voy-cgv');
+  if(!ov){ov=document.createElement('div');ov.id='voy-cgv';document.body.appendChild(ov);}
+  ov.setAttribute('style','position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,0.7);overflow-y:auto;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px');
+  ov.onclick=function(e){if(e.target===ov)ov.style.display='none';};
+  const txt=(voyCGV&&voyCGV.trim())?voyCGV.replace(/</g,'&lt;').replace(/\n/g,'<br>'):'<span style="color:var(--muted2);font-style:italic">Conditions générales de vente à venir.</span>';
+  ov.innerHTML='<div style="max-width:600px;width:100%;margin:auto;background:var(--card);border:1px solid var(--border-gold);border-radius:20px;padding:24px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px"><div class="serif" style="font-size:20px;color:var(--gold3)">Conditions Générales de Vente</div><button onclick="var o=document.getElementById(\'voy-cgv\');if(o)o.style.display=\'none\'" style="width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:#fff;font-size:18px;cursor:pointer;flex-shrink:0">✕</button></div><div style="font-size:13px;color:var(--text);line-height:1.7">'+txt+'</div></div>';
+  ov.style.display='flex';
+}
 function priceToCentsClient(t){const s=(t||'').replace(/\s/g,'').replace(',','.');const m=s.match(/(\d+(\.\d+)?)/);return m?Math.round(parseFloat(m[1])*100):0;}
 function saveCart(){try{localStorage.setItem(voyCartKey,JSON.stringify(cart));}catch(e){}}
 function newLineId(){return 'L'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
@@ -3757,7 +3829,27 @@ function addToCart(id){const s=(voyServices||[]).find(x=>String(x.id)===String(i
 function changeQty(lineId,d){const c=cart.find(x=>x.lineId===lineId);if(!c)return;c.qty+=d;if(c.qty<=0)cart=cart.filter(x=>x.lineId!==lineId);saveCart();renderCart();}
 function removeCartLine(lineId){cart=cart.filter(x=>x.lineId!==lineId);saveCart();renderCart();}
 function addAnotherDay(lineId){const c=cart.find(x=>x.lineId===lineId);if(!c)return;cart.push({lineId:newLineId(),id:c.id,titre:c.titre,cents:c.cents,qty:1,demande_date:true,jours_dispo:c.jours_dispo,delai_jours:c.delai_jours||0,heure_limite:(c.heure_limite==null?null:c.heure_limite),date:'',heure:''});cartStep=1;saveCart();renderCart();toast('Nouvelle ligne · choisis sa date 👇');}
-function clearVoyCart(){cart=[];cartStep=1;cartDemande='';cartDemOn=false;saveCart();renderCart();}
+function clearVoyCart(){cart=[];cartStep=1;cartDemande='';cartDemOn=false;cartCGV=false;saveCart();renderCart();}
+function showIntro(l,prenom){
+  if(!l||!l.id)return;
+  try{if(localStorage.getItem('intro_'+l.id))return;}catch(e){}
+  let ov=document.getElementById('voy-intro');
+  if(!ov){ov=document.createElement('div');ov.id='voy-intro';document.body.appendChild(ov);}
+  ov.setAttribute('style','position:fixed;inset:0;z-index:11000;background:radial-gradient(130% 90% at 50% 28%,#1c1500 0%,#060606 62%);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;cursor:pointer;animation:introOut .9s ease 3.4s forwards');
+  const dest=(''+(l.nom||'')).replace(/</g,'&lt;');
+  const hi=prenom?('Bienvenue '+(''+prenom).replace(/</g,'&lt;')):'Bienvenue';
+  ov.innerHTML='<div style="max-width:440px">'
+    +'<div style="font-size:11px;letter-spacing:5px;text-transform:uppercase;color:var(--gold2);opacity:0;animation:introIn .7s ease .2s forwards,introGlow 2.4s ease 1s infinite">✦ Be Nomad ✦</div>'
+    +'<div class="serif" style="font-size:clamp(28px,8vw,38px);color:var(--gold3);margin:20px 0 8px;line-height:1.12;opacity:0;animation:introIn .7s ease .7s forwards">'+hi+'</div>'
+    +'<div style="font-size:17px;color:var(--text);opacity:0;animation:introIn .7s ease 1.2s forwards">'+dest+'</div>'
+    +'<div style="margin-top:30px;font-size:11px;color:var(--muted2);opacity:0;animation:introIn 1s ease 2.2s forwards">Toucher pour entrer</div>'
+    +'</div>';
+  ov.onclick=function(){closeIntro(l.id);};
+  ov.style.display='flex';
+  if(window._introT)clearTimeout(window._introT);
+  window._introT=setTimeout(function(){closeIntro(l.id);},4400);
+}
+function closeIntro(id){const ov=document.getElementById('voy-intro');if(ov)ov.style.display='none';try{localStorage.setItem('intro_'+id,'1');}catch(e){}}
 const JOURS_LBL=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 function joursTxt(arr){if(!arr||arr.length>=7)return'tous les jours';return [1,2,3,4,5,6,0].filter(d=>arr.includes(d)).map(d=>JOURS_LBL[d]).join(', ')||'aucun jour';}
 function cartDateError(c){if(!c.demande_date||!c.date)return'';const dt=new Date(c.date+'T12:00:00');if(!(c.jours_dispo||[0,1,2,3,4,5,6]).includes(dt.getDay()))return '❌ Service non disponible ce jour-là';if(typeof bookableDay==='function'&&!bookableDay(c,dt))return '❌ Trop tard pour réserver ce service';return'';}
@@ -3835,6 +3927,7 @@ function recapHtml(total){
     +'<label style="display:flex;align-items:center;gap:10px;cursor:pointer;color:var(--text);font-size:14px"><input type="checkbox" '+(cartDemOn?'checked':'')+' onclick="toggleDemande(this.checked)" style="width:18px;height:18px;accent-color:var(--gold2)"> 📝 J\'ai une demande particulière</label>'
     +(cartDemOn?'<textarea oninput="cartDemande=this.value" placeholder="Précisez votre demande (allergie, horaire flexible, instructions de livraison…)" style="width:100%;margin-top:12px;min-height:90px;padding:12px;border-radius:12px;border:1px solid var(--border-gold);background:#141414;color:#fff;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box">'+(cartDemande||'').replace(/</g,'&lt;')+'</textarea>':'')
     +'</div>'
+    +'<label style="display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;cursor:pointer;color:var(--text);font-size:13px"><input type="checkbox" '+(cartCGV?'checked':'')+' onclick="cartCGV=this.checked" style="width:18px;height:18px;accent-color:var(--gold2);flex-shrink:0;margin-top:1px"><span>J\'ai lu et j\'accepte les <a onclick="showCGV()" style="color:var(--gold2);text-decoration:underline;cursor:pointer">conditions générales de vente</a>.</span></label>'
     +'<button id="voy-cart-pay" onclick="payCart()" style="width:100%;padding:17px;border:none;border-radius:14px;background:linear-gradient(135deg,#b8922a 0%,#e2c06e 50%,#d4a843 100%);color:#060606;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 8px 26px rgba(201,168,76,0.25)">💳 Payer '+(total/100).toFixed(2)+'€</button>'
     +'<div style="font-size:11.5px;color:var(--muted2);margin-top:16px;text-align:center;line-height:1.6">🔒 Paiement sécurisé par Stripe. Vos coordonnées (nom, e-mail, téléphone) vous seront demandées juste après. Une facture vous sera envoyée par e-mail.</div>'
     +'<button onclick="backToCart()" style="width:100%;margin-top:16px;background:none;border:none;color:var(--muted2);font-size:13px;cursor:pointer;text-decoration:underline">← Modifier mon panier</button>';
@@ -3892,6 +3985,7 @@ function closeSuccess(){
   try{const u=new URL(location.href);u.searchParams.delete('paid');history.replaceState({},'',u.pathname+u.search+u.hash);}catch(e){}
 }
 async function payCart(){if(!cart.length)return;
+  if(!cartCGV){alert('Merci d\'accepter les conditions générales de vente avant de payer.');return;}
   for(const c of cart){if(c.demande_date){if(!c.date||!c.heure){alert('Choisis une date et une heure pour : '+c.titre);return;}if(cartDateError(c)){alert(c.titre+' : service non disponible le jour choisi.');return;}}}
   const btn=document.getElementById('voy-cart-pay');if(btn){btn.disabled=true;btn.textContent='Redirection…';}try{const qp=new URLSearchParams(window.location.search);let reload;if(qp.get('r')){reload=location.origin+'/?'+new URLSearchParams({r:qp.get('r'),k:qp.get('k')||'',d:qp.get('d')||''}).toString();}else if(currentLivretData&&currentLivretData.slug){reload=location.origin+'/livret/'+currentLivretData.slug;}else{reload=location.origin+'/';}const r=await axios.post(`${SB}/functions/v1/create-checkout`,{livret_id:currentLivretId,return_url:reload,booking_id:(qp.get('r')||''),demande:(cartDemande||'').slice(0,500),items:cart.map(c=>({id:c.id,qty:c.qty,date:c.date||'',heure:c.heure||''}))},{headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`,'Content-Type':'application/json'}});if(r.data&&r.data.ok&&r.data.url){window.location.href=r.data.url;}else{alert('Paiement indisponible pour le moment.');if(btn){btn.disabled=false;btn.textContent='💳 Payer';}}}catch(e){console.error(e);alert('Erreur lors du paiement.');if(btn){btn.disabled=false;btn.textContent='💳 Payer';}}}
 async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,checkinTime,checkoutTime){
@@ -3919,6 +4013,7 @@ async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,chec
     showResa(g,checkinTime,checkoutTime,guestPageUrl);
     showFacture(invoiceUrl);
     showServiceInvoices(g.invoices||[]);
+    showIntro(l,g.first_name||'');
     trackView(l.id,'home');
   }catch(e){console.error(e);document.getElementById('voy-loading').textContent='Erreur de chargement du livret.';}
 }
@@ -4124,7 +4219,7 @@ function rv(l,adresses,equipements,back,services){
   try{cart=JSON.parse(localStorage.getItem(voyCartKey='cart_'+(currentLivretId||'x'))||'[]');}catch(e){cart=[];}
   renderCart();
   const _pp=new URLSearchParams(location.search);
-  if(_pp.get('paid')==='1'){cart=[];cartStep=1;cartDemande='';cartDemOn=false;saveCart();renderCart();showPaymentSuccess();}
+  if(_pp.get('paid')==='1'){cart=[];cartStep=1;cartDemande='';cartDemOn=false;cartCGV=false;saveCart();renderCart();showPaymentSuccess();}
   else if(_pp.get('canceled')==='1'){toast('Paiement annulé');}
   // Lien « autre demande » → mail
   const mailTo=l.contact_email||'primoconciergerie58@gmail.com';
