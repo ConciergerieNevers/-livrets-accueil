@@ -908,6 +908,7 @@ body{top:0!important}
             <span id="voy-cart-total" style="color:var(--gold2);font-weight:700;font-size:18px">0€</span>
           </div>
           <button id="voy-cart-pay" onclick="payCart()" style="width:100%;margin-top:14px;padding:15px;border:none;border-radius:12px;background:linear-gradient(135deg,#b8922a 0%,#e2c06e 50%,#d4a843 100%);color:#060606;font-weight:700;font-size:14px;cursor:pointer">💳 Payer le panier</button>
+          <button onclick="clearVoyCart()" style="width:100%;margin-top:8px;background:none;border:none;color:var(--muted2);font-size:13px;cursor:pointer;text-decoration:underline">Vider le panier</button>
         </div>
         <div id="voy-services"></div>
         <a id="voy-autre-demande" class="voy-mail" href="#" style="margin-top:16px">✉️ Une autre demande ? Écrivez-nous</a>
@@ -1197,6 +1198,8 @@ function catEditHtml(s){
     <div class="fg"><label class="fl2">Prix</label><input class="fi" id="catf-prix-${id}" value="${(s.prix||'').replace(/"/g,'&quot;')}" placeholder="Ex: 25€"></div>
     <div class="fg"><label class="fl2">Description</label><textarea class="fi" id="catf-desc-${id}" placeholder="Détails du service">${(s.description||'').replace(/</g,'&lt;')}</textarea></div>
     <div class="fg"><label class="fl2">Photo</label>${s.image_url?`<img src="${s.image_url}" style="width:84px;height:84px;object-fit:cover;border-radius:12px;display:block;margin-bottom:8px">`:''}<input type="file" accept="image/*" onchange="uploadImage(this,'cat-${id}')"></div>
+    <div class="fg"><label class="fl2" style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="catf-demdate-${id}" ${s.demande_date?'checked':''}> 📅 Demander une date et heure de livraison</label></div>
+    <div class="fg"><label class="fl2">Jours de disponibilité</label><div id="catf-jours-${id}" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">${[['Lun',1],['Mar',2],['Mer',3],['Jeu',4],['Ven',5],['Sam',6],['Dim',0]].map(([lbl,d])=>`<label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" data-d="${d}" ${(s.jours_dispo||[0,1,2,3,4,5,6]).includes(d)?'checked':''}>${lbl}</label>`).join('')}</div></div>
     <div class="fg"><label class="fl2">Logements qui proposent ce service</label><div style="margin-top:4px">${checks}</div></div>
     <div style="display:flex;gap:10px;margin-top:10px">
       <button class="adm-add" onclick="saveCatService('${id}')">💾 Enregistrer</button>
@@ -1252,9 +1255,12 @@ async function saveCatService(id){
   s.categorie=(document.getElementById('catf-cat-'+id).value||'').trim();
   s.prix=(document.getElementById('catf-prix-'+id).value||'').trim();
   s.description=document.getElementById('catf-desc-'+id).value;
+  s.demande_date=document.getElementById('catf-demdate-'+id)?.checked||false;
+  const _j=document.getElementById('catf-jours-'+id);
+  s.jours_dispo=_j?[..._j.querySelectorAll('input')].filter(c=>c.checked).map(c=>parseInt(c.dataset.d)):(s.jours_dispo||[0,1,2,3,4,5,6]);
   if(!s.titre){alert('Mets au moins un titre.');return;}
   if(!cu||!cu.access_token){alert('Session expirée, reconnecte-toi.');return;}
-  const payload={titre:s.titre,categorie:s.categorie||null,description:s.description||null,prix:s.prix||null,image_url:s.image_url||null,livret_ids:s.livret_ids||[],ordre:s.ordre||0};
+  const payload={titre:s.titre,categorie:s.categorie||null,description:s.description||null,prix:s.prix||null,image_url:s.image_url||null,livret_ids:s.livret_ids||[],demande_date:s.demande_date,jours_dispo:s.jours_dispo,ordre:s.ordre||0};
   try{
     if(s._new){const r=await axios.post(`${API}/catalogue_services`,payload,{headers:{...hd(),'Prefer':'return=representation'}});s.id=r.data[0].id;delete s._new;}
     else{await axios.patch(`${API}/catalogue_services?id=eq.${s.id}`,payload,{headers:{...hd(),'Prefer':'return=minimal'}});}
@@ -3123,10 +3129,37 @@ function showResa(resa,ci,co,guestUrl){
 let cart=[],voyServices=[],voyCartKey='cart_x';
 function priceToCentsClient(t){const s=(t||'').replace(/\s/g,'').replace(',','.');const m=s.match(/(\d+(\.\d+)?)/);return m?Math.round(parseFloat(m[1])*100):0;}
 function saveCart(){try{localStorage.setItem(voyCartKey,JSON.stringify(cart));}catch(e){}}
-function addToCart(id){const s=(voyServices||[]).find(x=>String(x.id)===String(id));if(!s)return;const c=priceToCentsClient(s.prix);if(c<=0)return;const ex=cart.find(x=>String(x.id)===String(id));if(ex)ex.qty++;else cart.push({id:s.id,titre:s.titre||'Service',cents:c,qty:1});saveCart();renderCart();toast('Ajouté au panier');}
+function addToCart(id){const s=(voyServices||[]).find(x=>String(x.id)===String(id));if(!s)return;const c=priceToCentsClient(s.prix);if(c<=0)return;const ex=cart.find(x=>String(x.id)===String(id));if(ex)ex.qty++;else cart.push({id:s.id,titre:s.titre||'Service',cents:c,qty:1,demande_date:!!s.demande_date,jours_dispo:s.jours_dispo||[0,1,2,3,4,5,6],date:'',heure:''});saveCart();renderCart();toast('Ajouté au panier');}
 function changeQty(id,d){const c=cart.find(x=>String(x.id)===String(id));if(!c)return;c.qty+=d;if(c.qty<=0)cart=cart.filter(x=>String(x.id)!==String(id));saveCart();renderCart();}
-function renderCart(){const box=document.getElementById('voy-cart');if(!box)return;const items=document.getElementById('voy-cart-items'),tot=document.getElementById('voy-cart-total');if(!cart.length){box.style.display='none';return;}let total=0;items.innerHTML=cart.map(c=>{const line=c.cents*c.qty;total+=line;return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)"><div style="flex:1"><div style="font-size:14px;color:#fff">'+c.titre+'</div><div style="font-size:12px;color:var(--muted2)">'+(c.cents/100).toFixed(2)+'€ / unité</div></div><div style="display:flex;align-items:center;gap:6px"><button onclick="changeQty(\''+c.id+'\',-1)" style="width:26px;height:26px;border-radius:8px;border:1px solid var(--border-gold);background:var(--bg3);color:var(--gold2);cursor:pointer;font-size:16px;line-height:1">−</button><span style="min-width:18px;text-align:center;color:#fff">'+c.qty+'</span><button onclick="changeQty(\''+c.id+'\',1)" style="width:26px;height:26px;border-radius:8px;border:1px solid var(--border-gold);background:var(--bg3);color:var(--gold2);cursor:pointer;font-size:16px;line-height:1">+</button></div><div style="min-width:54px;text-align:right;color:var(--gold2);font-weight:600;font-size:13px">'+(line/100).toFixed(2)+'€</div></div>';}).join('');tot.textContent=(total/100).toFixed(2)+'€';box.style.display='';}
-async function payCart(){if(!cart.length)return;const btn=document.getElementById('voy-cart-pay');if(btn){btn.disabled=true;btn.textContent='Redirection…';}try{const qp=new URLSearchParams(window.location.search);let reload;if(qp.get('r')){reload=location.origin+'/?'+new URLSearchParams({r:qp.get('r'),k:qp.get('k')||'',d:qp.get('d')||''}).toString();}else if(currentLivretData&&currentLivretData.slug){reload=location.origin+'/livret/'+currentLivretData.slug;}else{reload=location.origin+'/';}const r=await axios.post(`${SB}/functions/v1/create-checkout`,{livret_id:currentLivretId,return_url:reload,items:cart.map(c=>({id:c.id,qty:c.qty}))},{headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`,'Content-Type':'application/json'}});if(r.data&&r.data.ok&&r.data.url){window.location.href=r.data.url;}else{alert('Paiement indisponible pour le moment.');if(btn){btn.disabled=false;btn.textContent='💳 Payer le panier';}}}catch(e){console.error(e);alert('Erreur lors du paiement.');if(btn){btn.disabled=false;btn.textContent='💳 Payer le panier';}}}
+function clearVoyCart(){cart=[];saveCart();renderCart();}
+const JOURS_LBL=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+function joursTxt(arr){if(!arr||arr.length>=7)return'tous les jours';return [1,2,3,4,5,6,0].filter(d=>arr.includes(d)).map(d=>JOURS_LBL[d]).join(', ')||'aucun jour';}
+function cartDateError(c){if(!c.demande_date||!c.date)return'';const d=new Date(c.date+'T12:00:00').getDay();return (c.jours_dispo||[0,1,2,3,4,5,6]).includes(d)?'':'❌ Service non disponible ce jour-là';}
+function setCartDate(id,v){const c=cart.find(x=>String(x.id)===String(id));if(!c)return;c.date=v;saveCart();const e=document.getElementById('cart-err-'+id);if(e)e.textContent=cartDateError(c);}
+function setCartHeure(id,v){const c=cart.find(x=>String(x.id)===String(id));if(!c)return;c.heure=v;saveCart();}
+function renderCart(){
+  const box=document.getElementById('voy-cart');if(!box)return;
+  const items=document.getElementById('voy-cart-items'),tot=document.getElementById('voy-cart-total');
+  if(!cart.length){box.style.display='none';return;}
+  let total=0;
+  items.innerHTML=cart.map(c=>{
+    const line=c.cents*c.qty;total+=line;
+    let h='<div style="padding:10px 0;border-bottom:1px solid var(--border)">';
+    h+='<div style="display:flex;align-items:center;gap:8px"><div style="flex:1"><div style="font-size:14px;color:#fff">'+c.titre+'</div><div style="font-size:12px;color:var(--muted2)">'+(c.cents/100).toFixed(2)+'€ / unité</div></div><div style="display:flex;align-items:center;gap:6px"><button onclick="changeQty(\''+c.id+'\',-1)" style="width:26px;height:26px;border-radius:8px;border:1px solid var(--border-gold);background:var(--bg3);color:var(--gold2);cursor:pointer;font-size:16px;line-height:1">−</button><span style="min-width:18px;text-align:center;color:#fff">'+c.qty+'</span><button onclick="changeQty(\''+c.id+'\',1)" style="width:26px;height:26px;border-radius:8px;border:1px solid var(--border-gold);background:var(--bg3);color:var(--gold2);cursor:pointer;font-size:16px;line-height:1">+</button></div><div style="min-width:54px;text-align:right;color:var(--gold2);font-weight:600;font-size:13px">'+(line/100).toFixed(2)+'€</div></div>';
+    if(c.demande_date){
+      h+='<div style="margin-top:8px;padding:10px;background:var(--bg3);border-radius:10px">'
+        +'<div style="font-size:11px;color:var(--muted2);margin-bottom:6px">Date &amp; heure souhaitées · <span style="color:var(--gold2)">Dispo : '+joursTxt(c.jours_dispo)+'</span></div>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap"><input type="date" value="'+(c.date||'')+'" onchange="setCartDate(\''+c.id+'\',this.value)" style="flex:1;min-width:130px;padding:9px;border-radius:8px;border:1px solid var(--border-gold);background:#141414;color:#fff"><input type="time" value="'+(c.heure||'')+'" onchange="setCartHeure(\''+c.id+'\',this.value)" style="flex:1;min-width:100px;padding:9px;border-radius:8px;border:1px solid var(--border-gold);background:#141414;color:#fff"></div>'
+        +'<div id="cart-err-'+c.id+'" style="color:#ff6b6b;font-size:12px;margin-top:5px">'+cartDateError(c)+'</div>'
+        +'</div>';
+    }
+    h+='</div>';return h;
+  }).join('');
+  tot.textContent=(total/100).toFixed(2)+'€';box.style.display='';
+}
+async function payCart(){if(!cart.length)return;
+  for(const c of cart){if(c.demande_date){if(!c.date||!c.heure){alert('Choisis une date et une heure pour : '+c.titre);return;}if(cartDateError(c)){alert(c.titre+' : service non disponible le jour choisi.');return;}}}
+  const btn=document.getElementById('voy-cart-pay');if(btn){btn.disabled=true;btn.textContent='Redirection…';}try{const qp=new URLSearchParams(window.location.search);let reload;if(qp.get('r')){reload=location.origin+'/?'+new URLSearchParams({r:qp.get('r'),k:qp.get('k')||'',d:qp.get('d')||''}).toString();}else if(currentLivretData&&currentLivretData.slug){reload=location.origin+'/livret/'+currentLivretData.slug;}else{reload=location.origin+'/';}const r=await axios.post(`${SB}/functions/v1/create-checkout`,{livret_id:currentLivretId,return_url:reload,items:cart.map(c=>({id:c.id,qty:c.qty,date:c.date||'',heure:c.heure||''}))},{headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`,'Content-Type':'application/json'}});if(r.data&&r.data.ok&&r.data.url){window.location.href=r.data.url;}else{alert('Paiement indisponible pour le moment.');if(btn){btn.disabled=false;btn.textContent='💳 Payer le panier';}}}catch(e){console.error(e);alert('Erreur lors du paiement.');if(btn){btn.disabled=false;btn.textContent='💳 Payer le panier';}}}
 async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,checkinTime,checkoutTime){
   show('voyageur-screen');
   document.getElementById('voy-loading').style.display='block';
