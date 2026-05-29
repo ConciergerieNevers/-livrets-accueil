@@ -562,8 +562,12 @@ body{top:0!important}
           📅 Réservations
         </button>
         <button class="adm-add-s" onclick="openDemandes()">
-          📋 Mes demandes
+          🛒 Commandes
           <span class="badge" id="dem-badge" style="display:none">0</span>
+        </button>
+        <button class="adm-add-s" onclick="openRequests()">
+          📨 Demandes
+          <span class="badge" id="req-badge" style="display:none">0</span>
         </button>
         <button class="adm-add-s" onclick="openCorbeille()">
           🗑 Corbeille
@@ -608,12 +612,12 @@ body{top:0!important}
   </div>
 </div>
 
-<!-- MES DEMANDES -->
+<!-- COMMANDES -->
 <div id="demandes-screen" style="display:none">
   <nav class="adm-nav">
     <div class="adm-nav-left">
       <button class="adm-logout" onclick="showAdmin()">← Retour</button>
-      <div class="adm-nav-title serif">Mes demandes</div>
+      <div class="adm-nav-title serif">Commandes</div>
     </div>
     <div class="adm-nav-right">
       <button class="adm-logout" onclick="openDemandes()">↻ Actualiser</button>
@@ -622,12 +626,35 @@ body{top:0!important}
   <div class="adm-body">
     <div class="adm-hero">
       <div class="adm-hero-text">
-        <h2 class="serif gold-text">Tableau de bord</h2>
-        <p>Vue d'ensemble de tes services : chiffre d'affaires, classements et commandes.</p>
+        <h2 class="serif gold-text">Commandes</h2>
+        <p>Les services payés par tes voyageurs : suivi, statistiques et planning.</p>
       </div>
     </div>
     <div id="dem-loading" class="loading">Chargement…</div>
     <div id="dem-list"></div>
+  </div>
+</div>
+
+<!-- DEMANDES (messages voyageurs) -->
+<div id="requests-screen" style="display:none">
+  <nav class="adm-nav">
+    <div class="adm-nav-left">
+      <button class="adm-logout" onclick="showAdmin()">← Retour</button>
+      <div class="adm-nav-title serif">Demandes</div>
+    </div>
+    <div class="adm-nav-right">
+      <button class="adm-logout" onclick="openRequests()">↻ Actualiser</button>
+    </div>
+  </nav>
+  <div class="adm-body">
+    <div class="adm-hero">
+      <div class="adm-hero-text">
+        <h2 class="serif gold-text">Demandes des voyageurs</h2>
+        <p>Les messages envoyés par tes voyageurs depuis leur livret.</p>
+      </div>
+    </div>
+    <div id="req-loading" class="loading">Chargement…</div>
+    <div id="req-list"></div>
   </div>
 </div>
 
@@ -640,6 +667,7 @@ body{top:0!important}
     </div>
     <div class="adm-nav-right">
       <button class="adm-logout" id="resa-sync-btn" onclick="syncReservations()">🔄 Synchroniser</button>
+      <button class="adm-logout" onclick="syncReservationsFull()" title="Relit toutes les réservations depuis le début (rare)" style="font-size:11px;opacity:.7">↻ Tout</button>
     </div>
   </nav>
   <div class="adm-body">
@@ -1003,7 +1031,7 @@ body{top:0!important}
           </div>
         </div>
         <div id="voy-services"></div>
-        <a id="voy-autre-demande" class="voy-mail" href="#" style="margin-top:16px">✉️ Une autre demande ? Écrivez-nous</a>
+        <a id="voy-autre-demande" class="voy-mail" href="#" onclick="openVoyDemande();return false;" style="margin-top:16px">✉️ Une autre demande ? Écrivez-nous</a>
         <div style="text-align:center;margin-top:18px"><a onclick="showCGV()" style="font-size:11px;color:var(--muted2);text-decoration:underline;cursor:pointer">Conditions générales de vente</a></div>
       </div>
     </div>
@@ -1256,10 +1284,10 @@ async function register(){
   catch{alert('Erreur.');}
 }
 function logout(){cu=null;cs();show('login-screen');}
-function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','demandes-screen','reservations-screen','corbeille-screen'].forEach(s=>document.getElementById(s).style.display=s===id?'block':'none');}
+function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','demandes-screen','reservations-screen','corbeille-screen','requests-screen'].forEach(s=>document.getElementById(s).style.display=s===id?'block':'none');}
 
 // ===== Mes demandes (tableau de bord) =====
-let demData=[],demFilter='all',demChartMode='mois',demView='dash',planMode='semaine',planRef=null,planGroup='personne';
+let demData=[],demFilter='all',demChartMode='mois',demView='list',planMode='semaine',planRef=null,planGroup='personne';
 async function openDemandes(){
   show('demandes-screen');
   document.getElementById('dem-loading').style.display='block';
@@ -1282,6 +1310,47 @@ function demEur(cents){return (Math.round(cents)/100).toFixed(2).replace('.',','
 function demPaid(){return demData.filter(c=>demStatut(c)==='paye');}
 function setDemFilter(f){demFilter=f;renderDemandes();}
 function setDemBadge(n){const b=document.getElementById('dem-badge');if(b){if(n>0){b.textContent=n;b.style.display='';}else b.style.display='none';}}
+// ===== Demandes (messages voyageurs) =====
+let reqData=[];
+function setReqBadge(n){const b=document.getElementById('req-badge');if(b){if(n>0){b.textContent=n;b.style.display='';}else b.style.display='none';}}
+async function openRequests(){
+  show('requests-screen');
+  const box=document.getElementById('req-list');if(box)box.innerHTML='';
+  document.getElementById('req-loading').style.display='block';
+  try{
+    const r=await axios.get(`${API}/demandes?select=*&order=created_at.desc`,{headers:hd()});
+    document.getElementById('req-loading').style.display='none';
+    reqData=r.data||[];renderRequests();
+  }catch(e){document.getElementById('req-loading').textContent='Erreur de chargement.';}
+}
+function renderRequests(){
+  const box=document.getElementById('req-list');if(!box)return;
+  setReqBadge(reqData.filter(d=>!d.traitee).length);
+  if(!reqData.length){box.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucune demande pour le moment.</div>';return;}
+  box.innerHTML=reqData.map(d=>{
+    const dt=d.created_at?new Date(d.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+    const contact=[d.guest_nom,d.guest_email].filter(Boolean).map(x=>(''+x).replace(/</g,'&lt;')).join(' · ')||'<span style="color:var(--muted)">Anonyme</span>';
+    const badge=d.traitee?'<span style="background:rgba(80,200,120,0.18);color:#7fe0a0;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">✓ Traitée</span>':'<span style="background:rgba(226,192,110,0.15);color:var(--gold2);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">🆕 Nouvelle</span>';
+    const mail=d.guest_email?'<a href="mailto:'+d.guest_email+'" style="color:var(--gold2);font-size:12px;text-decoration:underline">✉️ Répondre</a>':'';
+    const act=d.traitee?'<button onclick="markReqTraitee(\''+d.id+'\',false)" style="background:none;border:none;color:var(--muted2);font-size:12px;cursor:pointer;text-decoration:underline;padding:0">Rouvrir</button>':'<button onclick="markReqTraitee(\''+d.id+'\',true)" style="background:none;border:none;color:#7fe0a0;font-size:12px;cursor:pointer;text-decoration:underline;padding:0">✅ Marquer traitée</button>';
+    return '<div class="sc" style="margin-bottom:12px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px"><div style="font-size:12px;color:var(--muted2)">📅 '+dt+(d.livret_nom?(' · '+(''+d.livret_nom).replace(/</g,'&lt;')):'')+'</div>'+badge+'</div>'
+      +'<div style="font-weight:600;color:#fff;margin-bottom:6px">'+contact+'</div>'
+      +'<div style="background:var(--bg3);border-radius:10px;padding:10px 12px;font-size:13px;color:#e8e2d4;white-space:pre-wrap">'+(''+(d.message||'')).replace(/</g,'&lt;')+'</div>'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:12px;flex-wrap:wrap"><div style="display:flex;gap:16px;align-items:center">'+act+'<button onclick="deleteReq(\''+d.id+'\')" style="background:none;border:none;color:#e0556b;font-size:12px;cursor:pointer;text-decoration:underline;padding:0">🗑 Supprimer</button></div>'+mail+'</div>'
+      +'</div>';
+  }).join('');
+}
+async function markReqTraitee(id,val){
+  const d=reqData.find(x=>x.id===id);if(!d)return;
+  try{await axios.patch(`${API}/demandes?id=eq.${id}`,{traitee:val},{headers:{...hd(),'Prefer':'return=minimal'}});d.traitee=val;renderRequests();toast(val?'✅ Demande traitée':'Demande rouverte');}
+  catch(e){alert('Impossible de mettre à jour.');}
+}
+async function deleteReq(id){
+  if(!confirm('Supprimer cette demande ?'))return;
+  try{await axios.delete(`${API}/demandes?id=eq.${id}`,{headers:{...hd(),'Prefer':'return=minimal'}});reqData=reqData.filter(x=>x.id!==id);renderRequests();toast('Demande supprimée');}
+  catch(e){alert('Suppression impossible.');}
+}
 async function markTraitee(id,val){
   const c=demData.find(x=>x.id===id);if(!c)return;
   try{
@@ -1388,22 +1457,34 @@ function demCardHtml(c){
     +'</div>';
 }
 function setDemView(v){demView=v;renderDemandes();}
+function demDonut(parts){
+  const total=parts.reduce((s,p)=>s+p.val,0)||1;
+  let acc=0;const segs=parts.filter(p=>p.val>0).map(p=>{const from=acc/total*360;acc+=p.val;const to=acc/total*360;return p.color+' '+from+'deg '+to+'deg';});
+  const grad=segs.length?('conic-gradient('+segs.join(',')+')'):'conic-gradient(var(--bg3) 0deg 360deg)';
+  const legend=parts.map(p=>'<div style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:7px"><span style="width:12px;height:12px;border-radius:3px;background:'+p.color+';flex-shrink:0"></span><span style="flex:1;color:#fff">'+p.label+'</span><span style="color:var(--muted2);font-weight:700">'+p.val+'</span></div>').join('');
+  return '<div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap"><div style="width:124px;height:124px;border-radius:50%;background:'+grad+';position:relative;flex-shrink:0"><div style="position:absolute;inset:20px;border-radius:50%;background:var(--card)"></div></div><div style="flex:1;min-width:170px">'+legend+'</div></div>';
+}
 function renderDemandes(){
   const box=document.getElementById('dem-list');if(!box)return;
   setDemBadge(demData.filter(c=>demStatut(c)==='paye'&&!c.traitee).length);
   if(!demData.length){box.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucune commande pour le moment.</div>';return;}
   const sw=(v,l)=>'<button onclick="setDemView(\''+v+'\')" style="flex:1;padding:11px;border-radius:12px;border:1px solid '+(demView===v?'var(--gold2)':'var(--border)')+';background:'+(demView===v?'rgba(226,192,110,0.15)':'transparent')+';color:'+(demView===v?'var(--gold2)':'var(--muted2)')+';font-size:13px;font-weight:700;cursor:pointer">'+l+'</button>';
-  const viewSwitch='<div style="display:flex;gap:8px;margin-bottom:18px">'+sw('dash','📊 Tableau de bord')+sw('planning','📅 Planning')+'</div>';
+  const viewSwitch='<div style="display:flex;gap:8px;margin-bottom:18px">'+sw('list','🛒 Commandes')+sw('stats','📊 Statistiques')+sw('planning','📅 Planning')+'</div>';
   if(demView==='planning'){box.innerHTML=viewSwitch+planningHtml();return;}
   const counts={all:demData.length,paye:0,rembourse:0,attente:0};
   demData.forEach(c=>counts[demStatut(c)]++);
+  if(demView==='stats'){
+    let h=viewSwitch+demKpiHtml()
+      +'<div class="sc" style="margin-bottom:14px"><div style="font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold2);margin-bottom:16px">🥧 Répartition des commandes</div>'+demDonut([{label:'✅ Payées',val:counts.paye,color:'#7fe0a0'},{label:'↩️ Remboursées',val:counts.rembourse,color:'#8fc1f0'},{label:'⚠️ Non abouties',val:counts.attente,color:'#9a8870'}])+'</div>'
+      +demChartHtml()
+      +demRankHtml('Services les plus réservés','🏆',demTopServices())
+      +demRankHtml('Par logement','🏠',demByLivret());
+    box.innerHTML=h;return;
+  }
   const newBtn='<button onclick="openNewOrder()" style="width:100%;padding:13px;margin-bottom:18px;border:1px dashed var(--border-gold);border-radius:12px;background:rgba(226,192,110,0.06);color:var(--gold2);font-size:14px;font-weight:700;cursor:pointer">➕ Nouvelle commande sur-mesure</button>';
-  let html=viewSwitch+newBtn+demKpiHtml()+demChartHtml();
-  html+=demRankHtml('Services les plus réservés','🏆',demTopServices());
-  html+=demRankHtml('Par logement','🏠',demByLivret());
   const tab=(key,label)=>'<button onclick="setDemFilter(\''+key+'\')" style="padding:8px 14px;border-radius:20px;border:1px solid '+(demFilter===key?'var(--gold2)':'var(--border)')+';background:'+(demFilter===key?'rgba(226,192,110,0.15)':'transparent')+';color:'+(demFilter===key?'var(--gold2)':'var(--muted2)')+';font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">'+label+' ('+counts[key]+')</button>';
-  html+='<div style="font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold2);margin:22px 0 12px">🧾 Commandes</div>';
-  html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'+tab('all','Toutes')+tab('paye','✅ Payées')+tab('rembourse','↩️ Remboursées')+tab('attente','⚠️ Non abouties')+'</div>';
+  let html=viewSwitch+newBtn
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'+tab('all','Toutes')+tab('paye','✅ Payées')+tab('rembourse','↩️ Remboursées')+tab('attente','⚠️ Non abouties')+'</div>';
   const list=demData.filter(c=>demFilter==='all'||demStatut(c)===demFilter);
   if(!list.length){box.innerHTML=html+'<div style="text-align:center;padding:30px;color:var(--muted);font-style:italic">Aucune commande ici.</div>';return;}
   html+=list.map(demCardHtml).join('');
@@ -1583,7 +1664,18 @@ async function autoSyncRecent(){
   const btn=document.getElementById('resa-sync-btn');
   if(btn&&!resaSyncing)btn.textContent='Mise à jour…';
   try{
-    await axios.get(`${SB}/functions/v1/guest-lookup?sync=1`,{headers:{'apikey':KEY,'Authorization':`Bearer ${cu.access_token}`}});
+    // récupère le dernier booking_id connu pour ne lire que le nouveau (incrémental)
+    let since=0;
+    try{const mr=await axios.get(`${API}/sh_reservations?select=booking_id&order=booking_id.desc&limit=1`,{headers:hd()});since=(mr.data&&mr.data[0]&&mr.data[0].booking_id)||0;}catch(e){}
+    // cache vide → on ne lance PAS une synchro complète automatiquement (l'admin clique « Synchroniser »)
+    if(since>0){
+      let page=1,guard=0;
+      while(guard++<200){
+        const r=await axios.get(`${SB}/functions/v1/guest-lookup?sync=${page}&since=${since}`,{headers:{'apikey':KEY,'Authorization':`Bearer ${cu.access_token}`},timeout:30000});
+        if(!r.data||!r.data.ok||r.data.done||!r.data.next)break;
+        page=r.data.next;
+      }
+    }
     const rr=await axios.get(`${API}/sh_reservations?select=*&checkout=gte.${resaCutoff()}&order=checkin.asc&limit=3000`,{headers:hd()});
     resaData=rr.data||[];
     if(document.getElementById('resa-rows'))renderResaList();else renderResa();
@@ -1652,25 +1744,38 @@ function resaNewOrder(bid){
   const lv=resaLivretFor(r.rental_id);if(!lv){alert('Ce logement n\'est pas lié à un livret.');return;}
   openNewOrder({livret:lv.id,booking:String(r.booking_id)});
 }
-async function syncReservations(){
+function syncReservationsFull(){
+  if(!confirm('Tout resynchroniser depuis le début ?\n\nCela relit TOUTES tes réservations SuperHote (peut prendre 1 à 2 min).\nEn temps normal, le bouton « Synchroniser » suffit : il ne récupère que les nouvelles.'))return;
+  syncReservations(true);
+}
+async function syncReservations(full){
   if(resaSyncing)return;
   if(!cu||!cu.access_token){alert('Session expirée, reconnecte-toi.');return;}
   resaSyncing=true;
   const btn=document.getElementById('resa-sync-btn');
-  let page=1,last=0,total=0,fail=0,guard=0,lastErr='';
-  try{
-    while(guard++<300){
-      if(btn)btn.textContent='Synchro…'+(last?(' '+page+'/'+last):'');
-      const r=await axios.get(`${SB}/functions/v1/guest-lookup?sync=${page}`,{headers:{'apikey':KEY,'Authorization':`Bearer ${cu.access_token}`}});
-      if(!r.data||!r.data.ok){lastErr=(r.data&&(r.data.error||r.data.err))||'réponse invalide';break;}
-      total+=r.data.synced||0;fail+=r.data.failed||0;if(r.data.err)lastErr=r.data.err;last=r.data.last_page||last;
-      if(r.data.done||!r.data.next)break;
-      page=r.data.next;
+  // Mode rapide (incrémental) : on récupère seulement les réservations plus récentes que la dernière déjà en mémoire.
+  let since=0;
+  if(!full){try{const mr=await axios.get(`${API}/sh_reservations?select=booking_id&order=booking_id.desc&limit=1`,{headers:hd()});since=(mr.data&&mr.data[0]&&mr.data[0].booking_id)||0;}catch(e){}}
+  const sinceQ=since>0?('&since='+since):'';
+  let page=1,last=0,total=0,fail=0,guard=0,lastErr='',aborted=false;
+  while(guard++<600){
+    if(btn)btn.textContent=(since>0?'Mise à jour…':'Synchro…')+(last?(' '+page+'/'+last):'');
+    let r=null,tries=0;
+    while(tries<4){
+      try{r=await axios.get(`${SB}/functions/v1/guest-lookup?sync=${page}${sinceQ}`,{headers:{'apikey':KEY,'Authorization':`Bearer ${cu.access_token}`},timeout:30000});break;}
+      catch(err){tries++;if(tries>=4){aborted=true;break;}await new Promise(res=>setTimeout(res,1500));}
     }
-    if(total===0){alert('Aucune réservation écrite.\n\nErreur renvoyée par la base :\n'+(lastErr||'(aucune)'));}
-    else{toast(total+' réservation'+(total>1?'s':'')+' enregistrée'+(total>1?'s':'')+(fail?(' · '+fail+' ignorées'):'')+' ✅');}
-  }catch(e){alert('Synchro interrompue, réessaie.');}
+    if(aborted)break;
+    if(!r.data||!r.data.ok){lastErr=(r.data&&(r.data.error||r.data.err))||'réponse invalide';break;}
+    total+=r.data.synced||0;fail+=r.data.failed||0;if(r.data.err)lastErr=r.data.err;last=r.data.last_page||last;
+    if(r.data.done||!r.data.next)break;
+    page=r.data.next;
+  }
   resaSyncing=false;if(btn)btn.textContent='🔄 Synchroniser';
+  if(aborted){alert('Synchro interrompue (réseau/SuperHote) à la page '+page+'/'+(last||'?')+'.\nLa progression est gardée — reclique « Synchroniser » pour continuer.');}
+  else if(since>0){toast(total>0?(total+' nouvelle'+(total>1?'s':'')+' réservation'+(total>1?'s':'')+' ✅'):'Déjà à jour, aucune nouvelle réservation ✅');}
+  else if(total===0&&lastErr){alert('Aucune réservation écrite.\nErreur : '+lastErr);}
+  else{toast(total+' réservation'+(total>1?'s':'')+' synchronisée'+(total>1?'s':'')+(fail?(' · '+fail+' ignorées'):'')+' ✅');}
   openReservations();
 }
 // ===== Planning de livraison =====
@@ -1910,6 +2015,7 @@ async function ll(){
     document.getElementById('stat-v').textContent=vr.data.length;
     document.getElementById('stat-a').textContent=(upsell/100).toFixed(0)+'€';
     axios.get(`${API}/commandes?select=id&statut=in.(paye,rembourse_partiel)&traitee=eq.false`,{headers:hd()}).then(nr=>setDemBadge((nr.data||[]).length)).catch(()=>{});
+    axios.get(`${API}/demandes?select=id&traitee=eq.false`,{headers:hd()}).then(nr=>setReqBadge((nr.data||[]).length)).catch(()=>{});
     const viewsByLivret={};
     const allViews=await axios.get(`${API}/consultations?select=livret_id&created_at=gte.${since}`,{headers:hd()}).catch(()=>({data:[]}));
     allViews.data.forEach(v=>viewsByLivret[v.livret_id]=(viewsByLivret[v.livret_id]||0)+1);
@@ -3925,7 +4031,29 @@ function showResa(resa,ci,co,guestUrl){
   if(modif){if(guestUrl&&/^https?:\/\//i.test(guestUrl)){modif.href=guestUrl;modif.style.display='flex';}else{modif.style.display='none';}}
   zone.style.display='';
 }
-let cart=[],voyServices=[],voyCartKey='cart_x',cartStep=1,cartDemande='',cartDemOn=false,voyCGV=null,cartCGV=false;
+let cart=[],voyServices=[],voyCartKey='cart_x',cartStep=1,cartDemande='',cartDemOn=false,voyCGV=null,cartCGV=false,voyGuestNom='';
+function openVoyDemande(){
+  let ov=document.getElementById('voy-demande');
+  if(!ov){ov=document.createElement('div');ov.id='voy-demande';document.body.appendChild(ov);}
+  ov.setAttribute('style','position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,0.7);overflow-y:auto;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px');
+  ov.onclick=function(e){if(e.target===ov)ov.style.display='none';};
+  ov.innerHTML='<div style="max-width:480px;width:100%;margin:auto;background:var(--card);border:1px solid var(--border-gold);border-radius:20px;padding:22px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="serif" style="font-size:20px;color:var(--gold3)">Une demande&nbsp;?</div><button onclick="var o=document.getElementById(\'voy-demande\');if(o)o.style.display=\'none\'" style="width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:#fff;font-size:18px;cursor:pointer">✕</button></div>'
+    +'<p style="font-size:13px;color:var(--muted2);margin:0 0 12px">Écrivez-nous votre message, nous vous répondons au plus vite.</p>'
+    +'<textarea id="voy-demande-msg" placeholder="Votre message…" style="width:100%;min-height:110px;padding:12px;border-radius:12px;border:1px solid var(--border-gold);background:#141414;color:#fff;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box"></textarea>'
+    +'<button id="voy-demande-send" onclick="sendVoyDemande()" style="width:100%;margin-top:12px;padding:15px;border:none;border-radius:12px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-weight:700;font-size:14px;cursor:pointer">Envoyer ma demande</button></div>';
+  ov.style.display='flex';
+}
+async function sendVoyDemande(){
+  const msg=(document.getElementById('voy-demande-msg')?.value||'').trim();
+  if(!msg){alert('Écrivez votre message avant d\'envoyer.');return;}
+  const btn=document.getElementById('voy-demande-send');if(btn){btn.disabled=true;btn.textContent='Envoi…';}
+  const qp=new URLSearchParams(window.location.search);
+  const payload={livret_id:currentLivretId||null,livret_nom:(currentLivretData&&currentLivretData.nom)||null,booking_id:(parseInt(qp.get('r'))||null),guest_nom:(voyGuestNom||null),message:msg.slice(0,2000)};
+  try{
+    await axios.post(`${API}/demandes`,payload,{headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'}});
+    const ov=document.getElementById('voy-demande');if(ov)ov.innerHTML='<div style="max-width:480px;width:100%;margin:auto;background:var(--card);border:1px solid var(--border-gold);border-radius:20px;padding:30px;text-align:center"><div style="font-size:40px">✅</div><div class="serif" style="font-size:20px;color:var(--gold3);margin:10px 0 6px">Demande envoyée&nbsp;!</div><p style="font-size:13px;color:var(--muted2)">Nous revenons vers vous au plus vite.</p><button onclick="var o=document.getElementById(\'voy-demande\');if(o)o.style.display=\'none\'" style="margin-top:14px;padding:12px 22px;border:none;border-radius:12px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-weight:700;cursor:pointer">Fermer</button></div>';
+  }catch(e){alert('Envoi impossible, réessayez.');if(btn){btn.disabled=false;btn.textContent='Envoyer ma demande';}}
+}
 async function showCGV(){
   if(voyCGV===null){try{const r=await axios.get(`${API}/parametres?cle=eq.cgv&select=valeur`,{headers:{'apikey':KEY}});voyCGV=(r.data&&r.data[0]&&r.data[0].valeur)||'';}catch(e){voyCGV='';}}
   let ov=document.getElementById('voy-cgv');
@@ -4129,6 +4257,7 @@ async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,chec
       axios.get(`${API}/catalogue_services?livret_ids=cs.{${l.id}}&actif=eq.true&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]}))
     ]);
     rv(l,ar.data,er.data,false,[...(cat.data||[])]);
+    voyGuestNom=((g.first_name||'')+' '+(g.last_name||'')).trim();
     showGuestBanner(g);
     showResa(g,checkinTime,checkoutTime,guestPageUrl);
     showFacture(invoiceUrl);
