@@ -4,12 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Livrets d'accueil</title>
+<link rel="preconnect" href="https://iduognfftslrcresthuu.supabase.co" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+<link rel="dns-prefetch" href="https://player.vimeo.com">
+<link rel="dns-prefetch" href="https://i.vimeocdn.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700;800&family=Dancing+Script:wght@500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@vimeo/player@2.20.1/dist/player.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<!-- axios = nécessaire au chargement ; qrcode/sortable = admin uniquement → defer (non bloquant). jspdf + Vimeo = chargés à la demande (jamais pour un voyageur qui ne regarde pas la vidéo). -->
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <style>
 :root {
   --gold:#c9a84c;--gold2:#e2c06e;--gold3:#f5e4a8;--gold-dim:rgba(201,168,76,0.12);
@@ -930,7 +934,7 @@ body{top:0!important}
           <div style="font-size:13.5px;color:#d8cfa8;margin-top:10px;letter-spacing:.3px">Tout est juste ici 👇</div>
         </div>
         <div class="vc" id="voy-video-card" style="padding:0;overflow:hidden;display:none">
-          <div class="video-wrap"><iframe id="voy-iframe" src="" allow="autoplay;fullscreen;picture-in-picture" allowfullscreen></iframe></div>
+          <div class="video-wrap"><iframe id="voy-iframe" src="" allow="autoplay;fullscreen;picture-in-picture" allowfullscreen></iframe><div id="voy-video-poster" onclick="playHomeVideo(0)" style="position:absolute;inset:0;z-index:3;cursor:pointer;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0c0c0c,#1c1c1c)"><div style="width:78px;height:78px;border-radius:50%;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 34px rgba(201,168,76,.5);transition:transform .15s" onmouseover="this.style.transform='scale(1.07)'" onmouseout="this.style.transform='scale(1)'"><span style="color:#060606;font-size:30px;line-height:1;margin-left:6px">▶</span></div></div></div>
           <div id="voy-video-chapters" class="vid-chapters" style="display:none"></div>
           <div style="padding:14px 18px;border-top:1px solid var(--border)">
             <div style="font-family:var(--font-serif);font-size:15px;font-weight:600;color:var(--gold2)">Présentation du logement</div>
@@ -1245,7 +1249,25 @@ const LANGS=[
   {code:'ru',flag:'🇷🇺',name:'Русский'},
 ];
 
-let cu=null,clid=null,adr=[],equip=[],serv=[],btnv=[],procEtapes=[],imgFond='',logoUrl='',currentLivretId=null,currentLivretData=null,selectedNote=0,qrInstance=null,locData=null,voyVimeoPlayer=null;
+let cu=null,clid=null,adr=[],equip=[],serv=[],btnv=[],procEtapes=[],imgFond='',logoUrl='',currentLivretId=null,currentLivretData=null,selectedNote=0,qrInstance=null,locData=null,voyVimeoPlayer=null,voyVideoUrl='',voyVideoStarted=false;
+
+// ===== Chargement « à la demande » des bibliothèques lourdes (perf voyageur) =====
+// On ne télécharge jspdf / Vimeo QUE quand on en a vraiment besoin (pas pour un voyageur lambda).
+const _libCache={};
+function loadScript(src){
+  if(_libCache[src])return _libCache[src];
+  _libCache[src]=new Promise((res,rej)=>{
+    const s=document.createElement('script');s.src=src;s.async=true;
+    s.onload=()=>res();s.onerror=()=>{delete _libCache[src];rej(new Error('load failed '+src));};
+    document.head.appendChild(s);
+  });
+  return _libCache[src];
+}
+const LIBS={
+  jspdf:'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  vimeo:'https://cdn.jsdelivr.net/npm/@vimeo/player@2.20.1/dist/player.min.js'
+};
+function ensureLib(name){return loadScript(LIBS[name]);}
 
 const ss=u=>localStorage.setItem('lv',JSON.stringify({u,t:Date.now()}));
 const ls=()=>{try{const s=JSON.parse(localStorage.getItem('lv'));if(!s)return null;if(Date.now()-s.t>28800000){localStorage.removeItem('lv');return null;}return s.u;}catch{return null;}};
@@ -1988,7 +2010,7 @@ async function delCatService(id){
     catalogue=catalogue.filter(x=>x!==s);renderCatalogue();toast('Service supprimé');
   }catch(e){alert('Erreur suppression : '+(e.response?.data?.message||e.message));}
 }
-function showAdmin(){show('admin-screen');ll();loadAvisBadge();}
+function showAdmin(){show('admin-screen');ll();loadAvisBadge();ensureLib('jspdf').catch(()=>{});}
 
 async function loadAvisBadge(){
   try{
@@ -2250,6 +2272,7 @@ async function downloadFiche(id,nom){
     qrWifi=await makeQRDataURL(wifiStr,300);
   }
 
+  await ensureLib('jspdf');
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({unit:'mm',format:'a4'});
   const W=210,H=297,M=15;
@@ -3022,12 +3045,31 @@ function setupProcCarouselScroll(){
   },{passive:true});
 }
 
-// Saute la vidéo Vimeo de la page d'accueil voyageur au timecode demandé
+// Démarre la vidéo d'accueil INSTANTANÉMENT (autoplay) puis branche l'API Vimeo en arrière-plan
+// pour les boutons-chapitres. sec>0 = démarrer directement à ce timecode.
+function playHomeVideo(sec){
+  if(!voyVideoUrl)return;
+  sec=sec>0?Math.round(sec):0;
+  const iframeEl=document.getElementById('voy-iframe');
+  const poster=document.getElementById('voy-video-poster');
+  if(!voyVideoStarted){
+    voyVideoStarted=true;
+    const sep=voyVideoUrl.includes('?')?'&':'?';
+    if(iframeEl)iframeEl.src=voyVideoUrl+sep+'autoplay=1'+(sec>0?('#t='+sec+'s'):'');
+    if(poster)poster.style.display='none';
+    // branche l'API JS Vimeo derrière (chargée à la demande) pour les chapitres suivants
+    ensureLib('vimeo').then(()=>{try{voyVimeoPlayer=new window.Vimeo.Player(iframeEl);}catch(e){}}).catch(()=>{});
+  }else if(sec>0){
+    if(voyVimeoPlayer&&voyVimeoPlayer.setCurrentTime){voyVimeoPlayer.setCurrentTime(sec).then(()=>voyVimeoPlayer.play()).catch(()=>{});}
+    else if(iframeEl){const sep=voyVideoUrl.includes('?')?'&':'?';iframeEl.src=voyVideoUrl+sep+'autoplay=1#t='+sec+'s';}
+  }
+}
+// Bouton-chapitre : on saute au timecode (et on lance la vidéo si pas encore démarrée)
 function vimeoSeekTo(t){
-  const s=parseTimecode(t);if(s===null||!voyVimeoPlayer)return;
+  const s=parseTimecode(t);if(s===null)return;
   const card=document.getElementById('voy-video-card');
   if(card)card.scrollIntoView({behavior:'smooth',block:'start'});
-  voyVimeoPlayer.setCurrentTime(s).then(()=>voyVimeoPlayer.play()).catch(()=>{});
+  playHomeVideo(s);
 }
 
 // Formate un nombre de secondes en mm:ss (ou h:mm:ss si > 1h)
@@ -3043,6 +3085,7 @@ async function importVimeoChapters(){
   if(!url){alert('Mets d\'abord le lien Vimeo dans le champ ci-dessus.');return;}
   const playerUrl=normalizeVimeoUrl(url);
   if(!playerUrl){alert('Lien Vimeo invalide.');return;}
+  try{await ensureLib('vimeo');}catch(e){}
   if(!window.Vimeo||!window.Vimeo.Player){alert('Lecteur Vimeo non chargé. Recharge la page.');return;}
   toast('🎬 Récupération des chapitres…');
   // iframe Vimeo temporaire caché
@@ -3706,6 +3749,7 @@ async function importVimeoChaptersToEquip(){
   if(!url){alert('Mets d\'abord le lien Vimeo dans l\'onglet Vidéo.');return;}
   const playerUrl=normalizeVimeoUrl(url);
   if(!playerUrl){alert('Lien Vimeo invalide.');return;}
+  try{await ensureLib('vimeo');}catch(e){}
   if(!window.Vimeo||!window.Vimeo.Player){alert('Lecteur Vimeo non chargé. Recharge la page.');return;}
   toast('🎬 Récupération des chapitres…');
   const tmp=document.createElement('iframe');
@@ -4309,7 +4353,7 @@ function rv(l,adresses,equipements,back,services){
   const avEl=document.getElementById('voy-av');
   if(avEl){
     if(l.logo_url){
-      avEl.innerHTML=`<img src="${l.logo_url}" alt="Logo" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:50%">`;
+      avEl.innerHTML=`<img loading="lazy" decoding="async" src="${l.logo_url}" alt="Logo" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:50%">`;
       avEl.style.background='var(--bg3)';
       avEl.style.padding='0';
       avEl.style.overflow='hidden';
@@ -4338,17 +4382,18 @@ function rv(l,adresses,equipements,back,services){
   if(ctaH){document.getElementById('voy-cta-list').innerHTML=ctaH;document.getElementById('voy-cta-zone').style.display='';}
   else{document.getElementById('voy-cta-zone').style.display='none';}
   if(l.image_fond)document.getElementById('voy-bg').style.backgroundImage=`url('${l.image_fond}')`;
+  // Vidéo : on N'affiche PAS le lecteur Vimeo tout de suite (lourd). On montre une vignette + ▶,
+  // et la vidéo démarre INSTANTANÉMENT au clic (autoplay), l'API chapitres se branche derrière.
+  voyVideoUrl='';voyVideoStarted=false;
+  try{if(voyVimeoPlayer&&voyVimeoPlayer.destroy){voyVimeoPlayer.destroy().catch(()=>{});}}catch(e){}
+  voyVimeoPlayer=null;
   if(l.vimeo_url){
     const playerUrl=normalizeVimeoUrl(l.vimeo_url);
     if(playerUrl){
-      const iframeEl=document.getElementById('voy-iframe');
-      iframeEl.src=playerUrl;
+      voyVideoUrl=playerUrl;
+      const iframeEl=document.getElementById('voy-iframe');if(iframeEl)iframeEl.src='';
+      const poster=document.getElementById('voy-video-poster');if(poster)poster.style.display='flex';
       document.getElementById('voy-video-card').style.display='block';
-      // Initialise le Player Vimeo (API JS) pour pouvoir piloter la vidéo depuis les boutons-chapitres
-      try{
-        if(voyVimeoPlayer&&voyVimeoPlayer.destroy){voyVimeoPlayer.destroy().catch(()=>{});}
-      }catch(e){}
-      voyVimeoPlayer=(window.Vimeo&&window.Vimeo.Player)?new window.Vimeo.Player(iframeEl):null;
     }
   }
   const chapsEl=document.getElementById('voy-video-chapters');
@@ -4376,7 +4421,7 @@ function rv(l,adresses,equipements,back,services){
     const carEl=document.getElementById('voy-proc-carousel');
     const total=etapes.length;
     carEl.innerHTML=etapes.map((e,i)=>{
-      const img=e.image_url?`<img src="${e.image_url}" class="proc-slide-img" alt="${(e.texte||'').replace(/"/g,'&quot;').slice(0,80)}">`:`<div class="proc-slide-img" style="display:flex;align-items:center;justify-content:center"><div style="font-family:var(--font-serif);font-size:64px;color:var(--gold2);font-weight:700;line-height:1">${i+1}</div></div>`;
+      const img=e.image_url?`<img loading="lazy" decoding="async" src="${e.image_url}" class="proc-slide-img" alt="${(e.texte||'').replace(/"/g,'&quot;').slice(0,80)}">`:`<div class="proc-slide-img" style="display:flex;align-items:center;justify-content:center"><div style="font-family:var(--font-serif);font-size:64px;color:var(--gold2);font-weight:700;line-height:1">${i+1}</div></div>`;
       const counter=`<div class="proc-slide-counter">${i+1}<span>/${total}</span></div>`;
       return `<div class="proc-slide"><div class="proc-slide-img-wrap">${img}${counter}</div><div class="proc-slide-num">Étape ${i+1}</div><div class="proc-slide-text">${e.texte||''}</div></div>`;
     }).join('');
@@ -4407,7 +4452,7 @@ function rv(l,adresses,equipements,back,services){
       const safe=vidEmbed.replace(/"/g,'&quot;').replace(/'/g,"\\'");
       const nm=(e.nom||'').replace(/"/g,'&quot;');
       const ico=e.icone||'🎬';
-      visual=`<div class="eq-poster" onclick="playEqVideo(this,'${safe}')"><img src="${userImg}" class="eq-poster-img" alt="${nm}"><div class="eq-poster-ico">${ico}</div>${titleH}<div class="eq-play-overlay"><div class="eq-play-btn">▶</div></div></div>`;
+      visual=`<div class="eq-poster" onclick="playEqVideo(this,'${safe}')"><img loading="lazy" decoding="async" src="${userImg}" class="eq-poster-img" alt="${nm}"><div class="eq-poster-ico">${ico}</div>${titleH}<div class="eq-play-overlay"><div class="eq-play-btn">▶</div></div></div>`;
       hasPosterTitle=!!e.nom;
     }else if(vidEmbed){
       // Vidéo Vimeo sans photo perso → carte thématique SVG générée (click-to-play)
@@ -4416,7 +4461,7 @@ function rv(l,adresses,equipements,back,services){
       visual=`<div class="eq-poster" onclick="playEqVideo(this,'${safe}')">${generateThemeSvg(theme)}<div class="eq-play-overlay"><div class="eq-play-btn">▶</div></div>${titleH}</div>`;
       hasPosterTitle=!!e.nom;
     }else if(userImg){
-      visual=`<img src="${userImg}" class="eq-img">`;
+      visual=`<img loading="lazy" decoding="async" src="${userImg}" class="eq-img">`;
     }else{
       // Pas de vidéo et pas d'image perso → carte décorative thématique (pas de bouton play)
       const theme=getThemeForChapter(e,idx);
@@ -4439,7 +4484,7 @@ function rv(l,adresses,equipements,back,services){
     const isAdrIcon=a.icone&&ADRESSE_ICONS[a.icone];
     const isVisualIll=a.icone&&ILLUSTRATIONS[a.icone];
     const visual=a.image_url
-      ?`<img src="${a.image_url}" class="sv-img" alt="${(a.nom||'').replace(/"/g,'&quot;')}">`
+      ?`<img loading="lazy" decoding="async" src="${a.image_url}" class="sv-img" alt="${(a.nom||'').replace(/"/g,'&quot;')}">`
       :`<div class="sv-img" style="display:flex;align-items:center;justify-content:center;background:var(--bg3);border:1px solid var(--border-gold)">${isAdrIcon?`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:54%;height:54%"><g stroke="var(--gold2)" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round" color="var(--gold2)">${ADRESSE_ICONS[a.icone]}</g></svg>`:isVisualIll?`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:50%;height:50%"><g stroke="var(--gold2)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" color="var(--gold2)">${ILLUSTRATIONS[a.icone]}</g></svg>`:`<div style="font-size:42px;line-height:1">${a.icone||(isLien?'🌐':'📍')}</div>`}</div>`;
     return `<a class="eq-card${isLien?' lien-utile':''}" href="${a.url||'#'}" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:block"><div class="sv-row">${visual}<div class="sv-body"><div class="eq-header" style="margin-bottom:6px"><div class="eq-nom" style="font-size:15px">${a.nom||''}</div>${a.categorie?`<span style="margin-left:auto;font-weight:700;font-size:11px;letter-spacing:0.5px${isLien?'':';color:var(--gold2)'}">${a.categorie}</span>`:''}</div><div class="eq-desc" style="margin-bottom:0">${a.description||''}</div></div></div></a>`;
   };
@@ -4464,7 +4509,7 @@ function rv(l,adresses,equipements,back,services){
   // Services payants
   const sv=services||[];
   voyServices=sv;
-  document.getElementById('voy-services').innerHTML=sv.length?sv.map(s=>{const _c=priceToCentsClient(s.prix);const _btn=_c>0?`<button class="eq-vid-btn" onclick="addToCart('${s.id}')" style="align-self:flex-start;cursor:pointer;border:none">➕ Ajouter au panier</button>`:(s.lien_paiement?`<a class="eq-vid-btn" href="${s.lien_paiement}" target="_blank" rel="noopener" style="align-self:flex-start">💳 Réserver / Payer</a>`:'');return `<div class="eq-card"><div class="sv-row">${s.image_url?`<img src="${s.image_url}" class="sv-img">`:''}<div class="sv-body"><div class="eq-header" style="margin-bottom:6px"><div class="eq-nom" style="font-size:15px">${s.titre||''}</div>${s.prix?`<span style="margin-left:auto;color:var(--gold2);font-weight:700;font-size:14px">${s.prix}</span>`:''}</div><div class="eq-desc" style="margin-bottom:10px">${s.description||''}</div>${_btn}</div></div></div>`;}).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun service proposé pour le moment.</div>';
+  document.getElementById('voy-services').innerHTML=sv.length?sv.map(s=>{const _c=priceToCentsClient(s.prix);const _btn=_c>0?`<button class="eq-vid-btn" onclick="addToCart('${s.id}')" style="align-self:flex-start;cursor:pointer;border:none">➕ Ajouter au panier</button>`:(s.lien_paiement?`<a class="eq-vid-btn" href="${s.lien_paiement}" target="_blank" rel="noopener" style="align-self:flex-start">💳 Réserver / Payer</a>`:'');return `<div class="eq-card"><div class="sv-row">${s.image_url?`<img loading="lazy" decoding="async" src="${s.image_url}" class="sv-img">`:''}<div class="sv-body"><div class="eq-header" style="margin-bottom:6px"><div class="eq-nom" style="font-size:15px">${s.titre||''}</div>${s.prix?`<span style="margin-left:auto;color:var(--gold2);font-weight:700;font-size:14px">${s.prix}</span>`:''}</div><div class="eq-desc" style="margin-bottom:10px">${s.description||''}</div>${_btn}</div></div></div>`;}).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun service proposé pour le moment.</div>';
   try{cart=JSON.parse(localStorage.getItem(voyCartKey='cart_'+(currentLivretId||'x'))||'[]');}catch(e){cart=[];}
   renderCart();
   const _pp=new URLSearchParams(location.search);
