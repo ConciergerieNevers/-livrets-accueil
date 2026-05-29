@@ -1014,9 +1014,10 @@ body{top:0!important}
 
     <div id="voy-panel-adresses" class="voy-panel">
       <div class="vs">
-        <div class="vs-label" id="voy-adresses-label" style="display:none">Nos recommandations</div>
+        <div id="voy-adr-nav"></div>
+        <div class="vs-label" id="voy-adresses-label" style="display:none;scroll-margin-top:16px">Nos recommandations</div>
         <div id="voy-adresses"></div>
-        <div class="vs-label" id="voy-liens-label" style="display:none;margin-top:30px">Liens utiles</div>
+        <div class="vs-label" id="voy-liens-label" style="display:none;margin-top:30px;scroll-margin-top:16px">Liens utiles</div>
         <div id="voy-liens"></div>
       </div>
     </div>
@@ -4508,6 +4509,16 @@ function rv(l,adresses,equipements,back,services){
   const liensLbl=document.getElementById('voy-liens-label');
   const recoEl=document.getElementById('voy-adresses');
   const liensEl=document.getElementById('voy-liens');
+  // Sous-nav : si on a les 2 blocs, on montre 2 pastilles (la "Liens utiles" en doré attire l'œil + scroll direct)
+  const adrNav=document.getElementById('voy-adr-nav');
+  if(adrNav){
+    if(recoArr.length&&liensArr.length){
+      adrNav.innerHTML='<div class="vid-chapters" style="margin:8px 0 4px">'
+        +'<button class="vid-chap-btn" onclick="document.getElementById(\'voy-adresses-label\').scrollIntoView({behavior:\'smooth\',block:\'start\'})">📍 Recommandations</button>'
+        +'<button class="vid-chap-btn" onclick="document.getElementById(\'voy-liens-label\').scrollIntoView({behavior:\'smooth\',block:\'start\'})">🌐 Liens utiles ↓</button>'
+        +'</div>';
+    }else{adrNav.innerHTML='';}
+  }
   if(recoArr.length){
     recoEl.innerHTML=recoArr.map(renderAdrCard).join('');
     recoLbl.style.display='';
