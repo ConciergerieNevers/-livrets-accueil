@@ -537,7 +537,17 @@ body{top:0!important}
     </div>
   </nav>
   <div class="adm-body">
-    <div id="adm-accueil"></div>
+    <div class="adm-hero">
+      <div class="adm-hero-text">
+        <h2 class="serif gold-text">Tableau de bord</h2>
+        <p>Gérez vos livrets d'accueil en toute élégance</p>
+      </div>
+      <div class="adm-hero-stats">
+        <div class="adm-stat"><div class="adm-stat-num gold-text serif" id="stat-l">—</div><div class="adm-stat-lbl">Livrets</div></div>
+        <div class="adm-stat"><div class="adm-stat-num gold-text serif" id="stat-v">—</div><div class="adm-stat-lbl">Vues 30j</div></div>
+        <div class="adm-stat"><div class="adm-stat-num gold-text serif" id="stat-a">—</div><div class="adm-stat-lbl">Upsell (mois)</div></div>
+      </div>
+    </div>
     <div class="adm-section-hdr">
       <div class="adm-section-title">Vos logements</div>
       <div class="adm-actions-hdr">
@@ -1874,7 +1884,10 @@ async function ll(){
       axios.get(`${API}/consultations?select=id&created_at=gte.${since}`,{headers:hd()}).catch(()=>({data:[]}))
     ]);
     const upsell=(cr.data||[]).reduce((s,c)=>s+((c.total_cents||0)-(c.refunded_cents||0)),0);
-    loadAccueil(lr.data,upsell,vr.data.length);
+    document.getElementById('stat-l').textContent=lr.data.length;
+    document.getElementById('stat-v').textContent=vr.data.length;
+    document.getElementById('stat-a').textContent=(upsell/100).toFixed(0)+'€';
+    axios.get(`${API}/commandes?select=id&statut=in.(paye,rembourse_partiel)&traitee=eq.false`,{headers:hd()}).then(nr=>setDemBadge((nr.data||[]).length)).catch(()=>{});
     const viewsByLivret={};
     const allViews=await axios.get(`${API}/consultations?select=livret_id&created_at=gte.${since}`,{headers:hd()}).catch(()=>({data:[]}));
     allViews.data.forEach(v=>viewsByLivret[v.livret_id]=(viewsByLivret[v.livret_id]||0)+1);
@@ -1930,9 +1943,6 @@ function renderAccueil(livrets,upsellCents,vues,dyn){
     +'<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px">'
       +'<div style="flex:1;min-width:260px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 18px"><div style="font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--gold2);margin-bottom:10px">🛎️ Arrivées du jour</div>'+arrHtml+'</div>'
       +'<div style="flex:1;min-width:260px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 18px"><div style="font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--gold2);margin-bottom:10px">📦 Livraisons du jour</div>'+delivHtml+'</div>'
-    +'</div>'
-    +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px">'
-      +sc('openReservations()','📅 Réservations')+sc('openDemandes()','📋 Mes demandes')+sc('openCatalogue()','🛎️ Mes services')+sc('openNewOrder()','➕ Nouvelle commande')
     +'</div>';
 }
 let lvData=[],lvViews={},lvView=((typeof localStorage!=='undefined'&&localStorage.getItem('lv_view'))||'cartes'),lvReorder=false,lvSearch='';
