@@ -4392,7 +4392,14 @@ function rv(l,adresses,equipements,back,services){
     if(playerUrl){
       voyVideoUrl=playerUrl;
       const iframeEl=document.getElementById('voy-iframe');if(iframeEl)iframeEl.src='';
-      const poster=document.getElementById('voy-video-poster');if(poster)poster.style.display='flex';
+      const poster=document.getElementById('voy-video-poster');
+      if(poster){
+        poster.style.display='flex';
+        poster.style.backgroundSize='cover';poster.style.backgroundPosition='center';
+        poster.style.backgroundImage='linear-gradient(135deg,#0c0c0c,#1c1c1c)';
+        // récupère l'APERÇU (miniature) de la vidéo sans charger le lecteur lourd
+        getVimeoThumbnailBase(playerUrl).then(t=>{if(t&&voyVideoUrl===playerUrl&&!voyVideoStarted)poster.style.backgroundImage=`linear-gradient(rgba(0,0,0,.18),rgba(0,0,0,.32)),url('${t}')`;}).catch(()=>{});
+      }
       document.getElementById('voy-video-card').style.display='block';
     }
   }
