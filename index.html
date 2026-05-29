@@ -4081,18 +4081,30 @@ function openVoyDemande(){
   if(!ov){ov=document.createElement('div');ov.id='voy-demande';document.body.appendChild(ov);}
   ov.setAttribute('style','position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,0.7);overflow-y:auto;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px');
   ov.onclick=function(e){if(e.target===ov)ov.style.display='none';};
+  // Si on ne connaît pas déjà le voyageur (lien sans réservation), on demande Prénom + Nom
+  const needName=!(voyGuestNom&&voyGuestNom.trim());
+  const nameFields=needName?'<div style="display:flex;gap:10px;margin-bottom:10px"><input id="voy-dem-prenom" placeholder="Prénom" autocomplete="given-name" style="flex:1;min-width:0;padding:12px;border-radius:12px;border:1px solid var(--border-gold);background:#141414;color:#fff;font-size:14px;box-sizing:border-box"><input id="voy-dem-nom" placeholder="Nom" autocomplete="family-name" style="flex:1;min-width:0;padding:12px;border-radius:12px;border:1px solid var(--border-gold);background:#141414;color:#fff;font-size:14px;box-sizing:border-box"></div>':'';
   ov.innerHTML='<div style="max-width:480px;width:100%;margin:auto;background:var(--card);border:1px solid var(--border-gold);border-radius:20px;padding:22px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="serif" style="font-size:20px;color:var(--gold3)">Une demande&nbsp;?</div><button onclick="var o=document.getElementById(\'voy-demande\');if(o)o.style.display=\'none\'" style="width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:#fff;font-size:18px;cursor:pointer">✕</button></div>'
     +'<p style="font-size:13px;color:var(--muted2);margin:0 0 12px">Écrivez-nous votre message, nous vous répondons au plus vite.</p>'
+    +nameFields
     +'<textarea id="voy-demande-msg" placeholder="Votre message…" style="width:100%;min-height:110px;padding:12px;border-radius:12px;border:1px solid var(--border-gold);background:#141414;color:#fff;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box"></textarea>'
     +'<button id="voy-demande-send" onclick="sendVoyDemande()" style="width:100%;margin-top:12px;padding:15px;border:none;border-radius:12px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-weight:700;font-size:14px;cursor:pointer">Envoyer ma demande</button></div>';
   ov.style.display='flex';
 }
 async function sendVoyDemande(){
   const msg=(document.getElementById('voy-demande-msg')?.value||'').trim();
+  // Nom du voyageur : connu via SuperHote, sinon saisi dans le formulaire (obligatoire)
+  let guestNom=(voyGuestNom||'').trim();
+  if(!guestNom){
+    const pre=(document.getElementById('voy-dem-prenom')?.value||'').trim();
+    const no=(document.getElementById('voy-dem-nom')?.value||'').trim();
+    if(!pre||!no){alert('Merci d\'indiquer votre prénom et votre nom.');return;}
+    guestNom=(pre+' '+no).trim();
+  }
   if(!msg){alert('Écrivez votre message avant d\'envoyer.');return;}
   const btn=document.getElementById('voy-demande-send');if(btn){btn.disabled=true;btn.textContent='Envoi…';}
   const qp=new URLSearchParams(window.location.search);
-  const payload={livret_id:currentLivretId||null,livret_nom:(currentLivretData&&currentLivretData.nom)||null,booking_id:(parseInt(qp.get('r'))||null),guest_nom:(voyGuestNom||null),message:msg.slice(0,2000)};
+  const payload={livret_id:currentLivretId||null,livret_nom:(currentLivretData&&currentLivretData.nom)||null,booking_id:(parseInt(qp.get('r'))||null),guest_nom:(guestNom||null),message:msg.slice(0,2000)};
   try{
     await axios.post(`${API}/demandes`,payload,{headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'}});
     const ov=document.getElementById('voy-demande');if(ov)ov.innerHTML='<div style="max-width:480px;width:100%;margin:auto;background:var(--card);border:1px solid var(--border-gold);border-radius:20px;padding:30px;text-align:center"><div style="font-size:40px">✅</div><div class="serif" style="font-size:20px;color:var(--gold3);margin:10px 0 6px">Demande envoyée&nbsp;!</div><p style="font-size:13px;color:var(--muted2)">Nous revenons vers vous au plus vite.</p><button onclick="var o=document.getElementById(\'voy-demande\');if(o)o.style.display=\'none\'" style="margin-top:14px;padding:12px 22px;border:none;border-radius:12px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-weight:700;cursor:pointer">Fermer</button></div>';
