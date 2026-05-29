@@ -565,6 +565,9 @@ body{top:0!important}
           📋 Mes demandes
           <span class="badge" id="dem-badge" style="display:none">0</span>
         </button>
+        <button class="adm-add-s" onclick="openCorbeille()">
+          🗑 Corbeille
+        </button>
         <button class="adm-add" onclick="openEditor(null)">
           + Nouveau livret
         </button>
@@ -648,6 +651,25 @@ body{top:0!important}
     </div>
     <div id="resa-loading" class="loading">Chargement…</div>
     <div id="resa-list"></div>
+  </div>
+</div>
+
+<!-- CORBEILLE -->
+<div id="corbeille-screen" style="display:none">
+  <nav class="adm-nav">
+    <div class="adm-nav-left">
+      <button class="adm-logout" onclick="showAdmin()">← Retour</button>
+      <div class="adm-nav-title serif">Corbeille</div>
+    </div>
+  </nav>
+  <div class="adm-body">
+    <div class="adm-hero">
+      <div class="adm-hero-text">
+        <h2 class="serif gold-text">Corbeille</h2>
+        <p>Livrets supprimés, conservés 3 mois. Tu peux les restaurer ou les supprimer définitivement.</p>
+      </div>
+    </div>
+    <div id="corb-list"></div>
   </div>
 </div>
 
@@ -1234,7 +1256,7 @@ async function register(){
   catch{alert('Erreur.');}
 }
 function logout(){cu=null;cs();show('login-screen');}
-function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','demandes-screen','reservations-screen'].forEach(s=>document.getElementById(s).style.display=s===id?'block':'none');}
+function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','demandes-screen','reservations-screen','corbeille-screen'].forEach(s=>document.getElementById(s).style.display=s===id?'block':'none');}
 
 // ===== Mes demandes (tableau de bord) =====
 let demData=[],demFilter='all',demChartMode='mois',demView='dash',planMode='semaine',planRef=null,planGroup='personne';
@@ -1474,7 +1496,7 @@ async function openNewOrder(prefill){
   ncLines=[];ncLivret=(prefill&&prefill.livret)||'';ncBooking=(prefill&&prefill.booking)||'';ncUrl='';ncBusy=false;
   try{
     const [lr,cr]=await Promise.all([
-      axios.get(`${API}/livrets?select=id,nom&order=nom.asc`,{headers:hd()}),
+      axios.get(`${API}/livrets?select=id,nom&deleted_at=is.null&order=nom.asc`,{headers:hd()}),
       axios.get(`${API}/catalogue_services?select=id,titre,prix&actif=eq.true&order=titre.asc`,{headers:hd()})
     ]);
     ncLivrets=lr.data||[];ncCatalogue=cr.data||[];
@@ -1548,7 +1570,7 @@ async function openReservations(){
   try{
     const [rr,lr]=await Promise.all([
       axios.get(`${API}/sh_reservations?select=*&checkout=gte.${resaCutoff()}&order=checkin.asc&limit=3000`,{headers:hd()}),
-      axios.get(`${API}/livrets?select=id,nom,slug,superhote_rental_id`,{headers:hd()})
+      axios.get(`${API}/livrets?select=id,nom,slug,superhote_rental_id&deleted_at=is.null`,{headers:hd()})
     ]);
     resaData=rr.data||[];resaLivrets=lr.data||[];
     document.getElementById('resa-loading').style.display='none';
@@ -1746,7 +1768,7 @@ async function openCatalogue(){
   try{
     const [cr,lr]=await Promise.all([
       axios.get(`${API}/catalogue_services?select=*&order=categorie.asc,ordre.asc`,{headers:hd()}),
-      axios.get(`${API}/livrets?select=id,nom&order=nom.asc`,{headers:hd()})
+      axios.get(`${API}/livrets?select=id,nom&deleted_at=is.null&order=nom.asc`,{headers:hd()})
     ]);
     catalogue=cr.data||[];allLivrets=lr.data||[];
     document.getElementById('cat-loading').style.display='none';
@@ -1879,7 +1901,7 @@ async function ll(){
     const since=new Date(Date.now()-30*86400000).toISOString();
     const moisDebut=new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString();
     const [lr,cr,vr]=await Promise.all([
-      axios.get(`${API}/livrets?select=*&order=created_at.desc`,{headers:hd()}),
+      axios.get(`${API}/livrets?select=*&deleted_at=is.null&order=created_at.desc`,{headers:hd()}),
       axios.get(`${API}/commandes?select=total_cents,refunded_cents&statut=in.(paye,rembourse_partiel)&created_at=gte.${moisDebut}`,{headers:hd()}).catch(()=>({data:[]})),
       axios.get(`${API}/consultations?select=id&created_at=gte.${since}`,{headers:hd()}).catch(()=>({data:[]}))
     ]);
@@ -2000,9 +2022,10 @@ function lvCardHtml(l){
           <button class="lv-btn" onclick="setLvCategorie('${l.id}')">🏷 Catégorie</button>
           <button class="lv-btn" onclick="toggleLvActif('${l.id}')">${actif?'⏸ Pause':'▶ Réactiver'}</button>
           <button class="lv-btn" onclick="showQR('${l.id}','${safeNom}','${pub}')">📱 QR Code</button>
+          <button class="lv-btn" onclick="downloadFiche('${l.id}','${safeNom}')">📄 Fiche PDF</button>
           <button class="lv-btn" onclick="showStats('${l.id}','${safeNom}')">📊 Stats</button>
           <button class="lv-btn full" onclick="dup('${l.id}','${safeNom}')">📋 Dupliquer</button>
-          <button class="lv-btn danger full" onclick="del('${l.id}','${safeNom}')">🗑 Supprimer</button>
+          <button class="lv-btn danger" style="font-size:11px;padding:7px 10px;width:auto" onclick="del('${l.id}','${safeNom}')">🗑 Supprimer</button>
         </div>
       </div></div>`;
 }
@@ -2378,9 +2401,47 @@ async function dup(id,nom){
 }
 
 async function del(id,nom){
-  if(!confirm(`Supprimer "${nom}" définitivement ?`))return;
-  await axios.delete(`${API}/livrets?id=eq.${id}`,{headers:{...hd(),'Prefer':'return=minimal'}});
-  ll();
+  if(!confirm(`Mettre "${nom}" à la corbeille ?\nIl restera récupérable pendant 3 mois.`))return;
+  try{
+    await axios.patch(`${API}/livrets?id=eq.${id}`,{deleted_at:new Date().toISOString()},{headers:{...hd(),'Prefer':'return=minimal'}});
+    ll();toast('🗑 Livret mis à la corbeille');
+  }catch(e){alert('Suppression impossible.');}
+}
+async function openCorbeille(){
+  show('corbeille-screen');
+  const box=document.getElementById('corb-list');if(box)box.innerHTML='<div class="loading">Chargement…</div>';
+  try{
+    const r=await axios.get(`${API}/livrets?select=id,nom,slug,deleted_at&deleted_at=not.is.null&order=deleted_at.desc`,{headers:hd()});
+    renderCorbeille(r.data||[]);
+  }catch(e){if(box)box.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted)">Erreur de chargement.</div>';}
+}
+function renderCorbeille(list){
+  const box=document.getElementById('corb-list');if(!box)return;
+  if(!list.length){box.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">La corbeille est vide. 🗑</div>';return;}
+  box.innerHTML=list.map(l=>{
+    const sup=l.deleted_at?new Date(l.deleted_at):null;
+    const supTxt=sup?sup.toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}):'';
+    const until=sup?new Date(sup.getTime()+90*86400000).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}):'';
+    const safeNom=(''+l.nom).replace(/'/g,"\\'");
+    return '<div class="sc" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">'
+      +'<div style="min-width:160px"><div style="font-weight:700;color:#fff">'+(''+l.nom).replace(/</g,'&lt;')+'</div><div style="font-size:11px;color:var(--muted2)">Supprimé le '+supTxt+' · conservé jusqu\'au '+until+'</div></div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="lv-btn" style="width:auto" onclick="restoreLivret(\''+l.id+'\')">♻️ Restaurer</button><button class="lv-btn danger" style="width:auto;font-size:11px;padding:7px 10px" onclick="hardDeleteLivret(\''+l.id+'\',\''+safeNom+'\')">🗑 Supprimer définitivement</button></div>'
+      +'</div>';
+  }).join('');
+}
+async function restoreLivret(id){
+  try{await axios.patch(`${API}/livrets?id=eq.${id}`,{deleted_at:null},{headers:{...hd(),'Prefer':'return=minimal'}});toast('♻️ Livret restauré');openCorbeille();}
+  catch(e){alert('Restauration impossible.');}
+}
+async function hardDeleteLivret(id,nom){
+  if(!confirm('⚠️ Supprimer DÉFINITIVEMENT « '+nom+' » ?\nIrréversible : le livret et tout son contenu seront perdus.'))return;
+  try{
+    await axios.delete(`${API}/adresses?livret_id=eq.${id}`,{headers:{...hd(),'Prefer':'return=minimal'}}).catch(()=>{});
+    await axios.delete(`${API}/equipements?livret_id=eq.${id}`,{headers:{...hd(),'Prefer':'return=minimal'}}).catch(()=>{});
+    await axios.delete(`${API}/services?livret_id=eq.${id}`,{headers:{...hd(),'Prefer':'return=minimal'}}).catch(()=>{});
+    await axios.delete(`${API}/livrets?id=eq.${id}`,{headers:{...hd(),'Prefer':'return=minimal'}});
+    toast('Supprimé définitivement');openCorbeille();
+  }catch(e){alert('Suppression impossible.');}
 }
 
 async function loadSuperhoteRentals(selectedId){
