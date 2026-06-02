@@ -2096,22 +2096,58 @@ function renderAccueil(livrets,upsellCents,vues,dyn){
     +'</div>';
 }
 let lvData=[],lvViews={},lvView=((typeof localStorage!=='undefined'&&localStorage.getItem('lv_view'))||'cartes'),lvReorder=false,lvSearch='';
+
+// === Modales internes (remplacent confirm/prompt qui peuvent être bloquées par Safari) ===
+function askConfirm(msg,opts){
+  opts=opts||{};const danger=!!opts.danger;
+  return new Promise(res=>{
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.72);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px)';
+    const safeMsg=(''+msg).replace(/</g,'&lt;').replace(/\n/g,'<br>');
+    ov.innerHTML='<div style="max-width:420px;width:100%;background:var(--card);border:1px solid var(--border-gold);border-radius:18px;padding:24px;box-shadow:0 30px 80px rgba(0,0,0,0.6)"><div style="font-size:14.5px;color:var(--text);line-height:1.55;margin-bottom:20px">'+safeMsg+'</div><div style="display:flex;gap:10px;justify-content:flex-end"><button id="ak-no" style="padding:10px 18px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:13px;font-weight:600;cursor:pointer">Annuler</button><button id="ak-yes" style="padding:10px 20px;border-radius:10px;border:none;background:'+(danger?'linear-gradient(135deg,#a83838,#e25b5b)':'linear-gradient(135deg,#b8922a,#e2c06e,#d4a843)')+';color:'+(danger?'#fff':'#060606')+';font-size:13px;font-weight:800;cursor:pointer">'+((opts.okText)||(danger?'Supprimer':'Confirmer'))+'</button></div></div>';
+    document.body.appendChild(ov);
+    const done=v=>{ov.remove();res(v);};
+    ov.addEventListener('click',e=>{if(e.target===ov)done(false);});
+    ov.querySelector('#ak-no').onclick=()=>done(false);
+    ov.querySelector('#ak-yes').onclick=()=>done(true);
+  });
+}
+function askPrompt(msg,defVal){
+  return new Promise(res=>{
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.72);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px)';
+    const safeMsg=(''+msg).replace(/</g,'&lt;').replace(/\n/g,'<br>');
+    const safeDef=(''+(defVal||'')).replace(/"/g,'&quot;');
+    ov.innerHTML='<div style="max-width:440px;width:100%;background:var(--card);border:1px solid var(--border-gold);border-radius:18px;padding:24px"><div style="font-size:14px;color:var(--text);line-height:1.55;margin-bottom:14px">'+safeMsg+'</div><input id="ak-in" value="'+safeDef+'" style="width:100%;padding:13px 14px;border-radius:11px;border:1px solid var(--border-gold);background:#141414;color:#fff;font-size:14px;box-sizing:border-box;outline:none;margin-bottom:18px"><div style="display:flex;gap:10px;justify-content:flex-end"><button id="ak-no" style="padding:10px 18px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:13px;font-weight:600;cursor:pointer">Annuler</button><button id="ak-yes" style="padding:10px 20px;border-radius:10px;border:none;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-size:13px;font-weight:800;cursor:pointer">Valider</button></div></div>';
+    document.body.appendChild(ov);
+    const inp=ov.querySelector('#ak-in');inp.focus();inp.select();
+    const done=v=>{ov.remove();res(v);};
+    ov.addEventListener('click',e=>{if(e.target===ov)done(null);});
+    ov.querySelector('#ak-no').onclick=()=>done(null);
+    ov.querySelector('#ak-yes').onclick=()=>done(inp.value);
+    inp.addEventListener('keydown',e=>{if(e.key==='Enter')done(inp.value);if(e.key==='Escape')done(null);});
+  });
+}
 function rl(livrets,views={}){lvData=livrets||[];lvViews=views||{};renderLivrets();}
 function lvActifOf(l){return l.actif!==false;}
 function setLvView(v){lvView=v;try{localStorage.setItem('lv_view',v);}catch(e){}renderLivrets();}
 function toggleLvReorder(){lvReorder=!lvReorder;renderLivrets();}
 async function toggleLvActif(id){
-  const l=lvData.find(x=>String(x.id)===String(id));if(!l)return;
+  let l=lvData.find(x=>String(x.id)===String(id));
+  if(!l){try{const r=await axios.get(`${API}/livrets?id=eq.${id}&select=*`,{headers:hd()});l=r.data[0];}catch(e){}}
+  if(!l)return;
   const newVal=!lvActifOf(l);
-  if(!newVal&&!confirm('Mettre ce livret EN PAUSE ?\nLes voyageurs qui ouvrent son lien verront « temporairement indisponible ».'))return;
-  try{await axios.patch(`${API}/livrets?id=eq.${id}`,{actif:newVal},{headers:{...hd(),'Prefer':'return=minimal'}});l.actif=newVal;renderLivrets();toast(newVal?'✅ Livret réactivé':'⏸ Livret en pause');}
+  if(!newVal && !(await askConfirm('Mettre ce livret EN PAUSE ?\n\nLes voyageurs qui ouvrent son lien verront « temporairement indisponible ».')))return;
+  try{await axios.patch(`${API}/livrets?id=eq.${id}`,{actif:newVal},{headers:{...hd(),'Prefer':'return=minimal'}});l.actif=newVal;ll();toast(newVal?'✅ Livret réactivé':'⏸ Livret en pause');}
   catch(e){alert('Impossible de changer le statut.');}
 }
 async function setLvCategorie(id){
-  const l=lvData.find(x=>String(x.id)===String(id));if(!l)return;
-  const v=prompt('Catégorie de ce logement (ex : Nevers, Appartements, Maisons…). Laisse vide pour aucune.',l.categorie||'');
+  let l=lvData.find(x=>String(x.id)===String(id));
+  if(!l){try{const r=await axios.get(`${API}/livrets?id=eq.${id}&select=*`,{headers:hd()});l=r.data[0];}catch(e){}}
+  if(!l)return;
+  const v=await askPrompt('Catégorie de ce logement\n(ex : Nevers, Appartements, Maisons…). Laisse vide pour aucune.',l.categorie||'');
   if(v===null)return;
-  try{await axios.patch(`${API}/livrets?id=eq.${id}`,{categorie:(v.trim()||null)},{headers:{...hd(),'Prefer':'return=minimal'}});l.categorie=v.trim()||null;renderLivrets();toast('🏷 Catégorie mise à jour');}
+  try{await axios.patch(`${API}/livrets?id=eq.${id}`,{categorie:(v.trim()||null)},{headers:{...hd(),'Prefer':'return=minimal'}});l.categorie=v.trim()||null;ll();toast('🏷 Catégorie mise à jour');}
   catch(e){alert('Impossible.');}
 }
 async function lvDropEnd(evt){
@@ -2511,7 +2547,7 @@ async function showStats(id,nom){
 }
 
 async function dup(id,nom){
-  const nn=prompt(`Nom du nouveau livret :`,`${nom} - Copie`);if(!nn)return;
+  const nn=await askPrompt(`Nom du nouveau livret :`,`${nom} - Copie`);if(!nn)return;
   const ns=nn.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
   try{
     const [lr,ar,er,sr]=await Promise.all([
@@ -2531,7 +2567,7 @@ async function dup(id,nom){
 }
 
 async function del(id,nom){
-  if(!confirm(`Mettre "${nom}" à la corbeille ?\nIl restera récupérable pendant 3 mois.`))return;
+  if(!(await askConfirm(`Mettre « ${nom} » à la corbeille ?\n\nIl restera récupérable pendant 3 mois.`,{danger:true,okText:'Mettre à la corbeille'})))return;
   try{
     await axios.patch(`${API}/livrets?id=eq.${id}`,{deleted_at:new Date().toISOString()},{headers:{...hd(),'Prefer':'return=minimal'}});
     ll();toast('🗑 Livret mis à la corbeille');
