@@ -2167,6 +2167,7 @@ function lvRowHtml(l){
     <button class="lv-btn" style="width:auto;padding:7px 11px" onclick="lv('${l.id}')">👁</button>
     <button class="lv-btn" style="width:auto;padding:7px 11px" onclick="setLvCategorie('${l.id}')">🏷</button>
     <button class="lv-btn" style="width:auto;padding:7px 11px" onclick="toggleLvActif('${l.id}')">${actif?'⏸':'▶'}</button>
+    <button class="lv-btn danger" style="width:auto;padding:7px 11px" onclick="del('${l.id}','${safeNom}')" title="Mettre à la corbeille">🗑</button>
   </div>`;
 }
 function renderLivrets(){
