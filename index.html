@@ -829,6 +829,9 @@ body{top:0!important}
     </div>
 
     <div id="ta" style="display:none">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+        <button class="btn-add" style="margin-top:0;font-size:12px;width:auto;padding:9px 16px" onclick="autoDetectAllAdrIcons()" title="Applique l'icône stylée Be Nomad sur toutes les adresses (selon leur catégorie)">✨ Tout détecter les icônes</button>
+      </div>
       <div class="sc">
         <div class="sc-title">📍 Recommandations — nos bonnes adresses</div>
         <p style="font-size:12px;color:var(--muted2);margin-bottom:14px;line-height:1.6">Restaurants, cafés, boutiques, lieux à visiter. Pour chaque adresse : un nom, une catégorie, une description courte et un lien. Tu peux ajouter une icône (emoji) ou une photo perso à gauche.</p>
@@ -3570,6 +3573,16 @@ function autoDetectAdrIcon(idx){
   const hit=findAdrIcon(a.categorie||'')||findAdrIcon(a.nom||'');
   if(hit){adr[idx].icone=hit;ra();toast('✨ Icône détectée : '+(ADRESSE_LABELS[hit]||hit));}
   else{toast('Aucune icône ne correspond à cette catégorie. Choisis manuellement.');}
+}
+function autoDetectAllAdrIcons(){
+  let ok=0, miss=0;
+  (adr||[]).forEach(a=>{
+    const hit=findAdrIcon(a.categorie||'')||findAdrIcon(a.nom||'');
+    if(hit){ if(a.icone!==hit){ a.icone=hit; ok++; } } else miss++;
+  });
+  ra();
+  if(ok)toast('✨ '+ok+' icône'+(ok>1?'s':'')+' détectée'+(ok>1?'s':'')+(miss?' · '+miss+' sans correspondance':''));
+  else toast(miss?'Aucune correspondance auto trouvée — choisis manuellement.':'Toutes les icônes étaient déjà à jour ✅');
 }
 
 // Banque de descriptions courtes pré-remplies lors de l'import des chapitres Vimeo
