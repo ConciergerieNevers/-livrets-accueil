@@ -1898,7 +1898,8 @@ async function openCatalogue(){
   try{
     const [cr,lr]=await Promise.all([
       axios.get(`${API}/catalogue_services?select=*&order=categorie.asc,ordre.asc`,{headers:hd()}),
-      axios.get(`${API}/livrets?select=id,nom&deleted_at=is.null&order=nom.asc`,{headers:hd()})
+      axios.get(`${API}/livrets?select=id,nom&deleted_at=is.null&order=nom.asc`,{headers:hd()}),
+      loadCatOrder()
     ]);
     catalogue=cr.data||[];allLivrets=lr.data||[];
     document.getElementById('cat-loading').style.display='none';
@@ -1935,7 +1936,13 @@ function catEditHtml(s){
     <div class="fg"><label class="fl2">Jours de disponibilité</label><div id="catf-jours-${id}" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">${[['Lun',1],['Mar',2],['Mer',3],['Jeu',4],['Ven',5],['Sam',6],['Dim',0]].map(([lbl,d])=>`<label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" data-d="${d}" ${(s.jours_dispo||[0,1,2,3,4,5,6]).includes(d)?'checked':''}>${lbl}</label>`).join('')}</div></div>
     <div class="fg"><label class="fl2">Délai de réservation (combien de temps à l'avance)</label><select class="fi" id="catf-delai-${id}">${[[0,'Le jour même'],[1,'La veille (1 jour avant)'],[2,'2 jours avant'],[3,'3 jours avant'],[4,'4 jours avant'],[5,'5 jours avant'],[7,'1 semaine avant']].map(([v,l])=>`<option value="${v}" ${(s.delai_jours||0)==v?'selected':''}>${l}</option>`).join('')}</select></div>
     <div class="fg"><label class="fl2">Heure limite de réservation</label><select class="fi" id="catf-hlimite-${id}"><option value="">Aucune (toute la journée)</option>${Array.from({length:18},(_,i)=>i+6).map(h=>`<option value="${h}" ${(s.heure_limite!=null&&s.heure_limite==h)?'selected':''}>${h}h</option>`).join('')}</select></div>
-    <div class="fg"><label class="fl2">Logements qui proposent ce service</label><div style="margin-top:4px">${checks}</div></div>
+    <div class="fg"><label class="fl2">Logements qui proposent ce service</label>
+      <div style="display:flex;gap:8px;margin:6px 0 10px;flex-wrap:wrap">
+        <button class="adm-add-s" onclick="selectAllCatLivrets('${id}')" style="padding:6px 12px;font-size:11.5px">✅ Tout cocher</button>
+        <button class="adm-add-s" onclick="clearAllCatLivrets('${id}')" style="padding:6px 12px;font-size:11.5px">🚫 Tout décocher</button>
+      </div>
+      <div style="margin-top:4px">${checks}</div>
+    </div>
     <div style="display:flex;gap:10px;margin-top:10px">
       <button class="adm-add" onclick="saveCatService('${id}')">💾 Enregistrer</button>
       <button class="adm-add-s" onclick="delCatService('${id}')">🗑 Supprimer</button>
@@ -1958,6 +1965,21 @@ function catRowHtml(s){
     <div class="cat-edit" id="cat-edit-${s.id}" style="display:none;padding:0 12px 14px">${catEditHtml(s)}</div>
   </div>`;
 }
+async function selectAllCatLivrets(id){
+  const s=catById(id);if(!s)return;
+  const ids=allLivrets.map(l=>l.id);
+  try{
+    await axios.patch(`${API}/catalogue_services?id=eq.${id}`,{livret_ids:ids},{headers:{...hd(),'Prefer':'return=minimal'}});
+    s.livret_ids=ids;renderCatalogue();editCatRow(id,true);toast('✅ Tous les logements sélectionnés ('+ids.length+')');
+  }catch(e){alert('Impossible.');}
+}
+async function clearAllCatLivrets(id){
+  const s=catById(id);if(!s)return;
+  try{
+    await axios.patch(`${API}/catalogue_services?id=eq.${id}`,{livret_ids:[]},{headers:{...hd(),'Prefer':'return=minimal'}});
+    s.livret_ids=[];renderCatalogue();editCatRow(id,true);toast('🚫 Tous les logements décochés');
+  }catch(e){alert('Impossible.');}
+}
 async function toggleCatFeatured(id){
   const s=catById(id);if(!s)return;
   const newVal=!s.mis_en_avant;
@@ -1969,9 +1991,20 @@ async function toggleCatFeatured(id){
 }
 function renderCatalogue(){
   const box=document.getElementById('cat-list');if(!box)return;
-  const cats=[...new Set(catalogue.map(s=>(s.categorie||'').trim()))].sort((a,b)=>(!a?1:!b?-1:a.localeCompare(b,'fr')));
-  const dl=`<datalist id="cat-cats-dl">${cats.filter(Boolean).map(c=>`<option value="${c.replace(/"/g,'&quot;')}">`).join('')}</datalist>`;
-  let html=dl+`<div style="margin-bottom:16px"><input class="fi" id="cat-search" value="${(catSearch||'').replace(/"/g,'&quot;')}" oninput="catSearch=this.value;renderCatalogue()" placeholder="🔍 Rechercher un service…"></div>`;
+  const catsRaw=[...new Set(catalogue.map(s=>(s.categorie||'').trim()).filter(Boolean))];
+  const sortedCats=sortCategoriesByOrder(catsRaw);
+  // Si une catégorie "Sans catégorie" (vide) existe, on la met à la fin
+  const hasEmpty=catalogue.some(s=>!(s.categorie||'').trim());
+  const cats=hasEmpty?[...sortedCats,'']:sortedCats;
+  // Compteurs
+  const counts={};catsRaw.forEach(c=>{counts[c]=catalogue.filter(s=>(s.categorie||'').trim()===c).length;});
+  // Panneau de gestion des catégories
+  const panel=sortedCats.length?`<div style="border:1px solid var(--border-gold);border-radius:12px;padding:14px 16px;margin-bottom:16px;background:var(--bg2)">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap"><span style="font-size:11px;color:var(--gold2);font-weight:800;letter-spacing:1.5px;text-transform:uppercase">🏷 Catégories</span><span style="font-size:11px;color:var(--muted2);font-style:italic">Glisse pour réordonner · ✏️ pour renommer</span></div>
+    <div id="cat-cats-bar" style="display:flex;flex-wrap:wrap;gap:8px">${sortedCats.map(c=>`<div class="cat-chip" data-cat="${c.replace(/"/g,'&quot;')}" style="display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border:1px solid var(--border-gold);border-radius:30px;background:var(--bg3);cursor:grab"><span style="color:var(--muted2);font-size:11px">⋮⋮</span><span style="font-size:12.5px;color:var(--gold2);font-weight:700">${c.replace(/</g,'&lt;')}</span><span style="font-size:10px;color:var(--muted);opacity:.75">${counts[c]||0}</span><button onclick="event.stopPropagation();renameCat('${c.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')" title="Renommer cette catégorie" style="padding:1px 6px;border-radius:6px;border:none;background:transparent;color:var(--muted2);cursor:pointer;font-size:12px">✏️</button></div>`).join('')}</div>
+  </div>`:'';
+  const dl=`<datalist id="cat-cats-dl">${catsRaw.map(c=>`<option value="${c.replace(/"/g,'&quot;')}">`).join('')}</datalist>`;
+  let html=dl+panel+`<div style="margin-bottom:16px"><input class="fi" id="cat-search" value="${(catSearch||'').replace(/"/g,'&quot;')}" oninput="catSearch=this.value;renderCatalogue()" placeholder="🔍 Rechercher un service…"></div>`;
   if(!catalogue.length){box.innerHTML=html+'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun service. Clique sur « + Nouveau service ».</div>';return;}
   const q=(catSearch||'').toLowerCase().trim();
   cats.forEach(cat=>{
@@ -1982,8 +2015,30 @@ function renderCatalogue(){
     html+=`<div class="cat-section" data-cat="${(cat||'').replace(/"/g,'&quot;')}">`+rows.map(catRowHtml).join('')+`</div>`;
   });
   box.innerHTML=html;
-  if(typeof Sortable!=='undefined')document.querySelectorAll('#cat-list .cat-section').forEach(sec=>{try{new Sortable(sec,{group:'cats',handle:'.drag-handle',animation:150,onEnd:catReorder});}catch(e){}});
+  if(typeof Sortable!=='undefined'){
+    document.querySelectorAll('#cat-list .cat-section').forEach(sec=>{try{new Sortable(sec,{group:'cats',handle:'.drag-handle',animation:150,onEnd:catReorder});}catch(e){}});
+    const bar=document.getElementById('cat-cats-bar');
+    if(bar){try{new Sortable(bar,{animation:150,onEnd:catChipReorder});}catch(e){}}
+  }
   const si=document.getElementById('cat-search');if(si&&q){si.focus();si.setSelectionRange(si.value.length,si.value.length);}
+}
+async function catChipReorder(){
+  const order=Array.from(document.querySelectorAll('#cat-cats-bar .cat-chip')).map(el=>el.getAttribute('data-cat'));
+  await saveCatOrder(order);renderCatalogue();
+  toast('🏷 Ordre des catégories enregistré');
+}
+async function renameCat(oldName){
+  const newName=await askPrompt(`Renommer la catégorie « ${oldName} »\n\nTous les services qui l'utilisent seront mis à jour.`,oldName);
+  if(newName===null)return;
+  const trimmed=(newName||'').trim();
+  if(!trimmed||trimmed===oldName)return;
+  try{
+    await axios.patch(`${API}/catalogue_services?categorie=eq.${encodeURIComponent(oldName)}`,{categorie:trimmed},{headers:{...hd(),'Prefer':'return=minimal'}});
+    catalogue.forEach(s=>{if((s.categorie||'').trim()===oldName)s.categorie=trimmed;});
+    catOrder=(catOrder||[]).map(c=>c===oldName?trimmed:c);
+    await saveCatOrder(catOrder);
+    renderCatalogue();toast('🏷 Catégorie renommée');
+  }catch(e){alert('Renommage impossible.');}
 }
 async function catReorder(){
   let ord=0;const patches=[];
@@ -2113,6 +2168,25 @@ function renderAccueil(livrets,upsellCents,vues,dyn){
 }
 let lvData=[],lvViews={},lvView=((typeof localStorage!=='undefined'&&localStorage.getItem('lv_view'))||'cartes'),lvReorder=false,lvSearch='',lvStatusFilter=((typeof localStorage!=='undefined'&&localStorage.getItem('lv_status'))||'tous');
 function setLvStatusFilter(v){lvStatusFilter=v;try{localStorage.setItem('lv_status',v);}catch(e){}renderLivrets();}
+
+// ===== Gestion de l'ordre des catégories de services (stocké dans parametres.cle='cat_order') =====
+let catOrder=[];
+async function loadCatOrder(){
+  try{const r=await axios.get(`${API}/parametres?cle=eq.cat_order&select=valeur`,{headers:{'apikey':KEY}});const v=r.data&&r.data[0]&&r.data[0].valeur;catOrder=v?JSON.parse(v):[];}
+  catch(e){catOrder=[];}
+  return catOrder;
+}
+async function saveCatOrder(arr){
+  catOrder=arr;
+  try{await axios.post(`${API}/parametres?on_conflict=cle`,{cle:'cat_order',valeur:JSON.stringify(arr)},{headers:{...hd(),'Prefer':'resolution=merge-duplicates,return=minimal'}});}
+  catch(e){console.error(e);}
+}
+function sortCategoriesByOrder(cats){
+  const ord=catOrder||[];
+  const known=ord.filter(c=>cats.includes(c));
+  const unknown=cats.filter(c=>!ord.includes(c)).sort((a,b)=>(''+a).localeCompare(''+b,'fr'));
+  return [...known,...unknown];
+}
 
 // === Modales internes (remplacent confirm/prompt qui peuvent être bloquées par Safari) ===
 function askConfirm(msg,opts){
@@ -4133,7 +4207,8 @@ async function lbs(slug){
       axios.get(`${API}/adresses?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}),
       axios.get(`${API}/equipements?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
       axios.get(`${API}/services?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
-      axios.get(`${API}/catalogue_services?livret_ids=cs.{${l.id}}&actif=eq.true&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]}))
+      axios.get(`${API}/catalogue_services?livret_ids=cs.{${l.id}}&actif=eq.true&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
+      loadCatOrder()
     ]);
     rv(l,ar.data,er.data,false,[...(cat.data||[])]);
     finishIntro('',l.nom);
@@ -4447,7 +4522,8 @@ async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,chec
       axios.get(`${API}/adresses?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}),
       axios.get(`${API}/equipements?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
       axios.get(`${API}/services?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
-      axios.get(`${API}/catalogue_services?livret_ids=cs.{${l.id}}&actif=eq.true&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]}))
+      axios.get(`${API}/catalogue_services?livret_ids=cs.{${l.id}}&actif=eq.true&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
+      loadCatOrder()
     ]);
     rv(l,ar.data,er.data,false,[...(cat.data||[])]);
     voyGuestNom=((g.first_name||'')+' '+(g.last_name||'')).trim();
@@ -4686,27 +4762,43 @@ function rv(l,adresses,equipements,back,services){
   if(!sv.length){
     svEl.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun service proposé pour le moment.</div>';
   }else{
-    // Construit la carte d'un service
+    // Construit la carte d'un service (style premium doré si coup de cœur)
     const svCard=s=>{
       const _c=priceToCentsClient(s.prix);
       const _btn=_c>0?`<button class="eq-vid-btn" onclick="addToCart('${s.id}')" style="align-self:flex-start;cursor:pointer;border:none">➕ Ajouter au panier</button>`:(s.lien_paiement?`<a class="eq-vid-btn" href="${s.lien_paiement}" target="_blank" rel="noopener" style="align-self:flex-start">💳 Réserver / Payer</a>`:'');
-      return `<div class="eq-card"><div class="sv-row">${s.image_url?`<img loading="lazy" decoding="async" src="${s.image_url}" class="sv-img">`:''}<div class="sv-body"><div class="eq-header" style="margin-bottom:6px"><div class="eq-nom" style="font-size:15px">${s.titre||''}</div>${s.prix?`<span style="margin-left:auto;color:var(--gold2);font-weight:700;font-size:14px">${s.prix}</span>`:''}</div><div class="eq-desc" style="margin-bottom:10px">${s.description||''}</div>${_btn}</div></div></div>`;
+      const fav=!!s.mis_en_avant;
+      // Cartes coups de cœur : bordure dorée, fond légèrement teinté or, badge ⭐
+      const cardStyle=fav?'style="position:relative;border:1px solid var(--gold2);background:linear-gradient(180deg,rgba(226,192,110,0.07),rgba(226,192,110,0.02));box-shadow:0 8px 24px rgba(201,168,76,0.10)"':'';
+      const favRibbon=fav?'<div style="position:absolute;top:-1px;right:18px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-size:9px;font-weight:800;letter-spacing:1.2px;padding:4px 12px;border-radius:0 0 8px 8px;box-shadow:0 4px 12px rgba(201,168,76,0.35);text-transform:uppercase;z-index:2">⭐ Coup de cœur</div>':'';
+      const titleStyle=fav?'font-size:15.5px;color:var(--gold3);font-weight:700':'font-size:15px';
+      return `<div class="eq-card" ${cardStyle}>${favRibbon}<div class="sv-row">${s.image_url?`<img loading="lazy" decoding="async" src="${s.image_url}" class="sv-img"${fav?' style="border:1px solid var(--border-gold)"':''}>`:''}<div class="sv-body"><div class="eq-header" style="margin-bottom:6px"><div class="eq-nom" style="${titleStyle}">${s.titre||''}</div>${s.prix?`<span style="margin-left:auto;color:var(--gold2);font-weight:700;font-size:14px">${s.prix}</span>`:''}</div><div class="eq-desc" style="margin-bottom:10px">${s.description||''}</div>${_btn}</div></div></div>`;
     };
-    // Sépare les "coups de cœur" (s'il y en a) en première section, puis regroupe le reste par catégorie
+    // Sépare les "coups de cœur" (s'il y en a) en première section, puis regroupe le reste par catégorie (ordre = celui du back-office)
     const groups={},order=[];
     const FAV='✨ Coups de cœur';
     const featured=sv.filter(s=>s.mis_en_avant);
     if(featured.length){groups[FAV]=featured;order.push(FAV);}
-    sv.filter(s=>!s.mis_en_avant).forEach(s=>{const cat=(s.categorie&&(''+s.categorie).trim())||'Autres';if(!groups[cat]){groups[cat]=[];order.push(cat);}groups[cat].push(s);});
+    const others=sv.filter(s=>!s.mis_en_avant);
+    const cats=[...new Set(others.map(s=>(s.categorie&&(''+s.categorie).trim())||'Autres'))];
+    sortCategoriesByOrder(cats).forEach(c=>{const arr=others.filter(s=>(((s.categorie||'').trim())||'Autres')===c);if(arr.length){groups[c]=arr;order.push(c);}});
     const slugCat=s=>(''+s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'cat';
-    // Pastilles de navigation (uniquement si plusieurs catégories) — style .vid-chap-btn raccord avec le livret
+    // Pastilles de navigation (uniquement si plusieurs catégories) — la pastille "Coups de cœur" en doré plein pour attirer l'œil
     let html='';
     if(order.length>1){
       html+='<div class="vid-chapters" style="margin:0 0 18px">'
-        +order.map(c=>`<button class="vid-chap-btn" onclick="document.getElementById('svcat-${slugCat(c)}').scrollIntoView({behavior:'smooth',block:'start'})">${c.replace(/</g,'&lt;')} <span style="opacity:.65;font-weight:500">· ${groups[c].length}</span></button>`).join('')
+        +order.map(c=>{
+          const isFav=(c===FAV);
+          const cls=isFav?'vid-chap-btn fav-chip':'vid-chap-btn';
+          const sty=isFav?'background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;border:none;font-weight:800;box-shadow:0 4px 14px rgba(201,168,76,0.3)':'';
+          return `<button class="${cls}" ${sty?'style="'+sty+'"':''} onclick="document.getElementById('svcat-${slugCat(c)}').scrollIntoView({behavior:'smooth',block:'start'})">${c.replace(/</g,'&lt;')} <span style="opacity:${isFav?'.6':'.65'};font-weight:${isFav?'700':'500'}">· ${groups[c].length}</span></button>`;
+        }).join('')
         +'</div>';
     }
-    html+=order.map(c=>`<div id="svcat-${slugCat(c)}" style="scroll-margin-top:14px;margin-bottom:8px"><div class="vs-label" style="margin:8px 0 12px">${c.replace(/</g,'&lt;')}</div>${groups[c].map(svCard).join('')}</div>`).join('');
+    html+=order.map(c=>{
+      const isFav=(c===FAV);
+      const labelStyle=isFav?'margin:8px 0 14px;color:var(--gold3);font-size:11px':'margin:8px 0 12px';
+      return `<div id="svcat-${slugCat(c)}" style="scroll-margin-top:14px;margin-bottom:8px"><div class="vs-label" style="${labelStyle}">${c.replace(/</g,'&lt;')}</div>${groups[c].map(svCard).join('')}</div>`;
+    }).join('');
     svEl.innerHTML=html;
   }
   try{cart=JSON.parse(localStorage.getItem(voyCartKey='cart_'+(currentLivretId||'x'))||'[]');}catch(e){cart=[];}
