@@ -1944,15 +1944,28 @@ function catEditHtml(s){
 function catRowHtml(s){
   const n=(s.livret_ids||[]).length;
   const img=s.image_url?`<img src="${s.image_url}" style="width:44px;height:44px;object-fit:cover;border-radius:8px;flex-shrink:0">`:`<div style="width:44px;height:44px;border-radius:8px;background:var(--bg3);flex-shrink:0;display:flex;align-items:center;justify-content:center">🛎️</div>`;
-  return `<div class="cat-row" data-id="${s.id}" style="border:1px solid var(--border);border-radius:12px;margin-bottom:8px;overflow:hidden">
+  const fav=!!s.mis_en_avant;
+  const starBtn=`<button onclick="toggleCatFeatured('${s.id}')" title="${fav?'Retirer des coups de cœur':'Mettre en coup de cœur'}" style="padding:7px 10px;border-radius:10px;border:1px solid ${fav?'var(--gold2)':'var(--border)'};background:${fav?'linear-gradient(135deg,#b8922a,#e2c06e,#d4a843)':'transparent'};color:${fav?'#060606':'var(--muted2)'};font-size:14px;cursor:pointer;font-weight:700">⭐</button>`;
+  const favBadge=fav?'<span style="display:inline-block;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-size:9px;font-weight:800;letter-spacing:.6px;padding:2px 7px;border-radius:10px;margin-left:6px;vertical-align:middle">COUP DE CŒUR</span>':'';
+  return `<div class="cat-row" data-id="${s.id}" style="border:1px solid ${fav?'var(--border-gold)':'var(--border)'};border-radius:12px;margin-bottom:8px;overflow:hidden${fav?';background:rgba(226,192,110,0.04)':''}">
     <div style="display:flex;align-items:center;gap:10px;padding:10px 12px">
       <span class="drag-handle" title="Glisser pour réordonner" style="cursor:grab;color:var(--muted2);font-size:16px">⋮⋮</span>
       ${img}
-      <div style="flex:1;min-width:0"><div style="color:#fff;font-weight:600">${(s.titre||'(sans titre)').replace(/</g,'&lt;')}</div><div style="font-size:12px;color:var(--muted2)">${s.prix?((s.prix||'').replace(/</g,'&lt;')+' · '):''}${n} logement${n>1?'s':''}</div></div>
+      <div style="flex:1;min-width:0"><div style="color:#fff;font-weight:600">${(s.titre||'(sans titre)').replace(/</g,'&lt;')}${favBadge}</div><div style="font-size:12px;color:var(--muted2)">${s.prix?((s.prix||'').replace(/</g,'&lt;')+' · '):''}${n} logement${n>1?'s':''}</div></div>
+      ${starBtn}
       <button class="adm-add-s" onclick="editCatRow('${s.id}')" style="padding:7px 12px">✏️</button>
     </div>
     <div class="cat-edit" id="cat-edit-${s.id}" style="display:none;padding:0 12px 14px">${catEditHtml(s)}</div>
   </div>`;
+}
+async function toggleCatFeatured(id){
+  const s=catById(id);if(!s)return;
+  const newVal=!s.mis_en_avant;
+  try{
+    await axios.patch(`${API}/catalogue_services?id=eq.${id}`,{mis_en_avant:newVal},{headers:{...hd(),'Prefer':'return=minimal'}});
+    s.mis_en_avant=newVal;renderCatalogue();
+    toast(newVal?'⭐ Service mis en coup de cœur !':'Retiré des coups de cœur');
+  }catch(e){alert('Impossible de modifier le coup de cœur.');}
 }
 function renderCatalogue(){
   const box=document.getElementById('cat-list');if(!box)return;
@@ -4669,7 +4682,33 @@ function rv(l,adresses,equipements,back,services){
   // Services payants
   const sv=services||[];
   voyServices=sv;
-  document.getElementById('voy-services').innerHTML=sv.length?sv.map(s=>{const _c=priceToCentsClient(s.prix);const _btn=_c>0?`<button class="eq-vid-btn" onclick="addToCart('${s.id}')" style="align-self:flex-start;cursor:pointer;border:none">➕ Ajouter au panier</button>`:(s.lien_paiement?`<a class="eq-vid-btn" href="${s.lien_paiement}" target="_blank" rel="noopener" style="align-self:flex-start">💳 Réserver / Payer</a>`:'');return `<div class="eq-card"><div class="sv-row">${s.image_url?`<img loading="lazy" decoding="async" src="${s.image_url}" class="sv-img">`:''}<div class="sv-body"><div class="eq-header" style="margin-bottom:6px"><div class="eq-nom" style="font-size:15px">${s.titre||''}</div>${s.prix?`<span style="margin-left:auto;color:var(--gold2);font-weight:700;font-size:14px">${s.prix}</span>`:''}</div><div class="eq-desc" style="margin-bottom:10px">${s.description||''}</div>${_btn}</div></div></div>`;}).join(''):'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun service proposé pour le moment.</div>';
+  const svEl=document.getElementById('voy-services');
+  if(!sv.length){
+    svEl.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun service proposé pour le moment.</div>';
+  }else{
+    // Construit la carte d'un service
+    const svCard=s=>{
+      const _c=priceToCentsClient(s.prix);
+      const _btn=_c>0?`<button class="eq-vid-btn" onclick="addToCart('${s.id}')" style="align-self:flex-start;cursor:pointer;border:none">➕ Ajouter au panier</button>`:(s.lien_paiement?`<a class="eq-vid-btn" href="${s.lien_paiement}" target="_blank" rel="noopener" style="align-self:flex-start">💳 Réserver / Payer</a>`:'');
+      return `<div class="eq-card"><div class="sv-row">${s.image_url?`<img loading="lazy" decoding="async" src="${s.image_url}" class="sv-img">`:''}<div class="sv-body"><div class="eq-header" style="margin-bottom:6px"><div class="eq-nom" style="font-size:15px">${s.titre||''}</div>${s.prix?`<span style="margin-left:auto;color:var(--gold2);font-weight:700;font-size:14px">${s.prix}</span>`:''}</div><div class="eq-desc" style="margin-bottom:10px">${s.description||''}</div>${_btn}</div></div></div>`;
+    };
+    // Sépare les "coups de cœur" (s'il y en a) en première section, puis regroupe le reste par catégorie
+    const groups={},order=[];
+    const FAV='✨ Coups de cœur';
+    const featured=sv.filter(s=>s.mis_en_avant);
+    if(featured.length){groups[FAV]=featured;order.push(FAV);}
+    sv.filter(s=>!s.mis_en_avant).forEach(s=>{const cat=(s.categorie&&(''+s.categorie).trim())||'Autres';if(!groups[cat]){groups[cat]=[];order.push(cat);}groups[cat].push(s);});
+    const slugCat=s=>(''+s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'cat';
+    // Pastilles de navigation (uniquement si plusieurs catégories) — style .vid-chap-btn raccord avec le livret
+    let html='';
+    if(order.length>1){
+      html+='<div class="vid-chapters" style="margin:0 0 18px">'
+        +order.map(c=>`<button class="vid-chap-btn" onclick="document.getElementById('svcat-${slugCat(c)}').scrollIntoView({behavior:'smooth',block:'start'})">${c.replace(/</g,'&lt;')} <span style="opacity:.65;font-weight:500">· ${groups[c].length}</span></button>`).join('')
+        +'</div>';
+    }
+    html+=order.map(c=>`<div id="svcat-${slugCat(c)}" style="scroll-margin-top:14px;margin-bottom:8px"><div class="vs-label" style="margin:8px 0 12px">${c.replace(/</g,'&lt;')}</div>${groups[c].map(svCard).join('')}</div>`).join('');
+    svEl.innerHTML=html;
+  }
   try{cart=JSON.parse(localStorage.getItem(voyCartKey='cart_'+(currentLivretId||'x'))||'[]');}catch(e){cart=[];}
   renderCart();
   const _pp=new URLSearchParams(location.search);
