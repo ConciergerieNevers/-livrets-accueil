@@ -4605,10 +4605,11 @@ function rv(l,adresses,equipements,back,services){
       visual=`<div class="eq-poster" onclick="playEqVideo(this,'${safe}')"><img loading="lazy" decoding="async" src="${userImg}" class="eq-poster-img" alt="${nm}"><div class="eq-poster-ico">${ico}</div>${titleH}<div class="eq-play-overlay"><div class="eq-play-btn">▶</div></div></div>`;
       hasPosterTitle=!!e.nom;
     }else if(vidEmbed){
-      // Pas de vignette perso mais vidéo : on embarque le lecteur DIRECTEMENT (priorité à la vidéo)
-      const safeSrc=vidEmbed.replace(/"/g,'&quot;');
-      visual=`<div class="video-wrap"><iframe loading="lazy" src="${safeSrc}" allow="autoplay;fullscreen;picture-in-picture" allowfullscreen></iframe></div>`;
-      hasPosterTitle=false;
+      // Vidéo sans photo perso → carte thématique SVG générée (click-to-play)
+      const safe=vidEmbed.replace(/"/g,'&quot;').replace(/'/g,"\\'");
+      const theme=getThemeForChapter(e,idx);
+      visual=`<div class="eq-poster" onclick="playEqVideo(this,'${safe}')">${generateThemeSvg(theme)}<div class="eq-play-overlay"><div class="eq-play-btn">▶</div></div>${titleH}</div>`;
+      hasPosterTitle=!!e.nom;
     }else if(userImg){
       visual=`<img loading="lazy" decoding="async" src="${userImg}" class="eq-img">`;
     }else{
