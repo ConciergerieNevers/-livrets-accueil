@@ -758,11 +758,11 @@ body{top:0!important}
 
     <div id="tv" style="display:none">
       <div class="sc">
-        <div class="sc-title">Vidéo de présentation Vimeo</div>
+        <div class="sc-title">Vidéo de présentation (Vimeo ou YouTube)</div>
         <div class="fg">
-          <label class="fl2">Lien Vimeo (avec hash si vidéo privée)</label>
-          <input class="fi" id="f-vimeo" placeholder="https://vimeo.com/123456789/abcdef ou https://player.vimeo.com/video/123456789?h=abc">
-          <small style="display:block;margin-top:8px;color:var(--muted);font-size:11px">💡 Les chapitres configurés directement dans Vimeo seront affichés automatiquement dans le lecteur</small>
+          <label class="fl2">Lien vidéo</label>
+          <input class="fi" id="f-vimeo" placeholder="https://vimeo.com/123… · https://youtu.be/… · https://youtube.com/watch?v=…">
+          <small style="display:block;margin-top:8px;color:var(--muted);font-size:11px">💡 Vimeo : les chapitres définis dans Vimeo s'importent automatiquement ci-dessous. YouTube : c'est simplement lu en autoplay (les chapitres avec timecodes peuvent être saisis à la main).</small>
         </div>
         <div class="fg"><label class="fl2">Procédure d'arrivée (texte simple — fallback si pas d'étapes photo)</label><textarea class="fi" id="f-procedure" placeholder="1. Récupérez les clés dans la boîte à code (code: 1234)&#10;2. L'entrée se trouve à droite du portail..." style="min-height:140px"></textarea></div>
       </div>
@@ -1252,7 +1252,7 @@ const LANGS=[
   {code:'ru',flag:'🇷🇺',name:'Русский'},
 ];
 
-let cu=null,clid=null,adr=[],equip=[],serv=[],btnv=[],procEtapes=[],imgFond='',logoUrl='',currentLivretId=null,currentLivretData=null,selectedNote=0,qrInstance=null,locData=null,voyVimeoPlayer=null,voyVideoUrl='',voyVideoStarted=false;
+let cu=null,clid=null,adr=[],equip=[],serv=[],btnv=[],procEtapes=[],imgFond='',logoUrl='',currentLivretId=null,currentLivretData=null,selectedNote=0,qrInstance=null,locData=null,voyVimeoPlayer=null,voyVideoUrl='',voyVideoStarted=false,voyVideoKind=null;
 
 // ===== Chargement « à la demande » des bibliothèques lourdes (perf voyageur) =====
 // On ne télécharge jspdf / Vimeo QUE quand on en a vraiment besoin (pas pour un voyageur lambda).
@@ -3113,16 +3113,24 @@ function playHomeVideo(sec){
   sec=sec>0?Math.round(sec):0;
   const iframeEl=document.getElementById('voy-iframe');
   const poster=document.getElementById('voy-video-poster');
+  const isYT=(voyVideoKind==='youtube');
   if(!voyVideoStarted){
     voyVideoStarted=true;
     const sep=voyVideoUrl.includes('?')?'&':'?';
-    if(iframeEl)iframeEl.src=voyVideoUrl+sep+'autoplay=1'+(sec>0?('#t='+sec+'s'):'');
+    let src;
+    if(isYT) src=voyVideoUrl+sep+'autoplay=1&rel=0'+(sec>0?('&start='+sec):'');
+    else     src=voyVideoUrl+sep+'autoplay=1'+(sec>0?('#t='+sec+'s'):'');
+    if(iframeEl)iframeEl.src=src;
     if(poster)poster.style.display='none';
     // branche l'API JS Vimeo derrière (chargée à la demande) pour les chapitres suivants
-    ensureLib('vimeo').then(()=>{try{voyVimeoPlayer=new window.Vimeo.Player(iframeEl);}catch(e){}}).catch(()=>{});
+    if(!isYT)ensureLib('vimeo').then(()=>{try{voyVimeoPlayer=new window.Vimeo.Player(iframeEl);}catch(e){}}).catch(()=>{});
   }else if(sec>0){
-    if(voyVimeoPlayer&&voyVimeoPlayer.setCurrentTime){voyVimeoPlayer.setCurrentTime(sec).then(()=>voyVimeoPlayer.play()).catch(()=>{});}
-    else if(iframeEl){const sep=voyVideoUrl.includes('?')?'&':'?';iframeEl.src=voyVideoUrl+sep+'autoplay=1#t='+sec+'s';}
+    if(!isYT && voyVimeoPlayer && voyVimeoPlayer.setCurrentTime){
+      voyVimeoPlayer.setCurrentTime(sec).then(()=>voyVimeoPlayer.play()).catch(()=>{});
+    }else if(iframeEl){
+      const sep=voyVideoUrl.includes('?')?'&':'?';
+      iframeEl.src=isYT ? (voyVideoUrl+sep+'autoplay=1&rel=0&start='+sec) : (voyVideoUrl+sep+'autoplay=1#t='+sec+'s');
+    }
   }
 }
 // Bouton-chapitre : on saute au timecode (et on lance la vidéo si pas encore démarrée)
@@ -3399,6 +3407,51 @@ async function getVimeoThumbnailBase(playerUrl){
     const data=await r.json();
     return data.thumbnail_url||'';
   }catch(_){return '';}
+}
+// ===== Support YouTube (en plus de Vimeo) =====
+function isYouTubeUrl(u){return /(?:youtube\.com|youtu\.be)/i.test(u||'');}
+function extractYouTubeId(url){
+  if(!url)return null;
+  const patterns=[
+    /youtube\.com\/watch\?v=([^&#]+)/i,
+    /youtu\.be\/([^?&#\/]+)/i,
+    /youtube\.com\/embed\/([^?&#\/]+)/i,
+    /youtube\.com\/shorts\/([^?&#\/]+)/i,
+    /youtube\.com\/v\/([^?&#\/]+)/i
+  ];
+  for(const p of patterns){const m=String(url).match(p);if(m)return m[1];}
+  return null;
+}
+function normalizeYouTubeUrl(url){
+  const id=extractYouTubeId(url);
+  return id?`https://www.youtube.com/embed/${id}`:null;
+}
+function youtubeThumbUrl(idOrUrl){
+  const id=(idOrUrl&&String(idOrUrl).startsWith('http'))?extractYouTubeId(idOrUrl):idOrUrl;
+  return id?`https://i.ytimg.com/vi/${id}/hqdefault.jpg`:'';
+}
+// ===== Helpers universels (Vimeo OU YouTube) =====
+function isVideoUrl(u){return isVimeoUrl(u)||isYouTubeUrl(u);}
+function videoKind(u){return isVimeoUrl(u)?'vimeo':(isYouTubeUrl(u)?'youtube':null);}
+function normalizeVideoUrl(u){
+  if(isVimeoUrl(u))return normalizeVimeoUrl(u);
+  if(isYouTubeUrl(u))return normalizeYouTubeUrl(u);
+  return null;
+}
+function videoEmbedUrlWithTime(u){
+  if(isVimeoUrl(u))return vimeoEmbedUrlWithTime(u);
+  if(isYouTubeUrl(u)){
+    const id=extractYouTubeId(u);if(!id)return '';
+    // Extrait un timecode si présent (?t=90, ?t=90s, #t=90, &start=90)
+    const tm=String(u).match(/[?#&](?:t|start)=(\d+)/i);
+    return `https://www.youtube.com/embed/${id}${tm?'?start='+tm[1]:''}`;
+  }
+  return '';
+}
+async function getVideoThumbnail(url){
+  if(isVimeoUrl(url))return await getVimeoThumbnailBase(url);
+  if(isYouTubeUrl(url))return youtubeThumbUrl(url);
+  return '';
 }
 // Construit la miniature par chapitre en ajoutant ?at=Xs sur l'URL de base
 function vimeoChapterThumbnail(base,seconds){
@@ -3953,7 +4006,7 @@ async function saveLivret(){
     nom:document.getElementById('f-nom').value.trim(),
     slug:document.getElementById('f-slug').value.toLowerCase().trim().replace(/\s+/g,'-'),
     bienvenue:document.getElementById('f-bienvenue').value,
-    vimeo_url:normalizeVimeoUrl(document.getElementById('f-vimeo').value),
+    vimeo_url:(normalizeVideoUrl(document.getElementById('f-vimeo').value)||document.getElementById('f-vimeo').value||''),
     procedure_arrivee:document.getElementById('f-procedure').value||null,
     adresse:document.getElementById('f-adresse').value||null,
     hote:document.getElementById('f-hote').value||null,
@@ -4467,13 +4520,14 @@ function rv(l,adresses,equipements,back,services){
   if(l.image_fond)document.getElementById('voy-bg').style.backgroundImage=`url('${l.image_fond}')`;
   // Vidéo : on N'affiche PAS le lecteur Vimeo tout de suite (lourd). On montre une vignette + ▶,
   // et la vidéo démarre INSTANTANÉMENT au clic (autoplay), l'API chapitres se branche derrière.
-  voyVideoUrl='';voyVideoStarted=false;
+  voyVideoUrl='';voyVideoStarted=false;voyVideoKind=null;
   try{if(voyVimeoPlayer&&voyVimeoPlayer.destroy){voyVimeoPlayer.destroy().catch(()=>{});}}catch(e){}
   voyVimeoPlayer=null;
   if(l.vimeo_url){
-    const playerUrl=normalizeVimeoUrl(l.vimeo_url);
+    const playerUrl=normalizeVideoUrl(l.vimeo_url);
     if(playerUrl){
       voyVideoUrl=playerUrl;
+      voyVideoKind=videoKind(l.vimeo_url);
       const iframeEl=document.getElementById('voy-iframe');if(iframeEl)iframeEl.src='';
       const poster=document.getElementById('voy-video-poster');
       if(poster){
@@ -4487,7 +4541,7 @@ function rv(l,adresses,equipements,back,services){
           +'<div style="text-shadow:0 2px 12px rgba(0,0,0,.85)"><div class="serif" style="font-size:clamp(17px,4.4vw,24px);font-weight:700;color:#fff;line-height:1.15">Découvrez votre logement en vidéo</div><div style="font-size:12px;color:var(--gold3);margin-top:3px;font-weight:600">Tout ce qu\'il faut savoir — appuyez pour lancer ▶</div></div>'
           +'</div>';
         // récupère l'APERÇU (miniature) de la vidéo sans charger le lecteur lourd
-        getVimeoThumbnailBase(playerUrl).then(t=>{if(t&&voyVideoUrl===playerUrl&&!voyVideoStarted)poster.style.backgroundImage=`url('${t}')`;}).catch(()=>{});
+        getVideoThumbnail(l.vimeo_url).then(t=>{if(t&&voyVideoUrl===playerUrl&&!voyVideoStarted)poster.style.backgroundImage=`url('${t}')`;}).catch(()=>{});
       }
       document.getElementById('voy-video-card').style.display='block';
     }
@@ -4538,7 +4592,7 @@ function rv(l,adresses,equipements,back,services){
   const ic=['🚭','🐾','🎉','🗑️','🔇','💡','🛏️','🪟'];
   document.getElementById('voy-regles').innerHTML=(l.regles||[]).map((r,i)=>`<div class="vr2"><div class="vr2-ico">${ic[i]||'·'}</div><span>${r}</span></div>`).join('');
   document.getElementById('voy-equipements').innerHTML=equipements&&equipements.length?equipements.map((e,idx)=>{
-    const vidEmbed=isVimeoUrl(e.video_url)?vimeoEmbedUrlWithTime(e.video_url):'';
+    const vidEmbed=isVideoUrl(e.video_url)?videoEmbedUrlWithTime(e.video_url):'';
     // Une image vraiment "perso" = image_url non vide ET pas une miniature Vimeo générique (i.vimeocdn.com)
     const userImg=e.image_url&&!isVimeoCdnThumb(e.image_url)?e.image_url:'';
     let visual='';let hasPosterTitle=false;
@@ -4551,11 +4605,10 @@ function rv(l,adresses,equipements,back,services){
       visual=`<div class="eq-poster" onclick="playEqVideo(this,'${safe}')"><img loading="lazy" decoding="async" src="${userImg}" class="eq-poster-img" alt="${nm}"><div class="eq-poster-ico">${ico}</div>${titleH}<div class="eq-play-overlay"><div class="eq-play-btn">▶</div></div></div>`;
       hasPosterTitle=!!e.nom;
     }else if(vidEmbed){
-      // Vidéo Vimeo sans photo perso → carte thématique SVG générée (click-to-play)
-      const safe=vidEmbed.replace(/"/g,'&quot;').replace(/'/g,"\\'");
-      const theme=getThemeForChapter(e,idx);
-      visual=`<div class="eq-poster" onclick="playEqVideo(this,'${safe}')">${generateThemeSvg(theme)}<div class="eq-play-overlay"><div class="eq-play-btn">▶</div></div>${titleH}</div>`;
-      hasPosterTitle=!!e.nom;
+      // Pas de vignette perso mais vidéo : on embarque le lecteur DIRECTEMENT (priorité à la vidéo)
+      const safeSrc=vidEmbed.replace(/"/g,'&quot;');
+      visual=`<div class="video-wrap"><iframe loading="lazy" src="${safeSrc}" allow="autoplay;fullscreen;picture-in-picture" allowfullscreen></iframe></div>`;
+      hasPosterTitle=false;
     }else if(userImg){
       visual=`<img loading="lazy" decoding="async" src="${userImg}" class="eq-img">`;
     }else{
