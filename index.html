@@ -1289,6 +1289,8 @@ window.addEventListener('DOMContentLoaded',()=>{
   }
   const p=window.location.pathname;
   if(p.startsWith('/livret/')){lbs(p.replace('/livret/',''));return;}
+  // Nouveau routage court : /<slug> (sans /livret/). On exclut les paths techniques.
+  if(p&&p!=='/'&&p!=='/index.html'&&!p.startsWith('/_')&&!p.startsWith('/api')&&!/\.[a-z0-9]+$/i.test(p)){lbs(p.replace(/^\//,'').replace(/\/$/,''));return;}
   const sv=ls();
   if(sv){cu=sv;document.getElementById('admin-email').textContent=sv.user?.email||'';showAdmin();ll();}
   else show('login-screen');
@@ -2254,7 +2256,7 @@ async function lvDropEnd(evt){
   renderLivrets();
 }
 function lvCardHtml(l){
-  const pub=`${BASE}/livret/${l.slug}`;
+  const pub=`${BASE}/${l.slug}`;
   const vc=lvViews[l.id]||0;
   const safeNom=(''+l.nom).replace(/'/g,"\\'");
   const actif=lvActifOf(l);
@@ -2397,7 +2399,7 @@ async function downloadFiche(id,nom){
     if(!l){toast('Livret introuvable.');return;}
   }catch(e){toast('Erreur de chargement.');return;}
 
-  const pub=`${BASE}/livret/${l.slug}`;
+  const pub=`${BASE}/${l.slug}`;
   const qrLivret=await makeQRDataURL(pub,300);
   let qrWifi=null;
   if(l.wifi_nom){
@@ -4502,7 +4504,7 @@ function closeSuccess(){
 async function payCart(){if(!cart.length)return;
   if(!cartCGV){alert('Merci d\'accepter les conditions générales de vente avant de payer.');return;}
   for(const c of cart){if(c.demande_date){if(!c.date||!c.heure){alert('Choisis une date et une heure pour : '+c.titre);return;}if(cartDateError(c)){alert(c.titre+' : service non disponible le jour choisi.');return;}}}
-  const btn=document.getElementById('voy-cart-pay');if(btn){btn.disabled=true;btn.textContent='Redirection…';}try{const qp=new URLSearchParams(window.location.search);let reload;if(qp.get('r')){reload=location.origin+'/?'+new URLSearchParams({r:qp.get('r'),k:qp.get('k')||'',d:qp.get('d')||''}).toString();}else if(currentLivretData&&currentLivretData.slug){reload=location.origin+'/livret/'+currentLivretData.slug;}else{reload=location.origin+'/';}const r=await axios.post(`${SB}/functions/v1/create-checkout`,{livret_id:currentLivretId,return_url:reload,booking_id:(qp.get('r')||''),demande:(cartDemande||'').slice(0,500),items:cart.map(c=>({id:c.id,qty:c.qty,date:c.date||'',heure:c.heure||''}))},{headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`,'Content-Type':'application/json'}});if(r.data&&r.data.ok&&r.data.url){window.location.href=r.data.url;}else{alert('Paiement indisponible pour le moment.');if(btn){btn.disabled=false;btn.textContent='💳 Payer';}}}catch(e){console.error(e);alert('Erreur lors du paiement.');if(btn){btn.disabled=false;btn.textContent='💳 Payer';}}}
+  const btn=document.getElementById('voy-cart-pay');if(btn){btn.disabled=true;btn.textContent='Redirection…';}try{const qp=new URLSearchParams(window.location.search);let reload;if(qp.get('r')){reload=location.origin+'/?'+new URLSearchParams({r:qp.get('r'),k:qp.get('k')||'',d:qp.get('d')||''}).toString();}else if(currentLivretData&&currentLivretData.slug){reload=location.origin+'/'+currentLivretData.slug;}else{reload=location.origin+'/';}const r=await axios.post(`${SB}/functions/v1/create-checkout`,{livret_id:currentLivretId,return_url:reload,booking_id:(qp.get('r')||''),demande:(cartDemande||'').slice(0,500),items:cart.map(c=>({id:c.id,qty:c.qty,date:c.date||'',heure:c.heure||''}))},{headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`,'Content-Type':'application/json'}});if(r.data&&r.data.ok&&r.data.url){window.location.href=r.data.url;}else{alert('Paiement indisponible pour le moment.');if(btn){btn.disabled=false;btn.textContent='💳 Payer';}}}catch(e){console.error(e);alert('Erreur lors du paiement.');if(btn){btn.disabled=false;btn.textContent='💳 Payer';}}}
 async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,checkinTime,checkoutTime){
   show('voyageur-screen');
   startIntro();
