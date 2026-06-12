@@ -2263,7 +2263,7 @@ function lvCardHtml(l){
   const tag=actif
     ?'<div class="lv-card-tag" style="color:#7fe0a0;border-color:rgba(80,200,120,0.3);background:rgba(80,200,120,0.1)"><div class="lv-card-tag-dot" style="background:#7fe0a0"></div>Actif</div>'
     :'<div class="lv-card-tag" style="color:#e0c060;border-color:rgba(226,192,110,0.4);background:rgba(226,192,110,0.12)"><div class="lv-card-tag-dot" style="background:#e0c060"></div>En pause</div>';
-  const shLink=`${BASE}/?r=[BOOKING_ID]&d=[RESERVATION_CHECKIN_DATE]&k=[GUEST_LAST_NAME]&ci=[RESERVATION_CHECKIN_TIME]&co=[RESERVATION_CHECKOUT_TIME]&g=[GUESTPAGE_URL]&f=[INVOICE_LINK]`;
+  const shLink=`${BASE}/?r=[BOOKING_ID]&k=[GUEST_LAST_NAME]&ci=[RESERVATION_CHECKIN_TIME]&co=[RESERVATION_CHECKOUT_TIME]&g=[GUESTPAGE_URL]&f=[INVOICE_LINK]`;
   const shBlock=l.superhote_rental_id
     ?`<div class="lv-pub" style="margin-top:-8px;flex-direction:row;align-items:flex-start" onclick="cpu('${shLink}','🔗 Lien SuperHote copié — colle-le dans le champ personnalisé')"><span style="font-size:15px;flex-shrink:0;line-height:1.4">🔗</span><div style="flex:1;overflow:hidden"><div style="font-size:10px;color:var(--muted2);font-weight:600;letter-spacing:.3px;margin-bottom:2px">Lien SuperHote · champ personnalisé</div><div class="lv-pub-url">${shLink}</div></div><span class="lv-pub-copy">Copier</span></div>`
     :`<div style="margin-top:-8px;margin-bottom:16px;padding:9px 14px;border:1px dashed var(--border-gold);border-radius:10px;font-size:10.5px;color:var(--muted2);line-height:1.5">🔗 Lien SuperHote : lie d'abord ce livret à un logement SuperHote via ✏️ Modifier.</div>`;
@@ -4273,6 +4273,39 @@ function fmtDateLong(iso){
 function nightsBetween(a,b){
   try{return Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/86400000);}catch(e){return null;}
 }
+// Popup insistant : force le voyageur à confirmer ses horaires d'arrivée/départ
+// avant d'accéder au livret. S'affiche uniquement s'il n'a pas encore validé
+// (= ci/co absents OU identiques aux horaires par défaut du logement).
+function showHorairesPopup(guestUrl, livret, ci, co){
+  if(!guestUrl||!/^https?:\/\//i.test(guestUrl))return;
+  if(document.getElementById('voy-horaires-popup'))return;
+  const normH=t=>{const m=String(t||'').match(/\d+/);return m?m[0]:'';};
+  const defCi=normH(livret&&livret.checkin),defCo=normH(livret&&livret.checkout);
+  const curCi=normH(ci),curCo=normH(co);
+  const hasValidated=(curCi&&curCi!==defCi)||(curCo&&curCo!==defCo);
+  if(hasValidated)return;
+  const ov=document.createElement('div');
+  ov.id='voy-horaires-popup';
+  ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.94);backdrop-filter:blur(24px);display:flex;align-items:center;justify-content:center;padding:24px;animation:fadeIn .5s ease';
+  ov.innerHTML='<div style="max-width:480px;width:100%;text-align:center">'
+    +'<div style="font-size:64px;margin-bottom:18px;line-height:1">⏰</div>'
+    +'<div class="serif gold-text" style="font-size:clamp(24px,6vw,32px);font-weight:700;margin:0 0 14px;line-height:1.15">Confirme tes horaires</div>'
+    +'<p style="color:var(--text);font-size:14.5px;line-height:1.6;margin:0 0 28px;opacity:.85">Quelques secondes pour qu\'on prépare ton arrivée<br>dans les meilleures conditions ✨</p>'
+    +'<a href="'+guestUrl+'" target="_blank" rel="noopener" onclick="document.getElementById(\'voy-horaires-popup\').remove()" style="display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:18px 36px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-weight:800;font-size:15px;text-decoration:none;border-radius:14px;box-shadow:0 16px 40px rgba(201,168,76,0.45);letter-spacing:.3px">⏰ Confirmer mes horaires</a>'
+    +'<div id="voy-horaires-later" style="margin-top:28px;opacity:0;transition:opacity 1s ease;pointer-events:none">'
+      +'<button onclick="document.getElementById(\'voy-horaires-popup\').remove()" style="background:transparent;border:none;color:var(--muted2);font-size:12.5px;cursor:pointer;text-decoration:underline;padding:8px">Plus tard</button>'
+    +'</div>'
+    +'</div>';
+  document.body.appendChild(ov);
+  // Empêche la fermeture par Échap (avant qu'on rende "Plus tard" cliquable)
+  const blockEsc=e=>{if(e.key==='Escape')e.preventDefault();};
+  document.addEventListener('keydown',blockEsc);
+  setTimeout(()=>{
+    const el=document.getElementById('voy-horaires-later');
+    if(el){el.style.opacity='1';el.style.pointerEvents='auto';}
+    document.removeEventListener('keydown',blockEsc);
+  },3000);
+}
 function showResa(resa,ci,co,guestUrl){
   const zone=document.getElementById('voy-resa-zone');if(!zone||!resa)return;
   const sd=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
@@ -4535,6 +4568,8 @@ async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,chec
     showServiceInvoices(g.invoices||[]);
     finishIntro(g.first_name||'',l.nom);
     trackView(l.id,'home');
+    // Popup insistant : force le voyageur à confirmer ses horaires si pas encore fait
+    setTimeout(()=>showHorairesPopup(guestPageUrl,l,checkinTime,checkoutTime),3500);
   }catch(e){console.error(e);document.getElementById('voy-loading').textContent='Erreur de chargement du livret.';}
 }
 
