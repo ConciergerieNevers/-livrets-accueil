@@ -914,7 +914,7 @@ body{top:0!important}
         <div class="lang-menu" id="lang-menu"></div>
       </div>
       <div class="vh-badge"><span class="vh-badge-dot"></span><span class="notranslate">Livret d'accueil</span></div>
-      <div id="voy-guest" class="notranslate" style="display:none;position:relative;z-index:2"></div>
+      <div id="voy-guest" style="display:none;position:relative;z-index:2"></div>
       <h1 id="voy-nom" class="notranslate">—</h1>
       <p class="vh-sub" id="voy-bienvenue">Bienvenue !</p>
     </div>
@@ -926,17 +926,17 @@ body{top:0!important}
           <div style="display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap">
             <div style="flex:1;min-width:120px">
               <div style="font-size:11px;color:#c9a84c;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">→ Arrivée</div>
-              <div id="voy-resa-arr-date" class="notranslate" style="font-weight:700;color:#fff;font-size:15px"></div>
+              <div id="voy-resa-arr-date" style="font-weight:700;color:#fff;font-size:15px"></div>
               <div id="voy-resa-arr-time" style="font-size:13px;color:#9a9a9a;margin-top:2px"></div>
             </div>
             <div style="flex:1;min-width:120px">
               <div style="font-size:11px;color:#c9a84c;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">→ Départ</div>
-              <div id="voy-resa-dep-date" class="notranslate" style="font-weight:700;color:#fff;font-size:15px"></div>
+              <div id="voy-resa-dep-date" style="font-weight:700;color:#fff;font-size:15px"></div>
               <div id="voy-resa-dep-time" style="font-size:13px;color:#9a9a9a;margin-top:2px"></div>
             </div>
           </div>
-          <div id="voy-resa-meta" class="notranslate" style="display:flex;gap:18px;margin-top:14px;font-size:13px;color:#ccc;flex-wrap:wrap"></div>
-          <a id="voy-resa-modif" href="#" onclick="openHorairesConfirm(this.href);return false;" rel="noopener" class="notranslate" style="display:none;align-items:center;justify-content:center;gap:8px;margin-top:16px;padding:14px 18px;border-radius:12px;background:linear-gradient(135deg,#b8922a 0%,#e2c06e 50%,#d4a843 100%);color:#060606;font-size:13.5px;font-weight:700;text-decoration:none;box-shadow:0 6px 20px rgba(201,168,76,0.28);cursor:pointer">🕐 Modifier mes horaires d'arrivée et de départ</a>
+          <div id="voy-resa-meta" style="display:flex;gap:18px;margin-top:14px;font-size:13px;color:#ccc;flex-wrap:wrap"></div>
+          <a id="voy-resa-modif" href="#" onclick="openHorairesConfirm(this.href);return false;" rel="noopener" style="display:none;align-items:center;justify-content:center;gap:8px;margin-top:16px;padding:14px 18px;border-radius:12px;background:linear-gradient(135deg,#b8922a 0%,#e2c06e 50%,#d4a843 100%);color:#060606;font-size:13.5px;font-weight:700;text-decoration:none;box-shadow:0 6px 20px rgba(201,168,76,0.28);cursor:pointer">🕐 Modifier mes horaires d'arrivée et de départ</a>
         </div>
       </div>
       <div class="vs">
@@ -4298,7 +4298,7 @@ function showGuestBanner(g){
   let cd='';
   if(g.checkin){try{const t=new Date();t.setHours(0,0,0,0);const a=new Date(g.checkin+'T00:00:00');const dd=Math.round((a-t)/86400000);if(dd>0)cd='J-'+dd+' avant votre arrivée';}catch(e){}}
   el.innerHTML='<div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px;margin:14px auto 2px;padding:11px 22px;border-radius:16px;background:linear-gradient(135deg,rgba(201,168,76,0.20),rgba(226,192,110,0.10));border:1px solid rgba(226,192,110,0.45);box-shadow:0 6px 24px rgba(201,168,76,0.18);">'
-    +'<span style="font-size:16px;font-weight:700;color:#f5e4a8;letter-spacing:.2px">👋 Bienvenue '+nom+'</span>'
+    +'<span style="font-size:16px;font-weight:700;color:#f5e4a8;letter-spacing:.2px">👋 Bienvenue <span class="notranslate">'+nom+'</span></span>'
     +(cd?('<span style="font-size:12.5px;color:#e2c06e">'+cd+'</span>'):'')
     +'</div>';
   el.style.display='block';
@@ -4961,8 +4961,26 @@ function rv(l,adresses,equipements,back,services){
   const sv=services||[];
   voyServices=sv;
   const svEl=document.getElementById('voy-services');
+  // En-tête "Vos horaires" : 2 raccourcis (arrivée anticipée / départ tardif) qui ouvrent la guest-page SuperHote
+  // (même démarche que "Modifier mes horaires" → choix d'horaire + paiement éventuel)
+  const horairesHeader=voyGuestPageUrl?(
+    '<div style="margin-bottom:18px">'
+    +'<div class="vs-label">Vos horaires d\'arrivée et de départ</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">'
+      +'<button onclick="openHorairesConfirm()" style="padding:14px 12px;border:1px solid var(--border-gold);border-radius:14px;background:linear-gradient(180deg,rgba(226,192,110,0.08),rgba(226,192,110,0.02));color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:4px;font-family:inherit">'
+        +'<span style="font-size:22px">🌅</span>'
+        +'<span style="font-size:13.5px;font-weight:700;color:var(--gold2)">Arrivée anticipée</span>'
+        +'<span style="font-size:11.5px;color:var(--muted2);line-height:1.4">Demander un check-in plus tôt</span>'
+      +'</button>'
+      +'<button onclick="openHorairesConfirm()" style="padding:14px 12px;border:1px solid var(--border-gold);border-radius:14px;background:linear-gradient(180deg,rgba(226,192,110,0.08),rgba(226,192,110,0.02));color:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:4px;font-family:inherit">'
+        +'<span style="font-size:22px">🌙</span>'
+        +'<span style="font-size:13.5px;font-weight:700;color:var(--gold2)">Départ tardif</span>'
+        +'<span style="font-size:11.5px;color:var(--muted2);line-height:1.4">Demander un check-out plus tard</span>'
+      +'</button>'
+    +'</div></div>'
+  ):'';
   if(!sv.length){
-    svEl.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun service proposé pour le moment.</div>';
+    svEl.innerHTML=horairesHeader+'<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun service proposé pour le moment.</div>';
   }else{
     // Construit la carte d'un service (style premium doré si coup de cœur)
     const svCard=s=>{
@@ -5004,7 +5022,7 @@ function rv(l,adresses,equipements,back,services){
       const labelStyle=isFav?'margin:8px 0 14px;color:var(--gold3);font-size:11px':'margin:8px 0 12px';
       return `<div id="svcat-${slugCat(c)}" style="scroll-margin-top:14px;margin-bottom:8px"><div class="vs-label" style="${labelStyle}">${c.replace(/</g,'&lt;')}</div>${groups[c].map(svCard).join('')}</div>`;
     }).join('');
-    svEl.innerHTML=html;
+    svEl.innerHTML=horairesHeader+html;
   }
   try{cart=JSON.parse(localStorage.getItem(voyCartKey='cart_'+(currentLivretId||'x'))||'[]');}catch(e){cart=[];}
   renderCart();
