@@ -418,6 +418,9 @@ textarea.fi{resize:vertical;min-height:80px;}
 #voy-video-poster:hover .vplay-btn{transform:scale(1.1)}
 @keyframes resaAttract{0%,100%{transform:scale(1);box-shadow:0 6px 20px rgba(201,168,76,0.28)}50%{transform:scale(1.025);box-shadow:0 10px 32px rgba(201,168,76,0.55)}}
 #voy-resa-modif.attract{animation:resaAttract 2s ease-in-out infinite}
+@keyframes waitFill{from{width:0}to{width:100%}}
+/* Anti-flash : tous les écrans sont cachés par défaut, JS révèle celui qu'il faut */
+#login-screen,#admin-screen,#editor-screen,#voyageur-screen,#catalogue-screen,#demandes-screen,#reservations-screen,#corbeille-screen,#requests-screen{display:none}
 .toast{position:fixed;bottom:110px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--text);color:var(--bg);padding:12px 24px;border-radius:30px;font-size:12px;font-weight:800;opacity:0;transition:all 0.25s;pointer-events:none;z-index:999;white-space:nowrap;font-family:var(--font-sans);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 .loading{text-align:center;padding:60px;color:var(--muted);font-size:14px;font-family:var(--font-serif);}
@@ -4469,16 +4472,18 @@ function showWaitScreen(targetUrl){
   const ov=document.createElement('div');
   ov.id='voy-wait-screen';
   ov.style.cssText='position:fixed;inset:0;z-index:100000;background:radial-gradient(ellipse at center,#1a1611 0%,#0a0908 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;padding:24px;font-family:var(--font-sans,system-ui)';
-  ov.innerHTML='<div style="font-family:var(--font-serif,serif);font-size:clamp(28px,7vw,40px);font-weight:700;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:2px;margin-bottom:24px;animation:introGlow 2s ease-in-out infinite">✦ Be Nomad ✦</div>'
-    +'<div style="font-size:56px;animation:introSpin 1.4s linear infinite;display:inline-block;margin-bottom:22px">⏳</div>'
+  ov.innerHTML='<div style="font-family:var(--font-serif,serif);font-size:clamp(28px,7vw,40px);font-weight:700;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:2px;margin-bottom:32px;animation:introGlow 2s ease-in-out infinite">✦ Be Nomad ✦</div>'
     +'<div class="serif" style="font-size:clamp(20px,5vw,26px);font-weight:700;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:22px">'+tx.t+'</div>'
-    +'<div style="max-width:420px;color:#e4d9b8;font-size:15px;line-height:1.65">'
+    +'<div style="max-width:420px;color:#e4d9b8;font-size:15px;line-height:1.65;margin-bottom:28px">'
       +'<div style="margin-bottom:8px">'+tx.m+'</div>'
       +'<div><b style="color:#e2c06e">'+tx.c+'</b></div>'
+    +'</div>'
+    +'<div style="width:min(280px,80vw);height:6px;background:rgba(226,192,110,0.15);border-radius:4px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,0.4)">'
+      +'<div style="height:100%;width:0;background:linear-gradient(90deg,#b8922a,#e2c06e,#d4a843);border-radius:4px;box-shadow:0 0 12px rgba(226,192,110,0.6);animation:waitFill 6s linear forwards"></div>'
     +'</div>';
   document.body.appendChild(ov);
-  // Redirige après 4 s (temps de lire et de switcher sur l'onglet livret si on veut)
-  setTimeout(()=>{window.location.href=targetUrl;},4000);
+  // Redirige après 6 s (durée de la barre de progression)
+  setTimeout(()=>{window.location.href=targetUrl;},6000);
 }
 // Stub : conservé pour compatibilité avec d'anciens onclick
 function launchHorairesTab(url){openHorairesConfirm(url);}
