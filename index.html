@@ -4419,54 +4419,43 @@ function showHorairesOnce(bid){
   +'</div>';
   document.body.appendChild(ov);
 }
-// Modale FR + EN avant ouverture de la guest-page SuperHote dans un nouvel onglet
-// (l'iframe casse les cookies SuperHote → on revient à l'onglet natif)
+// Clic direct sur "Modifier mes horaires" → ouvre la page d'attente Be Nomad dans un nouvel onglet (4 s) puis SuperHote
 function openHorairesConfirm(url){
   const u=url||voyGuestPageUrl;
   if(!u||!/^https?:\/\//i.test(u))return;
-  // Marque comme fait → stoppe l'animation
+  // Marque comme fait → stoppe l'animation de pulsation
   try{if(voyBookingId)localStorage.setItem('horaires_done_'+voyBookingId,'1');}catch(_e){}
   const modif=document.getElementById('voy-resa-modif');if(modif)modif.classList.remove('attract');
-  if(document.getElementById('voy-horaires-confirm'))return;
-  const ov=document.createElement('div');
-  ov.id='voy-horaires-confirm';
-  ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.88);backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:center;padding:24px;animation:fadeIn .35s ease';
-  ov.onclick=function(e){if(e.target===ov)ov.remove();};
-  ov.innerHTML='<div style="max-width:440px;width:100%;background:linear-gradient(180deg,#1a1611,#0d0b08);border:1px solid var(--gold2);border-radius:20px;padding:30px 26px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,0.7)">'
-    +'<div style="font-size:48px;margin-bottom:12px">⏰</div>'
-    +'<div class="serif gold-text" style="font-size:22px;font-weight:700;margin-bottom:6px">Confirmation de vos horaires</div>'
-    +'<div class="serif" style="font-size:15px;color:var(--muted2);font-style:italic;margin-bottom:20px">Confirm your arrival times</div>'
-    +'<div style="background:rgba(226,192,110,0.06);border:1px dashed rgba(226,192,110,0.3);border-radius:12px;padding:14px 16px;margin-bottom:18px;text-align:left">'
-      +'<div style="color:#fff;font-size:13.5px;line-height:1.5;margin-bottom:10px">🇫🇷 Vous allez être redirigé vers une page sécurisée pour valider vos horaires d\'arrivée et de départ. <b style="color:var(--gold2)">Cela ouvre un nouvel onglet</b> — pensez à revenir ici ensuite pour découvrir tous les bons plans de votre séjour ✨</div>'
-      +'<div style="color:#ddd;font-size:12.5px;line-height:1.5;font-style:italic">🇬🇧 You\'ll be redirected to a secure page to confirm your check-in and check-out times. <b style="color:var(--gold2)">This will open in a new tab</b> — come back here afterwards to discover all the tips for your stay ✨</div>'
-    +'</div>'
-    +'<button onclick="launchHorairesTab(\''+u.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 28px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-weight:800;font-size:14px;border:none;border-radius:12px;cursor:pointer;box-shadow:0 10px 28px rgba(201,168,76,0.4)">Continuer / Continue →</button>'
-    +'<div style="margin-top:14px"><button onclick="document.getElementById(\'voy-horaires-confirm\').remove()" style="background:transparent;border:none;color:var(--muted2);font-size:12.5px;cursor:pointer;text-decoration:underline;padding:6px">Annuler / Cancel</button></div>'
-  +'</div>';
-  document.body.appendChild(ov);
+  // Ouvre directement le nouvel onglet sur notre page d'attente
+  const wait=`${BASE}/?w=${encodeURIComponent(u)}`;
+  try{window.open(wait,'_blank','noopener');}catch(_e){}
 }
-// Ouvre SuperHote IMMÉDIATEMENT dans un nouvel onglet (chargement parallèle, zéro perte de temps)
-// Et bascule la modale en mode "page ouverte, reviens ici après" pour quand le voyageur reviendra
-function launchHorairesTab(url){
-  if(!url)return;
-  // 1. Ouvre SuperHote tout de suite → la page commence à charger en parallèle
-  try{window.open(url,'_blank','noopener');}catch(_e){}
-  // 2. Bascule la modale en mode "confirmation + invite à revenir"
-  const ov=document.getElementById('voy-horaires-confirm');if(!ov)return;
-  const card=ov.firstElementChild;if(!card)return;
-  card.innerHTML='<div style="font-size:54px;margin-bottom:10px;color:#7fe0a0">✓</div>'
-    +'<div class="serif gold-text" style="font-size:22px;font-weight:700;margin-bottom:6px">Page ouverte dans un nouvel onglet</div>'
-    +'<div class="serif" style="font-size:14px;color:var(--muted2);font-style:italic;margin-bottom:18px">Opened in a new tab</div>'
-    +'<div style="background:rgba(226,192,110,0.06);border:1px dashed rgba(226,192,110,0.3);border-radius:12px;padding:14px 16px;margin-bottom:18px;text-align:left">'
-      +'<div style="color:#fff;font-size:13.5px;line-height:1.55;margin-bottom:8px">🇫🇷 SuperHote est en train de charger dans le nouvel onglet ↗ <b style="color:var(--gold2)">Pense à revenir ici après</b> pour découvrir tous les bons plans de ton séjour ✨</div>'
-      +'<div style="color:#ddd;font-size:12.5px;line-height:1.55;font-style:italic">🇬🇧 SuperHote is loading in the new tab ↗ <b style="color:var(--gold2)">Come back here afterwards</b> to discover all the tips for your stay ✨</div>'
-    +'</div>'
-    +'<button onclick="document.getElementById(\'voy-horaires-confirm\').remove()" style="padding:12px 28px;border:none;border-radius:12px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-size:14px;font-weight:700;cursor:pointer">✨ Fermer / Close</button>';
-}
-// Stub : conservé pour compatibilité (l'écran d'attente "wait page" a été retiré)
+// Affiche un écran d'attente plein écran Be Nomad pendant 4 s puis redirige vers l'URL cible
 function showWaitScreen(targetUrl){
-  if(/^https:\/\/connect\.superhote\.com\//i.test(targetUrl||'')){window.location.href=targetUrl;}
+  // Sécurité : seules les URLs SuperHote sont autorisées en redirection
+  if(!/^https:\/\/connect\.superhote\.com\//i.test(targetUrl||'')){
+    document.body.innerHTML='<div style="padding:40px;text-align:center;font-family:sans-serif">Lien invalide.</div>';
+    return;
+  }
+  // On cache toutes les screens et on injecte la page d'attente plein écran
+  ['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','demandes-screen','reservations-screen','corbeille-screen','requests-screen'].forEach(s=>{const el=document.getElementById(s);if(el)el.style.display='none';});
+  const ov=document.createElement('div');
+  ov.id='voy-wait-screen';
+  ov.style.cssText='position:fixed;inset:0;z-index:100000;background:radial-gradient(ellipse at center,#1a1611 0%,#0a0908 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;padding:24px;font-family:var(--font-sans,system-ui)';
+  ov.innerHTML='<div style="font-family:var(--font-serif,serif);font-size:clamp(28px,7vw,40px);font-weight:700;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:2px;margin-bottom:24px;animation:introGlow 2s ease-in-out infinite">✦ Be Nomad ✦</div>'
+    +'<div style="font-size:56px;animation:introSpin 1.4s linear infinite;display:inline-block;margin-bottom:22px">⏳</div>'
+    +'<div class="serif" style="font-size:clamp(20px,5vw,26px);font-weight:700;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px">Préparation de votre page…</div>'
+    +'<div class="serif" style="font-size:14px;color:#aaa;font-style:italic;margin-bottom:30px">Loading your booking page…</div>'
+    +'<div style="max-width:420px">'
+      +'<div style="color:#e4d9b8;font-size:14px;line-height:1.6;margin-bottom:10px">🇫🇷 Un onglet va s\'ouvrir pour modifier vos horaires. <b style="color:#e2c06e">Pensez à revenir sur votre livret d\'accueil</b> une fois les horaires complétés ✨</div>'
+      +'<div style="color:#bbb;font-size:13px;line-height:1.6;font-style:italic">🇬🇧 A new tab will open to update your check-in times. <b style="color:#e2c06e">Remember to come back to your welcome booklet</b> once your times are set ✨</div>'
+    +'</div>';
+  document.body.appendChild(ov);
+  // Redirige après 4 s (temps de lire et de switcher sur l'onglet livret si on veut)
+  setTimeout(()=>{window.location.href=targetUrl;},4000);
 }
+// Stub : conservé pour compatibilité avec d'anciens onclick
+function launchHorairesTab(url){openHorairesConfirm(url);}
 let cart=[],voyServices=[],voyCartKey='cart_x',cartStep=1,cartDemande='',cartDemOn=false,voyCGV=null,cartCGV=false,voyGuestNom='';
 function openVoyDemande(){
   let ov=document.getElementById('voy-demande');
