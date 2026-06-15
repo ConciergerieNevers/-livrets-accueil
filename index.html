@@ -1283,6 +1283,8 @@ const hdf=()=>({'apikey':KEY,'Authorization':`Bearer ${cu?.access_token||KEY}`})
 window.addEventListener('DOMContentLoaded',()=>{
   setupCropEvents();
   const qp=new URLSearchParams(window.location.search);
+  // Écran d'attente Be Nomad → redirection auto vers SuperHote (anti-page-blanche)
+  if(qp.get('w')){showWaitScreen(decodeURIComponent(qp.get('w')));return;}
   if(qp.get('r')){
     const _s=window.location.search;
     const _fi=_s.indexOf('&f=');let _fac=_fi>=0?_s.substring(_fi+3):'';
@@ -4443,28 +4445,38 @@ function openHorairesConfirm(url){
   +'</div>';
   document.body.appendChild(ov);
 }
-// Affiche d'abord l'écran d'attente dans le livret, PUIS ouvre l'onglet SuperHote
-// (sinon le focus part direct sur le nouvel onglet et le voyageur ne voit jamais notre message)
+// Ouvre la page d'attente Be Nomad dans un nouvel onglet → elle redirige vers SuperHote.
+// Le voyageur voit TOUJOURS quelque chose qui charge (pas de page blanche entre les deux).
 function launchHorairesTab(url){
   if(!url)return;
-  const ov=document.getElementById('voy-horaires-confirm');if(!ov)return;
-  const card=ov.firstElementChild;if(!card)return;
-  // 1. Remplace le contenu de la modale par un écran d'attente
-  card.innerHTML='<div style="font-size:46px;margin-bottom:14px;animation:introSpin 1.4s linear infinite;display:inline-block">⏳</div>'
-    +'<div class="serif gold-text" style="font-size:21px;font-weight:700;margin-bottom:6px">Préparation de votre page…</div>'
-    +'<div class="serif" style="font-size:14px;color:var(--muted2);font-style:italic;margin-bottom:16px">Loading your booking page…</div>'
-    +'<div style="background:rgba(226,192,110,0.06);border:1px dashed rgba(226,192,110,0.3);border-radius:12px;padding:14px 16px;margin-bottom:18px;text-align:left">'
-      +'<div style="color:#fff;font-size:13px;line-height:1.55;margin-bottom:8px">🇫🇷 La page sécurisée va s\'ouvrir dans un nouvel onglet dans 2 secondes. <b style="color:var(--gold2)">Pense à revenir ici après !</b></div>'
-      +'<div style="color:#ddd;font-size:12px;line-height:1.55;font-style:italic">🇬🇧 The secure page will open in a new tab in 2 seconds. <b style="color:var(--gold2)">Come back here afterwards!</b></div>'
-    +'</div>'
-    +'<div id="voy-horaires-after" style="opacity:0;transition:opacity .5s ease;pointer-events:none">'
-      +'<button onclick="document.getElementById(\'voy-horaires-confirm\').remove()" style="padding:11px 26px;border:none;border-radius:11px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-size:13.5px;font-weight:700;cursor:pointer">✨ J\'ai compris / Got it</button>'
+  const wait=`${BASE}/?w=${encodeURIComponent(url)}`;
+  try{window.open(wait,'_blank','noopener');}catch(_e){}
+  // Et on ferme proprement la modale
+  const ov=document.getElementById('voy-horaires-confirm');if(ov)ov.remove();
+}
+// Affiche un écran d'attente plein écran Be Nomad puis redirige vers l'URL cible
+function showWaitScreen(targetUrl){
+  // Sécurité : seules les URLs SuperHote sont autorisées en redirection
+  if(!/^https:\/\/connect\.superhote\.com\//i.test(targetUrl||'')){
+    document.body.innerHTML='<div style="padding:40px;text-align:center;font-family:sans-serif">Lien invalide.</div>';
+    return;
+  }
+  // On cache toutes les screens et on injecte une page d'attente plein écran
+  ['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','demandes-screen','reservations-screen','corbeille-screen','requests-screen'].forEach(s=>{const el=document.getElementById(s);if(el)el.style.display='none';});
+  const ov=document.createElement('div');
+  ov.id='voy-wait-screen';
+  ov.style.cssText='position:fixed;inset:0;z-index:100000;background:radial-gradient(ellipse at center,#1a1611 0%,#0a0908 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;padding:24px;font-family:var(--font-sans,system-ui)';
+  ov.innerHTML='<div style="font-family:var(--font-serif,serif);font-size:clamp(28px,7vw,40px);font-weight:700;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:2px;margin-bottom:24px;animation:introGlow 2s ease-in-out infinite">✦ Be Nomad ✦</div>'
+    +'<div style="font-size:56px;animation:introSpin 1.4s linear infinite;display:inline-block;margin-bottom:22px">⏳</div>'
+    +'<div class="serif" style="font-size:clamp(20px,5vw,26px);font-weight:700;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px">Préparation de votre page…</div>'
+    +'<div class="serif" style="font-size:14px;color:#aaa;font-style:italic;margin-bottom:30px">Loading your booking page…</div>'
+    +'<div style="max-width:420px">'
+      +'<div style="color:#e4d9b8;font-size:14px;line-height:1.6;margin-bottom:10px">🇫🇷 Quelques secondes et tu y es ! <b style="color:#e2c06e">Pense à revenir sur ton livret après</b> ✨</div>'
+      +'<div style="color:#bbb;font-size:13px;line-height:1.6;font-style:italic">🇬🇧 Just a few seconds — <b style="color:#e2c06e">come back to your booklet afterwards</b> ✨</div>'
     +'</div>';
-  // 2. Après 2 s, ouvre l'onglet SuperHote ET révèle le bouton "J'ai compris"
-  setTimeout(()=>{
-    try{window.open(url,'_blank','noopener');}catch(_e){}
-    const a=document.getElementById('voy-horaires-after');if(a){a.style.opacity='1';a.style.pointerEvents='auto';}
-  },2000);
+  document.body.appendChild(ov);
+  // Redirige après 2,5 s
+  setTimeout(()=>{window.location.href=targetUrl;},2500);
 }
 let cart=[],voyServices=[],voyCartKey='cart_x',cartStep=1,cartDemande='',cartDemOn=false,voyCGV=null,cartCGV=false,voyGuestNom='';
 function openVoyDemande(){
