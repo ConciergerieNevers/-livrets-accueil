@@ -4606,8 +4606,8 @@ async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,chec
     showServiceInvoices(g.invoices||[]);
     finishIntro(g.first_name||'',l.nom);
     trackView(l.id,'home');
-    // Popup insistant : force le voyageur à confirmer ses horaires si pas encore fait
-    setTimeout(()=>showHorairesPopup(guestPageUrl,l,checkinTime,checkoutTime),3500);
+    // Popup horaires désactivé (retiré sur demande)
+    // setTimeout(()=>showHorairesPopup(guestPageUrl,l,checkinTime,checkoutTime),3500);
   }catch(e){console.error(e);document.getElementById('voy-loading').textContent='Erreur de chargement du livret.';}
 }
 
