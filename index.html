@@ -416,6 +416,8 @@ textarea.fi{resize:vertical;min-height:80px;}
 @keyframes vplayPulse{0%,100%{transform:scale(1);box-shadow:0 10px 34px rgba(201,168,76,.45)}50%{transform:scale(1.06);box-shadow:0 14px 46px rgba(201,168,76,.7)}}
 #voy-video-poster .vplay-btn{animation:vplayPulse 2.4s ease-in-out infinite;transition:transform .15s}
 #voy-video-poster:hover .vplay-btn{transform:scale(1.1)}
+@keyframes resaAttract{0%,100%{transform:scale(1);box-shadow:0 6px 20px rgba(201,168,76,0.28)}50%{transform:scale(1.025);box-shadow:0 10px 32px rgba(201,168,76,0.55)}}
+#voy-resa-modif.attract{animation:resaAttract 2s ease-in-out infinite}
 .toast{position:fixed;bottom:110px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--text);color:var(--bg);padding:12px 24px;border-radius:30px;font-size:12px;font-weight:800;opacity:0;transition:all 0.25s;pointer-events:none;z-index:999;white-space:nowrap;font-family:var(--font-sans);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 .loading{text-align:center;padding:60px;color:var(--muted);font-size:14px;font-family:var(--font-serif);}
@@ -931,7 +933,7 @@ body{top:0!important}
             </div>
           </div>
           <div id="voy-resa-meta" class="notranslate" style="display:flex;gap:18px;margin-top:14px;font-size:13px;color:#ccc;flex-wrap:wrap"></div>
-          <a id="voy-resa-modif" href="#" target="_blank" rel="noopener" class="notranslate" style="display:none;align-items:center;justify-content:center;gap:8px;margin-top:16px;padding:14px 18px;border-radius:12px;background:linear-gradient(135deg,#b8922a 0%,#e2c06e 50%,#d4a843 100%);color:#060606;font-size:13.5px;font-weight:700;text-decoration:none;box-shadow:0 6px 20px rgba(201,168,76,0.28)">🕐 Modifier mes horaires d'arrivée et de départ</a>
+          <a id="voy-resa-modif" href="#" onclick="openHorairesConfirm(this.href);return false;" rel="noopener" class="notranslate" style="display:none;align-items:center;justify-content:center;gap:8px;margin-top:16px;padding:14px 18px;border-radius:12px;background:linear-gradient(135deg,#b8922a 0%,#e2c06e 50%,#d4a843 100%);color:#060606;font-size:13.5px;font-weight:700;text-decoration:none;box-shadow:0 6px 20px rgba(201,168,76,0.28);cursor:pointer">🕐 Modifier mes horaires d'arrivée et de départ</a>
         </div>
       </div>
       <div class="vs">
@@ -1283,12 +1285,24 @@ window.addEventListener('DOMContentLoaded',()=>{
   const qp=new URLSearchParams(window.location.search);
   if(qp.get('r')){
     const _s=window.location.search;
-    const _fi=_s.indexOf('&f=');const _fac=_fi>=0?_s.substring(_fi+3):'';
+    const _fi=_s.indexOf('&f=');let _fac=_fi>=0?_s.substring(_fi+3):'';
     const _gi=_s.indexOf('&g=');let _gp='';if(_gi>=0){_gp=_s.substring(_gi+3);const _ge=_gp.indexOf('&f=');if(_ge>=0)_gp=_gp.substring(0,_ge);}
+    // Compatibilité : g/f peuvent être l'URL complète SuperHote OU juste l'UUID (forme courte pour Booking).
+    if(_gp&&!/^https?:\/\//i.test(_gp))_gp='https://connect.superhote.com/gp/'+_gp;
+    if(_fac&&!/^https?:\/\//i.test(_fac))_fac='https://connect.superhote.com/api/links/'+_fac;
     lbres(qp.get('r'),qp.get('k')||'',qp.get('d')||'',_fac,_gp,qp.get('ci')||'',qp.get('co')||'');return;
   }
   const p=window.location.pathname;
   if(p.startsWith('/livret/')){lbs(p.replace('/livret/',''));return;}
+  // Lien réservation propre (sans ?) pour Booking : /r/<booking_id>-<nom>
+  // Exemple : /r/24613167-Morel  →  lbres('24613167','Morel',...)
+  if(p.startsWith('/r/')){
+    const raw=p.replace('/r/','').replace(/\/$/,'');
+    const dash=raw.indexOf('-');
+    const _r=dash>0?raw.substring(0,dash):raw;
+    const _k=dash>0?decodeURIComponent(raw.substring(dash+1)):'';
+    if(/^\d+$/.test(_r)){lbres(_r,_k,'','','','','');return;}
+  }
   // Nouveau routage court : /<slug> (sans /livret/). On exclut les paths techniques.
   if(p&&p!=='/'&&p!=='/index.html'&&!p.startsWith('/_')&&!p.startsWith('/api')&&!/\.[a-z0-9]+$/i.test(p)){lbs(p.replace(/^\//,'').replace(/\/$/,''));return;}
   const sv=ls();
@@ -1750,14 +1764,20 @@ function renderResa(){
   if(!resaData.length){box.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-style:italic;line-height:1.7">Aucune réservation en mémoire.<br>Clique sur <b style="color:var(--gold2)">🔄 Synchroniser</b> (en haut) pour récupérer tes réservations SuperHote.</div>';return;}
   const livOpts='<option value="all">Tous les logements</option>'+resaLivrets.filter(l=>l.superhote_rental_id).map(l=>'<option value="'+l.id+'"'+(String(resaLivretFilter)===String(l.id)?' selected':'')+'>'+((l.nom||'').replace(/</g,'&lt;'))+'</option>').join('');
   const tab=(k,l)=>'<button onclick="setResaStatus(\''+k+'\')" style="padding:7px 12px;border-radius:18px;border:1px solid '+(resaStatus===k?'var(--gold2)':'var(--border)')+';background:'+(resaStatus===k?'rgba(226,192,110,0.15)':'transparent')+';color:'+(resaStatus===k?'var(--gold2)':'var(--muted2)')+';font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">'+l+'</button>';
-  let html='<div style="padding:10px 14px;margin-bottom:14px;border:1px solid var(--border-gold);border-radius:10px;background:rgba(226,192,110,0.06);font-size:11.5px;color:var(--muted2);line-height:1.5">⚠️ Ces liens ouvrent le livret avec le nom + les dates. Les liens <b style="color:var(--gold2)">complets</b> (avec facture séjour + page guest-page) sont <b style="color:var(--gold2)">uniquement</b> ceux envoyés par les <b style="color:var(--gold2)">messages SuperHote</b>.</div>';
+  let html='<div style="padding:10px 14px;margin-bottom:14px;border:1px solid var(--border-gold);border-radius:10px;background:rgba(226,192,110,0.06);font-size:11.5px;color:var(--muted2);line-height:1.5">✅ Liens <b style="color:var(--gold2)">compatibles Booking</b> (format <code style="background:#000;padding:1px 4px;border-radius:3px">/r/booking_id-nom</code>, sans <code>?</code>, sans URL imbriquée). Le voyageur voit son prénom + bloc réservation. Les liens <b style="color:var(--gold2)">complets</b> (avec facture séjour + Modifier mes horaires) restent ceux des <b style="color:var(--gold2)">mails SuperHote</b>.</div>';
   html+='<input value="'+(resaSearch||'').replace(/"/g,'&quot;')+'" oninput="resaSearch=this.value;renderResaList()" placeholder="🔍 Rechercher (nom, date, logement, n° résa)…" style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--border-gold);background:#141414;color:#fff;font-size:14px;box-sizing:border-box;margin-bottom:12px">';
   html+='<select onchange="resaLivretFilter=this.value;renderResa()" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--border-gold);background:#141414;color:#fff;font-size:13px;margin-bottom:12px">'+livOpts+'</select>';
   html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'+tab('all','Toutes')+tab('encours','● En cours')+tab('avenir','À venir')+tab('passe','Passées')+'</div>';
   html+='<div id="resa-rows"></div>';
   box.innerHTML=html;renderResaList();
 }
-function resaLink(r){return BASE+'/?'+new URLSearchParams({r:String(r.booking_id),k:r.last_name||'',d:r.checkin||''}).toString();}
+// Lien voyageur compatible Booking : aucun "?", aucun URL imbriquée → /r/<booking_id>-<nom>
+function resaLink(r){
+  const bid=String(r.booking_id||'');
+  // Nettoie le nom : on enlève accents/espaces, on garde lettres/chiffres et le tiret bas
+  const nom=(r.last_name||'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-zA-Z0-9]/g,'');
+  return BASE+'/r/'+bid+(nom?('-'+nom):'');
+}
 function resaCopyLink(bid){
   const r=resaData.find(x=>String(x.booking_id)===String(bid));if(!r)return;
   navigator.clipboard.writeText(resaLink(r)).then(()=>toast('🔗 Lien du livret copié !'));
@@ -4344,8 +4364,12 @@ function showHorairesPopup(guestUrl, livret, ci, co){
     document.removeEventListener('keydown',blockEsc);
   },3000);
 }
+// Stocke l'URL guest-page + booking_id courant pour la modale de confirmation horaires
+let voyGuestPageUrl='',voyBookingId='';
 function showResa(resa,ci,co,guestUrl){
   const zone=document.getElementById('voy-resa-zone');if(!zone||!resa)return;
+  voyGuestPageUrl=guestUrl||'';
+  voyBookingId=String(resa.booking_id||'');
   const sd=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
   sd('voy-resa-arr-date',fmtDateLong(resa.checkin)||'—');
   sd('voy-resa-dep-date',fmtDateLong(resa.checkout)||'—');
@@ -4357,8 +4381,45 @@ function showResa(resa,ci,co,guestUrl){
   if(en)meta.push('🙂 '+en+(en>1?' enfants':' enfant'));
   const m=document.getElementById('voy-resa-meta');if(m)m.innerHTML=meta.map(x=>'<span>'+x+'</span>').join('');
   const modif=document.getElementById('voy-resa-modif');
-  if(modif){if(guestUrl&&/^https?:\/\//i.test(guestUrl)){modif.href=guestUrl;modif.style.display='flex';}else{modif.style.display='none';}}
+  const bid=String(resa.booking_id||'');
+  const done=bid&&localStorage.getItem('horaires_done_'+bid)==='1';
+  if(modif){
+    if(guestUrl&&/^https?:\/\//i.test(guestUrl)){
+      modif.href=guestUrl;
+      modif.style.display='flex';
+      // Pulsation douce tant que le voyageur n'a pas cliqué
+      if(done)modif.classList.remove('attract');
+      else modif.classList.add('attract');
+    }else{
+      modif.style.display='none';
+    }
+  }
   zone.style.display='';
+}
+// Modale FR + EN avant ouverture de la guest-page SuperHote
+function openHorairesConfirm(url){
+  const u=url||voyGuestPageUrl;
+  if(!u||!/^https?:\/\//i.test(u))return;
+  // Marque comme fait → stoppe l'animation et masque le hint
+  try{if(voyBookingId)localStorage.setItem('horaires_done_'+voyBookingId,'1');}catch(_e){}
+  const modif=document.getElementById('voy-resa-modif');if(modif)modif.classList.remove('attract');
+  // Affiche la modale FR/EN
+  if(document.getElementById('voy-horaires-confirm'))return;
+  const ov=document.createElement('div');
+  ov.id='voy-horaires-confirm';
+  ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.88);backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:center;padding:24px;animation:fadeIn .35s ease';
+  ov.innerHTML='<div style="max-width:440px;width:100%;background:linear-gradient(180deg,#1a1611,#0d0b08);border:1px solid var(--gold2);border-radius:20px;padding:30px 26px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,0.7)">'
+    +'<div style="font-size:48px;margin-bottom:12px">⏰</div>'
+    +'<div class="serif gold-text" style="font-size:22px;font-weight:700;margin-bottom:6px">Confirmation de vos horaires</div>'
+    +'<div class="serif" style="font-size:15px;color:var(--muted2);font-style:italic;margin-bottom:20px">Confirm your arrival times</div>'
+    +'<div style="background:rgba(226,192,110,0.06);border:1px dashed rgba(226,192,110,0.3);border-radius:12px;padding:14px 16px;margin-bottom:14px;text-align:left">'
+      +'<div style="color:#fff;font-size:13.5px;line-height:1.5;margin-bottom:10px">🇫🇷 Vous allez être redirigé vers une page sécurisée pour valider vos horaires d\'arrivée et de départ. <b style="color:var(--gold2)">Cela ouvre un nouvel onglet</b> — pensez à revenir ici ensuite pour découvrir tous les bons plans de votre séjour ✨</div>'
+      +'<div style="color:#ddd;font-size:12.5px;line-height:1.5;font-style:italic">🇬🇧 You\'ll be redirected to a secure page to confirm your check-in and check-out times. <b style="color:var(--gold2)">This will open in a new tab</b> — come back here afterwards to discover all the tips for your stay ✨</div>'
+    +'</div>'
+    +'<a href="'+u+'" target="_blank" rel="noopener" onclick="document.getElementById(\'voy-horaires-confirm\').remove()" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 28px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-weight:800;font-size:14px;text-decoration:none;border-radius:12px;box-shadow:0 10px 28px rgba(201,168,76,0.4)">Continuer / Continue →</a>'
+    +'<div style="margin-top:14px"><button onclick="document.getElementById(\'voy-horaires-confirm\').remove()" style="background:transparent;border:none;color:var(--muted2);font-size:12.5px;cursor:pointer;text-decoration:underline;padding:6px">Annuler / Cancel</button></div>'
+  +'</div>';
+  document.body.appendChild(ov);
 }
 let cart=[],voyServices=[],voyCartKey='cart_x',cartStep=1,cartDemande='',cartDemOn=false,voyCGV=null,cartCGV=false,voyGuestNom='';
 function openVoyDemande(){
