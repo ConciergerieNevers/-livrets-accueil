@@ -4438,10 +4438,32 @@ function openHorairesConfirm(url){
       +'<div style="color:#fff;font-size:13.5px;line-height:1.5;margin-bottom:10px">🇫🇷 Vous allez être redirigé vers une page sécurisée pour valider vos horaires d\'arrivée et de départ. <b style="color:var(--gold2)">Cela ouvre un nouvel onglet</b> — pensez à revenir ici ensuite pour découvrir tous les bons plans de votre séjour ✨</div>'
       +'<div style="color:#ddd;font-size:12.5px;line-height:1.5;font-style:italic">🇬🇧 You\'ll be redirected to a secure page to confirm your check-in and check-out times. <b style="color:var(--gold2)">This will open in a new tab</b> — come back here afterwards to discover all the tips for your stay ✨</div>'
     +'</div>'
-    +'<a href="'+u+'" target="_blank" rel="noopener" onclick="document.getElementById(\'voy-horaires-confirm\').remove()" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 28px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-weight:800;font-size:14px;text-decoration:none;border-radius:12px;box-shadow:0 10px 28px rgba(201,168,76,0.4)">Continuer / Continue →</a>'
+    +'<button onclick="launchHorairesTab(\''+u.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 28px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-weight:800;font-size:14px;border:none;border-radius:12px;cursor:pointer;box-shadow:0 10px 28px rgba(201,168,76,0.4)">Continuer / Continue →</button>'
     +'<div style="margin-top:14px"><button onclick="document.getElementById(\'voy-horaires-confirm\').remove()" style="background:transparent;border:none;color:var(--muted2);font-size:12.5px;cursor:pointer;text-decoration:underline;padding:6px">Annuler / Cancel</button></div>'
   +'</div>';
   document.body.appendChild(ov);
+}
+// Ouvre la guest-page dans un nouvel onglet ET affiche un écran d'attente dans le livret
+function launchHorairesTab(url){
+  if(!url)return;
+  // 1. Ouvre l'onglet immédiatement (doit être dans le handler de clic, sinon popup bloqué)
+  try{window.open(url,'_blank','noopener');}catch(_e){}
+  // 2. Remplace le contenu de la modale par un écran d'attente
+  const ov=document.getElementById('voy-horaires-confirm');if(!ov)return;
+  const card=ov.firstElementChild;if(!card)return;
+  card.innerHTML='<div style="font-size:46px;margin-bottom:14px;animation:introSpin 1.4s linear infinite;display:inline-block">⏳</div>'
+    +'<div class="serif gold-text" style="font-size:21px;font-weight:700;margin-bottom:6px">Ouverture en cours…</div>'
+    +'<div class="serif" style="font-size:14px;color:var(--muted2);font-style:italic;margin-bottom:16px">Opening your booking page…</div>'
+    +'<div style="background:rgba(226,192,110,0.06);border:1px dashed rgba(226,192,110,0.3);border-radius:12px;padding:14px 16px;margin-bottom:18px;text-align:left">'
+      +'<div style="color:#fff;font-size:13px;line-height:1.55;margin-bottom:8px">🇫🇷 La page sécurisée s\'ouvre dans un nouvel onglet. Cela peut prendre quelques secondes…</div>'
+      +'<div style="color:#ddd;font-size:12px;line-height:1.55;font-style:italic">🇬🇧 The secure page is opening in a new tab. This may take a few seconds…</div>'
+    +'</div>'
+    +'<div id="voy-horaires-after" style="opacity:0;transition:opacity .6s ease;pointer-events:none">'
+      +'<div style="color:var(--gold2);font-size:13px;margin-bottom:12px">✨ C\'est ouvert ! Pense à revenir ici après. / It\'s open!</div>'
+      +'<button onclick="document.getElementById(\'voy-horaires-confirm\').remove()" style="padding:11px 26px;border:none;border-radius:11px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-size:13.5px;font-weight:700;cursor:pointer">Fermer / Close</button>'
+    +'</div>';
+  // 3. Après 4 s, affiche le message "c'est ouvert" + bouton Fermer
+  setTimeout(()=>{const a=document.getElementById('voy-horaires-after');if(a){a.style.opacity='1';a.style.pointerEvents='auto';}},4000);
 }
 let cart=[],voyServices=[],voyCartKey='cart_x',cartStep=1,cartDemande='',cartDemOn=false,voyCGV=null,cartCGV=false,voyGuestNom='';
 function openVoyDemande(){
