@@ -4419,6 +4419,16 @@ function showHorairesOnce(bid){
   +'</div>';
   document.body.appendChild(ov);
 }
+// Détecte la langue active (Google Translate cookie OU navigator.language) → code court (fr,en,es…)
+function detectLang(){
+  try{
+    const m=document.cookie.match(/googtrans=\/[^/]+\/([^;\s]+)/);
+    if(m)return m[1].toLowerCase().split('-')[0];
+  }catch(_e){}
+  const dlang=(document.documentElement.lang||'').toLowerCase().split('-')[0];
+  if(dlang)return dlang;
+  return (navigator.language||'fr').toLowerCase().split('-')[0];
+}
 // Clic direct sur "Modifier mes horaires" → ouvre la page d'attente Be Nomad dans un nouvel onglet (4 s) puis SuperHote
 function openHorairesConfirm(url){
   const u=url||voyGuestPageUrl;
@@ -4426,10 +4436,23 @@ function openHorairesConfirm(url){
   // Marque comme fait → stoppe l'animation de pulsation
   try{if(voyBookingId)localStorage.setItem('horaires_done_'+voyBookingId,'1');}catch(_e){}
   const modif=document.getElementById('voy-resa-modif');if(modif)modif.classList.remove('attract');
-  // Ouvre directement le nouvel onglet sur notre page d'attente
-  const wait=`${BASE}/?w=${encodeURIComponent(u)}`;
+  // Ouvre directement le nouvel onglet sur notre page d'attente (avec la langue actuelle)
+  const wait=`${BASE}/?w=${encodeURIComponent(u)}&lang=${detectLang()}`;
   try{window.open(wait,'_blank','noopener');}catch(_e){}
 }
+// Traductions du message d'attente (10 langues du sélecteur Google Translate)
+const WAIT_I18N={
+  fr:{t:'Préparation de votre page…',m:'Un onglet va s\'ouvrir pour modifier vos horaires.',c:'Pensez à revenir sur votre livret d\'accueil une fois les horaires complétés ✨'},
+  en:{t:'Loading your page…',m:'A new tab will open to update your check-in times.',c:'Remember to come back to your welcome booklet once your times are set ✨'},
+  es:{t:'Cargando tu página…',m:'Se abrirá una pestaña para modificar tus horarios.',c:'No olvides volver a tu libreto de bienvenida una vez los horarios confirmados ✨'},
+  it:{t:'Caricamento della tua pagina…',m:'Si aprirà una scheda per modificare i tuoi orari.',c:'Ricordati di tornare al tuo libretto di benvenuto una volta confermati gli orari ✨'},
+  de:{t:'Ihre Seite wird geladen…',m:'Ein neuer Tab wird geöffnet, um Ihre Zeiten zu ändern.',c:'Vergessen Sie nicht, nach Bestätigung zur Willkommensbroschüre zurückzukehren ✨'},
+  nl:{t:'Uw pagina wordt geladen…',m:'Er gaat een nieuw tabblad open om uw tijden aan te passen.',c:'Vergeet niet om daarna terug te keren naar uw welkomstboekje ✨'},
+  pt:{t:'Carregando sua página…',m:'Uma nova aba será aberta para alterar seus horários.',c:'Lembre-se de voltar ao seu folheto de boas-vindas após confirmar os horários ✨'},
+  zh:{t:'正在加载您的页面…',m:'将打开一个新标签页以修改您的时间。',c:'请记得在确认时间后回到您的欢迎手册 ✨'},
+  ja:{t:'ページを読み込み中…',m:'時間を変更するため新しいタブが開きます。',c:'時間を確定したら、ようこそブックレットに戻ることをお忘れなく ✨'},
+  ru:{t:'Загрузка страницы…',m:'Откроется новая вкладка для изменения времени.',c:'Не забудьте вернуться в свой буклет после подтверждения времени ✨'}
+};
 // Affiche un écran d'attente plein écran Be Nomad pendant 4 s puis redirige vers l'URL cible
 function showWaitScreen(targetUrl){
   // Sécurité : seules les URLs SuperHote sont autorisées en redirection
@@ -4437,6 +4460,10 @@ function showWaitScreen(targetUrl){
     document.body.innerHTML='<div style="padding:40px;text-align:center;font-family:sans-serif">Lien invalide.</div>';
     return;
   }
+  // Récupère la langue depuis l'URL (?lang=xx) sinon détecte
+  const qp=new URLSearchParams(window.location.search);
+  let lg=(qp.get('lang')||detectLang()||'fr').toLowerCase().split('-')[0];
+  const tx=WAIT_I18N[lg]||WAIT_I18N.en;
   // On cache toutes les screens et on injecte la page d'attente plein écran
   ['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','demandes-screen','reservations-screen','corbeille-screen','requests-screen'].forEach(s=>{const el=document.getElementById(s);if(el)el.style.display='none';});
   const ov=document.createElement('div');
@@ -4444,11 +4471,10 @@ function showWaitScreen(targetUrl){
   ov.style.cssText='position:fixed;inset:0;z-index:100000;background:radial-gradient(ellipse at center,#1a1611 0%,#0a0908 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;padding:24px;font-family:var(--font-sans,system-ui)';
   ov.innerHTML='<div style="font-family:var(--font-serif,serif);font-size:clamp(28px,7vw,40px);font-weight:700;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:2px;margin-bottom:24px;animation:introGlow 2s ease-in-out infinite">✦ Be Nomad ✦</div>'
     +'<div style="font-size:56px;animation:introSpin 1.4s linear infinite;display:inline-block;margin-bottom:22px">⏳</div>'
-    +'<div class="serif" style="font-size:clamp(20px,5vw,26px);font-weight:700;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px">Préparation de votre page…</div>'
-    +'<div class="serif" style="font-size:14px;color:#aaa;font-style:italic;margin-bottom:30px">Loading your booking page…</div>'
-    +'<div style="max-width:420px">'
-      +'<div style="color:#e4d9b8;font-size:14px;line-height:1.6;margin-bottom:10px">🇫🇷 Un onglet va s\'ouvrir pour modifier vos horaires. <b style="color:#e2c06e">Pensez à revenir sur votre livret d\'accueil</b> une fois les horaires complétés ✨</div>'
-      +'<div style="color:#bbb;font-size:13px;line-height:1.6;font-style:italic">🇬🇧 A new tab will open to update your check-in times. <b style="color:#e2c06e">Remember to come back to your welcome booklet</b> once your times are set ✨</div>'
+    +'<div class="serif" style="font-size:clamp(20px,5vw,26px);font-weight:700;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:22px">'+tx.t+'</div>'
+    +'<div style="max-width:420px;color:#e4d9b8;font-size:15px;line-height:1.65">'
+      +'<div style="margin-bottom:8px">'+tx.m+'</div>'
+      +'<div><b style="color:#e2c06e">'+tx.c+'</b></div>'
     +'</div>';
   document.body.appendChild(ov);
   // Redirige après 4 s (temps de lire et de switcher sur l'onglet livret si on veut)
