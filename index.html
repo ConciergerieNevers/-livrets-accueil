@@ -791,13 +791,14 @@ body{top:0!important}
     <div id="ti" style="display:none">
       <div class="sc">
         <div class="sc-title">Logement (fiche d'accueil)</div>
-        <div class="fg"><label class="fl2">Adresse complète</label><textarea class="fi" id="f-adresse" placeholder="Ex: 61 route de Nevers, 18320 Jouet sur l'Aubois"></textarea></div>
+        <div class="fg"><label class="fl2">Adresse complète</label><textarea class="fi" id="f-adresse" onblur="geocodeAdresseVersGPS()" placeholder="Ex: 61 route de Nevers, 18320 Jouet sur l'Aubois"></textarea><div id="geo-status-adr" style="font-size:11px;color:var(--gold2);margin-top:4px;display:none"></div></div>
         <div class="fg"><label class="fl2">Hôte / Propriétaire</label><input class="fi" id="f-hote" placeholder="Ex: Sophie & Pierre"></div>
         <div class="ai-grid">
-          <div class="fg" style="margin-bottom:0"><label class="fl2">Latitude (optionnel)</label><input class="fi" id="f-lat" placeholder="Ex: 47.0833"></div>
-          <div class="fg" style="margin-bottom:0"><label class="fl2">Longitude (optionnel)</label><input class="fi" id="f-lng" placeholder="Ex: 3.0667"></div>
+          <div class="fg" style="margin-bottom:0"><label class="fl2">Latitude (optionnel)</label><input class="fi" id="f-lat" onblur="geocodeGPSVersAdresse()" placeholder="Ex: 47.0833"></div>
+          <div class="fg" style="margin-bottom:0"><label class="fl2">Longitude (optionnel)</label><input class="fi" id="f-lng" onblur="geocodeGPSVersAdresse()" placeholder="Ex: 3.0667"></div>
         </div>
-        <p style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.6">💡 Coordonnées GPS pour une localisation précise sur Maps/Waze. Sur Google Maps : clic droit sur le point exact → cliquez sur les chiffres affichés pour les copier. Laissez vide pour utiliser l'adresse texte.</p>
+        <div id="geo-status-gps" style="font-size:11px;color:var(--gold2);margin-top:4px;display:none"></div>
+        <p style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.6">💡 <b>Auto-complétion</b> : tape juste l'adresse, et GPS+ville se remplissent tout seuls. Ou tape les GPS, et l'adresse est trouvée automatiquement.</p>
       </div>
       <div class="sc">
         <div class="sc-title">Wifi</div>
@@ -4328,6 +4329,65 @@ function updateDocsZone(){
   const hasTravel=link&&link.style.display!=='none';
   const hasServices=box&&box.innerHTML.trim().length>0;
   zone.style.display=(hasTravel||hasServices)?'':'none';
+}
+// Géocodage Nominatim (OpenStreetMap) — gratuit, sans clé. Auto-complétion bidirectionnelle adresse <-> GPS.
+const NOMINATIM='https://nominatim.openstreetmap.org';
+let _geoBusy=false;
+async function geocodeAdresseVersGPS(){
+  if(_geoBusy)return;
+  const adr=document.getElementById('f-adresse');
+  const lat=document.getElementById('f-lat');
+  const lng=document.getElementById('f-lng');
+  const sta=document.getElementById('geo-status-adr');
+  if(!adr||!lat||!lng)return;
+  const q=(adr.value||'').trim();
+  if(!q||q.length<5)return;
+  // GARANTIE : si les GPS existent déjà, on n'efface JAMAIS rien
+  if(lat.value.trim()||lng.value.trim()){
+    if(sta){sta.style.display='block';sta.style.color='var(--muted2)';sta.textContent='ℹ️ Coordonnées existantes conservées (vide-les pour relancer une recherche)';setTimeout(()=>{sta.style.display='none';},4000);}
+    return;
+  }
+  _geoBusy=true;
+  if(sta){sta.style.display='block';sta.textContent='🔍 Recherche des coordonnées GPS…';}
+  try{
+    const r=await fetch(`${NOMINATIM}/search?format=json&limit=1&q=${encodeURIComponent(q)}`,{headers:{'Accept-Language':'fr'}});
+    const d=await r.json();
+    if(Array.isArray(d)&&d.length){
+      lat.value=parseFloat(d[0].lat).toFixed(6);
+      lng.value=parseFloat(d[0].lon).toFixed(6);
+      if(sta){sta.textContent='✅ Coordonnées GPS trouvées : '+lat.value+', '+lng.value;sta.style.color='var(--gold2)';}
+    }else if(sta){sta.textContent='⚠️ Adresse introuvable. Précise la ville et le code postal.';sta.style.color='#e8a960';}
+  }catch(e){if(sta)sta.textContent='⚠️ Erreur réseau (réessaie).';}
+  _geoBusy=false;
+  setTimeout(()=>{if(sta)sta.style.display='none';},6000);
+}
+async function geocodeGPSVersAdresse(){
+  if(_geoBusy)return;
+  const adr=document.getElementById('f-adresse');
+  const lat=document.getElementById('f-lat');
+  const lng=document.getElementById('f-lng');
+  const sta=document.getElementById('geo-status-gps');
+  if(!adr||!lat||!lng)return;
+  const la=parseFloat(lat.value);
+  const lo=parseFloat(lng.value);
+  if(!Number.isFinite(la)||!Number.isFinite(lo))return;
+  // GARANTIE : si une adresse existe déjà, on n'efface JAMAIS rien
+  if((adr.value||'').trim().length>3){
+    if(sta){sta.style.display='block';sta.style.color='var(--muted2)';sta.textContent='ℹ️ Adresse existante conservée (vide-la pour relancer une recherche)';setTimeout(()=>{sta.style.display='none';},4000);}
+    return;
+  }
+  _geoBusy=true;
+  if(sta){sta.style.display='block';sta.textContent='🔍 Recherche de l\'adresse…';sta.style.color='var(--gold2)';}
+  try{
+    const r=await fetch(`${NOMINATIM}/reverse?format=json&lat=${la}&lon=${lo}&zoom=18`,{headers:{'Accept-Language':'fr'}});
+    const d=await r.json();
+    if(d&&d.display_name){
+      adr.value=d.display_name;
+      if(sta)sta.textContent='✅ Adresse trouvée : '+d.display_name;
+    }else if(sta){sta.textContent='⚠️ Pas d\'adresse trouvée pour ces coordonnées.';sta.style.color='#e8a960';}
+  }catch(e){if(sta)sta.textContent='⚠️ Erreur réseau (réessaie).';}
+  _geoBusy=false;
+  setTimeout(()=>{if(sta)sta.style.display='none';},6000);
 }
 function fmtDateLong(iso){
   if(!iso)return'';
