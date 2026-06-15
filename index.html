@@ -4725,6 +4725,9 @@ async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,chec
       axios.get(`${API}/catalogue_services?livret_ids=cs.{${l.id}}&actif=eq.true&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
       loadCatOrder()
     ]);
+    // On positionne l'URL guest-page AVANT rv() pour que la rubrique Services voie les raccourcis horaires
+    voyGuestPageUrl=guestPageUrl||'';
+    voyBookingId=String(g.booking_id||bookingId||'');
     rv(l,ar.data,er.data,false,[...(cat.data||[])]);
     voyGuestNom=((g.first_name||'')+' '+(g.last_name||'')).trim();
     showGuestBanner(g);
