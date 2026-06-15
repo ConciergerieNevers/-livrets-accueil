@@ -558,14 +558,14 @@ body{top:0!important}
     <div class="adm-section-hdr">
       <div class="adm-section-title">Vos logements</div>
       <div class="adm-actions-hdr">
-        <button class="adm-add-s" onclick="showAllAvis()">
+        <button class="adm-add-s" data-su-only onclick="showAllAvis()">
           📨 Avis négatifs
           <span class="badge" id="avis-badge" style="display:none">0</span>
         </button>
-        <button class="adm-add-s" onclick="openCatalogue()">
+        <button class="adm-add-s" data-su-only onclick="openCatalogue()">
           🛎️ Mes services
         </button>
-        <button class="adm-add-s" onclick="openReservations()">
+        <button class="adm-add-s" data-su-only onclick="openReservations()">
           📅 Réservations
         </button>
         <button class="adm-add-s" onclick="openDemandes()">
@@ -576,10 +576,10 @@ body{top:0!important}
           📨 Demandes
           <span class="badge" id="req-badge" style="display:none">0</span>
         </button>
-        <button class="adm-add-s" onclick="openCorbeille()">
+        <button class="adm-add-s" data-su-only onclick="openCorbeille()">
           🗑 Corbeille
         </button>
-        <button class="adm-add" onclick="openEditor(null)">
+        <button class="adm-add" data-su-only onclick="openEditor(null)">
           + Nouveau livret
         </button>
       </div>
@@ -2083,7 +2083,7 @@ async function delCatService(id){
     catalogue=catalogue.filter(x=>x!==s);renderCatalogue();toast('Service supprimé');
   }catch(e){alert('Erreur suppression : '+(e.response?.data?.message||e.message));}
 }
-function showAdmin(){show('admin-screen');ll();loadAvisBadge();ensureLib('jspdf').catch(()=>{});}
+function showAdmin(){show('admin-screen');applyTenantUI();ll();if(isSuperAdmin())loadAvisBadge();ensureLib('jspdf').catch(()=>{});}
 
 async function loadAvisBadge(){
   try{
@@ -2101,7 +2101,7 @@ async function ll(){
     const since=new Date(Date.now()-30*86400000).toISOString();
     const moisDebut=new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString();
     const [lr,cr,vr]=await Promise.all([
-      axios.get(`${API}/livrets?select=*&deleted_at=is.null&order=created_at.desc`,{headers:hd()}),
+      axios.get(`${API}/livrets?select=*&deleted_at=is.null${isSuperAdmin()?'':('&owner_email=eq.'+encodeURIComponent(currentEmail()))}&order=created_at.desc`,{headers:hd()}),
       axios.get(`${API}/commandes?select=total_cents,refunded_cents&statut=in.(paye,rembourse_partiel)&created_at=gte.${moisDebut}`,{headers:hd()}).catch(()=>({data:[]})),
       axios.get(`${API}/consultations?select=id&created_at=gte.${since}`,{headers:hd()}).catch(()=>({data:[]}))
     ]);
@@ -2171,6 +2171,25 @@ function renderAccueil(livrets,upsellCents,vues,dyn){
 let lvData=[],lvViews={},lvView=((typeof localStorage!=='undefined'&&localStorage.getItem('lv_view'))||'cartes'),lvReorder=false,lvSearch='',lvStatusFilter=((typeof localStorage!=='undefined'&&localStorage.getItem('lv_status'))||'tous');
 function setLvStatusFilter(v){lvStatusFilter=v;try{localStorage.setItem('lv_status',v);}catch(e){}renderLivrets();}
 
+// ===== Multi-tenancy : Be Nomad (super-admin) vs Propriétaires externes (clients) =====
+// Les super-admins voient tout. Les propriétaires ne voient QUE les livrets dont owner_email = leur email.
+const SUPER_ADMINS=['primoconciergerie58@gmail.com','anouar@agencemycom.fr'];
+function currentEmail(){return (cu&&cu.user&&cu.user.email||'').toLowerCase();}
+function isSuperAdmin(){return SUPER_ADMINS.includes(currentEmail());}
+function applyTenantUI(){
+  // Cache les menus non pertinents pour un propriétaire
+  const sa=isSuperAdmin();
+  document.querySelectorAll('[data-su-only]').forEach(el=>{el.style.display=sa?'':'none';});
+  // Petit badge "Espace propriétaire" pour mieux se repérer quand on est en mode proprio
+  const hero=document.querySelector('.adm-hero-text h2');
+  if(hero){
+    if(!sa){hero.textContent='Mon espace';
+      const p=hero.parentElement.querySelector('p');if(p)p.textContent='Gérez votre livret d\'accueil';}
+    else{hero.textContent='Tableau de bord';
+      const p=hero.parentElement.querySelector('p');if(p)p.textContent='Gérez vos livrets d\'accueil en toute élégance';}
+  }
+}
+
 // ===== Gestion de l'ordre des catégories de services (stocké dans parametres.cle='cat_order') =====
 let catOrder=[];
 async function loadCatOrder(){
@@ -2225,6 +2244,24 @@ function rl(livrets,views={}){lvData=livrets||[];lvViews=views||{};renderLivrets
 function lvActifOf(l){return l.actif!==false;}
 function setLvView(v){lvView=v;try{localStorage.setItem('lv_view',v);}catch(e){}renderLivrets();}
 function toggleLvReorder(){lvReorder=!lvReorder;renderLivrets();}
+// Affecter / changer / retirer le propriétaire externe d'un livret (super-admin uniquement)
+async function assignOwner(id,nom){
+  if(!isSuperAdmin())return;
+  let l=lvData.find(x=>String(x.id)===String(id));
+  if(!l){try{const r=await axios.get(`${API}/livrets?id=eq.${id}&select=*`,{headers:hd()});l=r.data[0];}catch(e){}}
+  if(!l)return;
+  const cur=l.owner_email||'';
+  const msg='👤 Propriétaire externe de « '+nom+' »\n\nEntre l\'email du propriétaire à qui ce livret appartient.\n\n• Email rempli → seul ce propriétaire (connecté avec cet email) verra ce livret dans son espace.\n• Email VIDE → le livret reste piloté par Be Nomad.';
+  const v=await askPrompt(msg,cur);
+  if(v===null)return;
+  const newEmail=(v||'').trim().toLowerCase();
+  try{
+    await axios.patch(`${API}/livrets?id=eq.${id}`,{owner_email:newEmail||null},{headers:{...hd(),'Prefer':'return=minimal'}});
+    l.owner_email=newEmail||null;
+    ll();
+    toast(newEmail?('👤 Affecté à '+newEmail):'Propriétaire retiré');
+  }catch(e){alert('Impossible d\'enregistrer le propriétaire.');}
+}
 async function toggleLvActif(id){
   let l=lvData.find(x=>String(x.id)===String(id));
   if(!l){try{const r=await axios.get(`${API}/livrets?id=eq.${id}&select=*`,{headers:hd()});l=r.data[0];}catch(e){}}
@@ -2281,6 +2318,7 @@ function lvCardHtml(l){
           <button class="lv-btn" onclick="showQR('${l.id}','${safeNom}','${pub}')">📱 QR Code</button>
           <button class="lv-btn" onclick="downloadFiche('${l.id}','${safeNom}')">📄 Fiche PDF</button>
           <button class="lv-btn" onclick="showStats('${l.id}','${safeNom}')">📊 Stats</button>
+          ${isSuperAdmin()?`<button class="lv-btn" onclick="assignOwner('${l.id}','${safeNom}')" title="Affecter ce livret à un propriétaire externe">👤 ${l.owner_email?'Propriétaire ✓':'Propriétaire'}</button>`:''}
           <button class="lv-btn full" onclick="dup('${l.id}','${safeNom}')">📋 Dupliquer</button>
           <button class="lv-btn danger" style="font-size:11px;padding:7px 10px;width:auto" onclick="del('${l.id}','${safeNom}')">🗑 Supprimer</button>
         </div>
@@ -4293,7 +4331,7 @@ function showHorairesPopup(guestUrl, livret, ci, co){
     +'<p style="color:var(--text);font-size:14.5px;line-height:1.6;margin:0 0 28px;opacity:.85">Quelques secondes pour qu\'on prépare ton arrivée<br>dans les meilleures conditions ✨</p>'
     +'<a href="'+guestUrl+'" target="_blank" rel="noopener" onclick="document.getElementById(\'voy-horaires-popup\').remove()" style="display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:18px 36px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-weight:800;font-size:15px;text-decoration:none;border-radius:14px;box-shadow:0 16px 40px rgba(201,168,76,0.45);letter-spacing:.3px">⏰ Confirmer mes horaires</a>'
     +'<div id="voy-horaires-later" style="margin-top:28px;opacity:0;transition:opacity 1s ease;pointer-events:none">'
-      +'<button onclick="document.getElementById(\'voy-horaires-popup\').remove()" style="background:transparent;border:none;color:var(--muted2);font-size:12.5px;cursor:pointer;text-decoration:underline;padding:8px">Plus tard</button>'
+      +'<button onclick="document.getElementById(\'voy-horaires-popup\').remove()" style="background:transparent;border:1px solid rgba(226,192,110,0.25);color:var(--muted2);font-size:13px;cursor:pointer;padding:11px 22px;border-radius:10px;line-height:1.35">Passer cette étape<br><span style="font-size:11px;opacity:.75">pour voir le livret</span></button>'
     +'</div>'
     +'</div>';
   document.body.appendChild(ov);
