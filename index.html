@@ -2556,29 +2556,21 @@ async function downloadFiche(id,nom){
   // Filet beige sous l'en-tête
   doc.setDrawColor(...GOLD);doc.setLineWidth(0.5);doc.line(M,68,W-M,68);
 
-  // ===== BANDEAU HÔTE + CONTACT (pleine largeur) =====
+  // ===== BANDEAU HÔTE (sans tel ni email — le tel est déplacé dans Urgences) =====
   let y=75;
-  if(l.hote||l.contact_nom||l.contact_tel||l.contact_email){
+  if(l.hote||l.contact_nom){
     doc.setFillColor(...BG_GOLD);doc.setDrawColor(...GOLD);doc.setLineWidth(0.4);
-    doc.roundedRect(M,y,W-2*M,24,3,3,'FD');
-    // Gauche : hôte
+    doc.roundedRect(M,y,W-2*M,22,3,3,'FD');
+    // Centré : libellé + nom
     doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(...GOLD_D);
-    doc.text('VOTRE HÔTE / YOUR HOST',M+5,y+6.5);
+    doc.text('VOTRE HÔTE / YOUR HOST',W/2,y+7,{align:'center',charSpace:1});
     doc.setFont('times','bold');doc.setFontSize(15);doc.setTextColor(...DARK);
-    doc.text(l.hote||l.contact_nom||'—',M+5,y+15);
+    doc.text(l.hote||l.contact_nom||'—',W/2,y+15,{align:'center'});
     if(l.contact_nom&&l.hote&&l.hote!==l.contact_nom){
-      doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...MUTED);
-      doc.text(`Conciergerie : ${l.contact_nom}`,M+5,y+20.5);
+      doc.setFont('helvetica','italic');doc.setFontSize(8.5);doc.setTextColor(...MUTED);
+      doc.text(`Conciergerie : ${l.contact_nom}`,W/2,y+20,{align:'center'});
     }
-    // Droite : contact (tel + email)
-    const cx=W-M-5;
-    doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(...GOLD_D);
-    doc.text('JOIGNABLE 24H/24 · CONTACT',cx,y+6.5,{align:'right'});
-    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...DARK);
-    if(l.contact_tel){doc.text(`Tél. ${l.contact_tel}`,cx,y+14,{align:'right'});}
-    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...BODY);
-    if(l.contact_email){doc.text(l.contact_email,cx,y+20.5,{align:'right'});}
-    y+=30;
+    y+=28;
   }
 
   // ===== HORAIRES (Check-in / Check-out côte à côte) =====
@@ -2673,8 +2665,19 @@ async function downloadFiche(id,nom){
     yR=bil(xR,yR,l.parking,'',colW)+5;
   }
 
-  // Urgences
-  yR=sectionTitle(xR,yR,'Urgences','emergency');
+  // Urgences (+ téléphone hôte en cas d'urgence, déplacé depuis le bandeau)
+  yR=sectionTitle(xR,yR,'En cas d\'urgence','in case of emergency');
+  // Bloc téléphone hôte en haut, mis en valeur (priorité visuelle)
+  if(l.contact_tel){
+    doc.setFillColor(...BG_GOLD);doc.setDrawColor(...GOLD);doc.setLineWidth(0.4);
+    doc.roundedRect(xR,yR-2,colW,12,2.5,2.5,'FD');
+    doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(...GOLD_D);
+    doc.text('VOTRE HÔTE / YOUR HOST',xR+3,yR+2);
+    doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(...DARK);
+    doc.text(l.contact_tel,xR+3,yR+8);
+    yR+=16;
+  }
+  // 112 + autres numéros classiques
   doc.setDrawColor(...GOLD);doc.setLineWidth(0.6);doc.circle(xR+6,yR+3,6.2,'S');
   doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(...DARK);
   doc.text('112',xR+6,yR+4.8,{align:'center'});
