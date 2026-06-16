@@ -2482,10 +2482,12 @@ async function downloadFiche(id,nom){
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({unit:'mm',format:'a4'});
   const W=210,H=297,M=15;
-  // Palette Be Nomads — fond blanc (print-friendly) + beige sable + navy
+  // Palette Be Nomads — fond blanc (print-friendly) + beige sable + navy partout (pas de noir/gris)
   // Anciennement nommés GOLD/DARK pour rétro-compat avec le reste du code → on garde les noms mais valeurs Be Nomads
   const GOLD=[200,176,140], GOLD_D=[156,128,92];   // beige sable (clair + foncé)
-  const DARK=[26,44,78], BODY=[55,55,55], MUTED=[120,120,120];  // navy au lieu du noir
+  const DARK=[26,44,78];                             // navy profond — titres + footer
+  const BODY=[42,60,94];                             // navy moyen — texte body (au lieu du gris foncé)
+  const MUTED=[110,124,148];                         // navy désaturé — texte secondaire
   const HAIR=[232,224,208];                          // filet beige clair
   const BG_GOLD=[248,243,232];                       // fond très clair sable
   const colGap=11;
