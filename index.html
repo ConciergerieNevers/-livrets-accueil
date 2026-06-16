@@ -2126,20 +2126,27 @@ async function ll(){
   try{
     const since=new Date(Date.now()-30*86400000).toISOString();
     const moisDebut=new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString();
+    // En-tête count=exact → Supabase renvoie le vrai total dans Content-Range, même si la liste est limitée à 1000
+    const hdCount=()=>({...hd(),'Prefer':'count=exact'});
+    const parseTotal=(resp)=>{const cr=resp&&resp.headers&&(resp.headers['content-range']||resp.headers['Content-Range']);if(!cr)return (resp&&resp.data&&resp.data.length)||0;const m=cr.split('/')[1];return m&&m!=='*'?parseInt(m,10):(resp.data||[]).length;};
     const [lr,cr,vr]=await Promise.all([
       axios.get(`${API}/livrets?select=*&deleted_at=is.null${isSuperAdmin()?'':('&owner_email=eq.'+encodeURIComponent(currentEmail()))}&order=created_at.desc`,{headers:hd()}),
       axios.get(`${API}/commandes?select=total_cents,refunded_cents&statut=in.(paye,rembourse_partiel)&created_at=gte.${moisDebut}`,{headers:hd()}).catch(()=>({data:[]})),
-      axios.get(`${API}/consultations?select=id&created_at=gte.${since}`,{headers:hd()}).catch(()=>({data:[]}))
+      axios.get(`${API}/consultations?select=id&created_at=gte.${since}`,{headers:hdCount()}).catch(()=>({data:[],headers:{}}))
     ]);
     const upsell=(cr.data||[]).reduce((s,c)=>s+((c.total_cents||0)-(c.refunded_cents||0)),0);
     document.getElementById('stat-l').textContent=lr.data.length;
-    document.getElementById('stat-v').textContent=vr.data.length;
+    document.getElementById('stat-v').textContent=parseTotal(vr);
     document.getElementById('stat-a').textContent=(upsell/100).toFixed(0)+'€';
     axios.get(`${API}/commandes?select=id&statut=in.(paye,rembourse_partiel)&traitee=eq.false`,{headers:hd()}).then(nr=>setDemBadge((nr.data||[]).length)).catch(()=>{});
     axios.get(`${API}/demandes?select=id&traitee=eq.false`,{headers:hd()}).then(nr=>setReqBadge((nr.data||[]).length)).catch(()=>{});
+    // Détail par livret : pagination par lots de 1000 (Supabase plafonne chaque page à 1000)
     const viewsByLivret={};
-    const allViews=await axios.get(`${API}/consultations?select=livret_id&created_at=gte.${since}`,{headers:hd()}).catch(()=>({data:[]}));
-    allViews.data.forEach(v=>viewsByLivret[v.livret_id]=(viewsByLivret[v.livret_id]||0)+1);
+    for(let offset=0;offset<200000;offset+=1000){
+      const pg=await axios.get(`${API}/consultations?select=livret_id&created_at=gte.${since}`,{headers:{...hd(),'Range-Unit':'items','Range':`${offset}-${offset+999}`}}).catch(()=>({data:[]}));
+      (pg.data||[]).forEach(v=>viewsByLivret[v.livret_id]=(viewsByLivret[v.livret_id]||0)+1);
+      if(!pg.data||pg.data.length<1000)break;
+    }
     rl(lr.data,viewsByLivret);
   }catch(e){console.error(e);document.getElementById('livrets-loading').textContent='Erreur.';}
 }
