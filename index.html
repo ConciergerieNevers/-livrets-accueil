@@ -2496,8 +2496,8 @@ async function downloadFiche(id,nom){
   const colW=(W-2*M-colGap)/2;
   const xL=M, xR=M+colW+colGap;
 
-  // Fond crème sable (genre Be Nomads)
-  doc.setFillColor(245,236,216);doc.rect(0,0,W,H,'F');
+  // Fond blanc (print-friendly, comme l'ancienne version qui marchait)
+  doc.setFillColor(255,255,255);doc.rect(0,0,W,H,'F');
 
   // Helper bilingue : FR foncé + EN doré italique dessous
   function bil(x,y,fr,en,maxw,opt={}){
@@ -2531,47 +2531,33 @@ async function downloadFiche(id,nom){
     return y+10.5;
   }
 
-  // ===== EN-TÊTE style Be Nomads (logo navy centré + tagline + titre italique) =====
-  // Logo Be Nomads navy centré en haut
-  try{
-    const lgW=58, lgH=11.6;
-    doc.addImage('data:image/png;base64,'+LOGO_BENOMADS_NAVY_B64,'PNG',(W-lgW)/2,12,lgW,lgH);
-  }catch(_e){
-    doc.setFont('helvetica','bold');doc.setFontSize(22);doc.setTextColor(...DARK);
-    doc.text('BE NOMADS',W/2,21,{align:'center',charSpace:2});
-  }
-  // Tagline sous le logo
-  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...DARK);
-  doc.text('VOTRE CONCIERGERIE',W/2,29,{align:'center',charSpace:3});
-  // Filet beige
-  doc.setDrawColor(...GOLD);doc.setLineWidth(0.3);
-  doc.line(W/2-30,32,W/2+30,32);
-  // Titre italique serif (genre carte Be Nomads)
-  doc.setFont('times','italic');doc.setFontSize(15);doc.setTextColor(...DARK);
-  doc.text('Bienvenue dans',M,45);
-  doc.setFont('times','bolditalic');doc.setFontSize(17);doc.setTextColor(...DARK);
-  doc.text(l.nom||'votre magnifique logement',M,53);
-  // Adresse (gris navy discret)
+  // ===== EN-TÊTE (structure d'origine, palette Be Nomads) =====
+  // Welcome (gauche)
+  doc.setFont('times','bold');doc.setFontSize(46);doc.setTextColor(...DARK);
+  doc.text('Welcome',M,30);
+  doc.setFont('times','italic');doc.setFontSize(11);doc.setTextColor(...GOLD_D);
+  doc.text('bienvenue',M,37);
+  // Nom du logement + adresse (sous Welcome)
+  doc.setFont('times','bold');doc.setFontSize(18);doc.setTextColor(...DARK);
+  doc.text(l.nom||'',M,49);
   if(l.adresse){
     doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...MUTED);
     const adrLines=doc.splitTextToSize(l.adresse,W-2*M-46);
-    doc.text(adrLines,M,59);
+    doc.text(adrLines,M,55);
   }
   // QR livret « Scan me » en haut à droite
-  doc.setDrawColor(...DARK);doc.setLineWidth(0.4);
-  doc.roundedRect(W-M-40,42,40,28,2.5,2.5,'S');
-  doc.addImage(qrLivret,'PNG',W-M-38,44,24,24);
-  doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(...DARK);
-  doc.text('SCAN ME',W-M-11,52,{charSpace:1});
-  doc.setFont('helvetica','italic');doc.setFontSize(6.5);doc.setTextColor(...MUTED);
-  doc.text('toutes les',W-M-11,57);
-  doc.text('infos du',W-M-11,61);
-  doc.text('logement',W-M-11,65);
-  // Filet beige plus marqué sous l'en-tête
-  doc.setDrawColor(...GOLD);doc.setLineWidth(0.5);doc.line(M,73,W-M,73);
+  doc.setDrawColor(...GOLD);doc.setLineWidth(0.5);
+  doc.roundedRect(W-M-40,M,40,40,3,3,'S');
+  doc.addImage(qrLivret,'PNG',W-M-37,M+3,34,34);
+  doc.setFont('times','bolditalic');doc.setFontSize(11);doc.setTextColor(...DARK);
+  doc.text('Scan me',W-M-40,M+45);
+  doc.setFont('helvetica','italic');doc.setFontSize(7);doc.setTextColor(...GOLD_D);
+  doc.text('toutes les infos du logement',W-M-40,M+49);
+  // Filet beige sous l'en-tête
+  doc.setDrawColor(...GOLD);doc.setLineWidth(0.5);doc.line(M,68,W-M,68);
 
   // ===== BANDEAU HÔTE + CONTACT (pleine largeur) =====
-  let y=80;
+  let y=75;
   if(l.hote||l.contact_nom||l.contact_tel||l.contact_email){
     doc.setFillColor(...BG_GOLD);doc.setDrawColor(...GOLD);doc.setLineWidth(0.4);
     doc.roundedRect(M,y,W-2*M,24,3,3,'FD');
