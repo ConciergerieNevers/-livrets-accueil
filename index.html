@@ -2685,9 +2685,9 @@ async function downloadFiche(id,nom){
   // Phrase principale
   doc.setFont('times','bolditalic');doc.setFontSize(13);doc.setTextColor(...GOLD);
   doc.text('Bon séjour · Have a lovely stay',W/2,H-10,{align:'center'});
-  // Signature Be Nomads
+  // Signature Be Nomads (caractères compatibles helvetica default)
   doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(...GOLD);
-  doc.text('✦ BE NOMADS ✦',W/2,H-4,{align:'center',charSpace:2});
+  doc.text('· BE NOMADS ·',W/2,H-4,{align:'center',charSpace:1.5});
 
   doc.save(`fiche-accueil-${(l.slug||nom||'livret').replace(/\s+/g,'-')}.pdf`);
   toast('✅ Fiche téléchargée !');
