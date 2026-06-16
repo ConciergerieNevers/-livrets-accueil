@@ -2635,6 +2635,12 @@ async function downloadFiche(id,nom){
     yL=bil(xL,yL,`${rnum} / ${r}`,'',colW)+3;
     rnum++;
   });
+  yL+=4;
+  // Parking déplacé sous les règles (colonne gauche) — évite l'écrasement à droite
+  if(l.parking){
+    yL=sectionTitle(xL,yL,'Parking','parking');
+    yL=bil(xL,yL,l.parking,'',colW)+5;
+  }
 
   // ----- COLONNE DROITE -----
   // À faire avant de partir
@@ -2665,12 +2671,7 @@ async function downloadFiche(id,nom){
   });
   yR+=3;
 
-  // Parking
-  if(l.parking){
-    yR=sectionTitle(xR,yR,'Parking','parking');
-    yR=bil(xR,yR,l.parking,'',colW)+5;
-  }
-
+  // Parking déplacé vers la colonne gauche (sous les règles) — on n'affiche rien ici
   // Urgences (structure d'origine restaurée)
   yR=sectionTitle(xR,yR,'Urgences','emergency');
   doc.setDrawColor(...GOLD);doc.setLineWidth(0.6);doc.circle(xR+6,yR+3,6.2,'S');
