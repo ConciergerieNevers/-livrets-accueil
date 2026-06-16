@@ -2683,19 +2683,19 @@ async function downloadFiche(id,nom){
   doc.setTextColor(...GOLD_D);doc.text('Pompiers : 18',xR+17,yR+5.5);
   doc.setTextColor(...DARK);doc.text('SAMU : 15',xR+17,yR+10);
 
-  // ===== PIED DE PAGE Be Nomads (navy + logo blanc + tagline) =====
-  doc.setFillColor(...DARK);
-  doc.rect(0,H-24,W,24,'F');
-  // Tagline
-  doc.setFont('times','bolditalic');doc.setFontSize(11);doc.setTextColor(...GOLD);
-  doc.text('Bon séjour · Have a lovely stay',W/2,H-16,{align:'center'});
-  // Logo Be Nomads (PNG blanc) centré bas
+  // ===== PIED DE PAGE Be Nomads (fond blanc + logo navy + tagline) =====
+  // Filet beige fin pour séparer
+  doc.setDrawColor(...GOLD);doc.setLineWidth(0.5);doc.line(M,H-22,W-M,H-22);
+  // Tagline italique navy
+  doc.setFont('times','bolditalic');doc.setFontSize(11);doc.setTextColor(...DARK);
+  doc.text('Bon séjour · Have a lovely stay',W/2,H-15,{align:'center'});
+  // Logo Be Nomads NAVY centré bas (sur fond blanc → transparent autour)
   try{
     const logoW=48, logoH=9.6;
-    doc.addImage('data:image/png;base64,'+LOGO_BENOMADS_B64,'PNG',(W-logoW)/2,H-12,logoW,logoH);
+    doc.addImage('data:image/png;base64,'+LOGO_BENOMADS_NAVY_B64,'PNG',(W-logoW)/2,H-11,logoW,logoH);
   }catch(_e){
-    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(255,255,255);
-    doc.text('BE NOMADS',W/2,H-5,{align:'center',charSpace:2});
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...DARK);
+    doc.text('BE NOMADS',W/2,H-4,{align:'center',charSpace:2});
   }
 
   doc.save(`fiche-accueil-${(l.slug||nom||'livret').replace(/\s+/g,'-')}.pdf`);
