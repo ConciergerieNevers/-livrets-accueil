@@ -4300,13 +4300,16 @@ async function lv(id){
   document.getElementById('voy-loading').style.display='block';
   document.getElementById('voy-content').style.display='none';
   try{
-    const [lr,ar,er,sr]=await Promise.all([
+    const [lr,ar,er,sr,cat]=await Promise.all([
       axios.get(`${API}/livrets?id=eq.${id}&select=*`,{headers:hd()}),
       axios.get(`${API}/adresses?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}),
       axios.get(`${API}/equipements?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]})),
-      axios.get(`${API}/services?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]}))
+      axios.get(`${API}/services?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]})),
+      // Catalogue centralisé : c'est CE QUI EST AFFICHÉ EN MODE VOYAGEUR (sans ça, aucun service en preview)
+      axios.get(`${API}/catalogue_services?livret_ids=cs.{${id}}&actif=eq.true&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]})),
+      loadCatOrder()
     ]);
-    rv(lr.data[0],ar.data,er.data,true,sr.data);
+    rv(lr.data[0],ar.data,er.data,true,[...(cat.data||[])]);
   }catch(e){console.error(e);document.getElementById('voy-loading').textContent='Erreur.';}
 }
 
