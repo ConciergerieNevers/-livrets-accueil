@@ -385,7 +385,7 @@ textarea.fi{resize:vertical;min-height:80px;}
 .urg-num{font-family:var(--font-serif);font-size:32px;font-weight:700;background:linear-gradient(135deg,var(--gold2),var(--gold3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 .urg-lbl{font-size:10px;color:var(--muted2);font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-top:4px;}
 .voy-contact-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:28px;text-align:center;position:relative;overflow:hidden;}
-.voy-contact-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,#0d0b00 0%,transparent 60%);pointer-events:none;}
+.voy-contact-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--bg) 0%,transparent 60%);pointer-events:none;}
 .voy-av{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold2));margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:32px;box-shadow:0 8px 24px rgba(201,168,76,0.3);position:relative;z-index:1;}
 .voy-contact-name{font-family:var(--font-serif);font-size:20px;font-weight:700;margin-bottom:4px;position:relative;z-index:1;}
 .voy-contact-role{font-size:12px;color:var(--muted2);margin-bottom:22px;position:relative;z-index:1;letter-spacing:0.5px;}
@@ -962,7 +962,7 @@ body{top:0!important}
             </div>
           </div>
           <div id="voy-resa-meta" style="display:flex;gap:18px;margin-top:14px;font-size:13px;color:#ccc;flex-wrap:wrap"></div>
-          <a id="voy-resa-modif" href="#" onclick="openHorairesConfirm(this.href);return false;" rel="noopener" style="display:none;align-items:center;justify-content:center;gap:8px;margin-top:16px;padding:14px 18px;border-radius:12px;background:linear-gradient(135deg,#b8922a 0%,#e2c06e 50%,#d4a843 100%);color:#060606;font-size:13.5px;font-weight:700;text-decoration:none;box-shadow:0 6px 20px rgba(201,168,76,0.28);cursor:pointer">🕐 Modifier mes horaires d'arrivée et de départ</a>
+          <a id="voy-resa-modif" href="#" onclick="openHorairesConfirm(this.href);return false;" rel="noopener" style="display:none;align-items:center;justify-content:center;gap:8px;margin-top:16px;padding:14px 18px;border-radius:12px;background:linear-gradient(135deg,var(--gold) 0%,var(--gold2) 50%,var(--gold3) 100%);color:var(--bg);font-size:13.5px;font-weight:700;text-decoration:none;box-shadow:0 6px 20px var(--gold-dim);cursor:pointer">🕐 Modifier mes horaires d'arrivée et de départ</a>
         </div>
       </div>
       <div class="vs">
@@ -971,7 +971,7 @@ body{top:0!important}
           <div style="font-size:13.5px;color:#d8cfa8;margin-top:10px;letter-spacing:.3px">Tout est juste ici 👇</div>
         </div>
         <div class="vc" id="voy-video-card" style="padding:0;overflow:hidden;display:none">
-          <div class="video-wrap"><iframe id="voy-iframe" src="" allow="autoplay;fullscreen;picture-in-picture" allowfullscreen></iframe><div id="voy-video-poster" onclick="playHomeVideo(0)" style="position:absolute;inset:0;z-index:3;cursor:pointer;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0c0c0c,#1c1c1c)"><div style="width:78px;height:78px;border-radius:50%;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 34px rgba(201,168,76,.5);transition:transform .15s" onmouseover="this.style.transform='scale(1.07)'" onmouseout="this.style.transform='scale(1)'"><span style="color:#060606;font-size:30px;line-height:1;margin-left:6px">▶</span></div></div></div>
+          <div class="video-wrap"><iframe id="voy-iframe" src="" allow="autoplay;fullscreen;picture-in-picture" allowfullscreen></iframe><div id="voy-video-poster" onclick="playHomeVideo(0)" style="position:absolute;inset:0;z-index:3;cursor:pointer;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--bg2),var(--bg3))"><div style="width:78px;height:78px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold2),var(--gold3));display:flex;align-items:center;justify-content:center;box-shadow:0 10px 34px var(--gold-dim);transition:transform .15s" onmouseover="this.style.transform='scale(1.07)'" onmouseout="this.style.transform='scale(1)'"><span style="color:var(--bg);font-size:30px;line-height:1;margin-left:6px">▶</span></div></div></div>
           <div id="voy-video-chapters" class="vid-chapters" style="display:none"></div>
         </div>
         <div class="vs-label" id="voy-loc-label" style="display:none">Localisation</div>
@@ -998,7 +998,7 @@ body{top:0!important}
       </div>
       <div class="vs" id="voy-facture-zone" style="display:none">
         <div class="vs-label">Mes documents</div>
-        <a id="voy-facture-link" href="#" target="_blank" rel="noopener" class="notranslate" style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:6px;padding:15px 20px;border-radius:14px;background:linear-gradient(135deg,#b8922a 0%,#e2c06e 50%,#d4a843 100%);color:#060606;font-size:14px;font-weight:700;text-decoration:none;box-shadow:0 6px 24px rgba(201,168,76,0.3)">📄 Télécharger ma facture</a>
+        <a id="voy-facture-link" href="#" target="_blank" rel="noopener" class="notranslate" style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:6px;padding:15px 20px;border-radius:14px;background:linear-gradient(135deg,var(--gold) 0%,var(--gold2) 50%,var(--gold3) 100%);color:var(--bg);font-size:14px;font-weight:700;text-decoration:none;box-shadow:0 6px 24px var(--gold-dim)">📄 Télécharger ma facture</a>
         <div id="voy-service-invoices"></div>
       </div>
     </div>
@@ -5176,10 +5176,10 @@ function rv(l,adresses,equipements,back,services){
       const _btn=_c>0?`<button class="eq-vid-btn" onclick="addToCart('${s.id}')" style="align-self:flex-start;cursor:pointer;border:none">➕ Ajouter au panier</button>`:(s.lien_paiement?`<a class="eq-vid-btn" href="${s.lien_paiement}" target="_blank" rel="noopener" style="align-self:flex-start">💳 Réserver / Payer</a>`:'');
       const fav=!!s.mis_en_avant;
       // Cartes coups de cœur : bordure dorée, fond légèrement teinté or
-      const cardStyle=fav?'style="position:relative;border:1px solid var(--gold2);background:linear-gradient(180deg,rgba(226,192,110,0.07),rgba(226,192,110,0.02));box-shadow:0 8px 24px rgba(201,168,76,0.10);padding-top:14px"':'';
+      const cardStyle=fav?'style="position:relative;border:1px solid var(--gold2);background:linear-gradient(180deg,var(--gold-dim),transparent);box-shadow:0 8px 24px var(--gold-dim);padding-top:14px"':'';
       // Badge ⭐ Coup de cœur : sur l'image (haut-gauche) si une photo existe, sinon en discret au-dessus du titre, pour ne JAMAIS chevaucher le prix.
-      const favBadgeOnImg=fav&&s.image_url?'<div style="position:absolute;top:-6px;left:-6px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-size:9px;font-weight:800;letter-spacing:1.2px;padding:4px 9px;border-radius:8px;box-shadow:0 4px 14px rgba(201,168,76,0.45);text-transform:uppercase;z-index:2;white-space:nowrap">⭐</div>':'';
-      const favBadgeAboveTitle=fav&&!s.image_url?'<div style="display:inline-block;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-size:9px;font-weight:800;letter-spacing:1.2px;padding:3px 9px;border-radius:8px;text-transform:uppercase;margin-bottom:6px">⭐ Coup de cœur</div>':'';
+      const favBadgeOnImg=fav&&s.image_url?'<div style="position:absolute;top:-6px;left:-6px;background:linear-gradient(135deg,var(--gold),var(--gold2),var(--gold3));color:var(--bg);font-size:9px;font-weight:800;letter-spacing:1.2px;padding:4px 9px;border-radius:8px;box-shadow:0 4px 14px var(--gold-dim);text-transform:uppercase;z-index:2;white-space:nowrap">⭐</div>':'';
+      const favBadgeAboveTitle=fav&&!s.image_url?'<div style="display:inline-block;background:linear-gradient(135deg,var(--gold),var(--gold2),var(--gold3));color:var(--bg);font-size:9px;font-weight:800;letter-spacing:1.2px;padding:3px 9px;border-radius:8px;text-transform:uppercase;margin-bottom:6px">⭐ Coup de cœur</div>':'';
       const titleStyle=fav?'font-size:15.5px;color:var(--gold3);font-weight:700':'font-size:15px';
       const imgWrap=s.image_url?`<div style="position:relative;flex-shrink:0">${favBadgeOnImg}<img loading="lazy" decoding="async" src="${s.image_url}" class="sv-img"${fav?' style="border:1px solid var(--border-gold)"':''}></div>`:'';
       return `<div class="eq-card" ${cardStyle}><div class="sv-row">${imgWrap}<div class="sv-body">${favBadgeAboveTitle}<div class="eq-header" style="margin-bottom:6px"><div class="eq-nom" style="${titleStyle}">${s.titre||''}</div>${s.prix?`<span style="margin-left:auto;color:var(--gold2);font-weight:700;font-size:14px;white-space:nowrap">${s.prix}</span>`:''}</div><div class="eq-desc" style="margin-bottom:10px">${s.description||''}</div>${_btn}</div></div></div>`;
@@ -5200,7 +5200,7 @@ function rv(l,adresses,equipements,back,services){
         +order.map(c=>{
           const isFav=(c===FAV);
           const cls=isFav?'vid-chap-btn fav-chip':'vid-chap-btn';
-          const sty=isFav?'background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;border:none;font-weight:800;box-shadow:0 4px 14px rgba(201,168,76,0.3)':'';
+          const sty=isFav?'background:linear-gradient(135deg,var(--gold),var(--gold2),var(--gold3));color:var(--bg);border:none;font-weight:800;box-shadow:0 4px 14px var(--gold-dim)':'';
           return `<button class="${cls}" ${sty?'style="'+sty+'"':''} onclick="document.getElementById('svcat-${slugCat(c)}').scrollIntoView({behavior:'smooth',block:'start'})">${c.replace(/</g,'&lt;')} <span style="opacity:${isFav?'.6':'.65'};font-weight:${isFav?'700':'500'}">· ${groups[c].length}</span></button>`;
         }).join('')
         +'</div>';
