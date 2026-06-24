@@ -9,7 +9,7 @@
 <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
 <link rel="dns-prefetch" href="https://player.vimeo.com">
 <link rel="dns-prefetch" href="https://i.vimeocdn.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700;800&family=Dancing+Script:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700;800&family=Dancing+Script:wght@500;600;700&family=Bowlby+One&family=Alfa+Slab+One&family=Limelight&display=swap" rel="stylesheet">
 <!-- axios = nécessaire au chargement ; qrcode/sortable = admin uniquement → defer (non bloquant). jspdf + Vimeo = chargés à la demande (jamais pour un voyageur qui ne regarde pas la vidéo). -->
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -188,7 +188,7 @@ textarea.fi{resize:vertical;min-height:80px;}
 .vh-badge{position:relative;z-index:2;display:inline-flex;align-items:center;gap:8px;background:rgba(201,168,76,0.18);border:1px solid rgba(201,168,76,0.4);padding:6px 16px;border-radius:30px;margin-bottom:24px;font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold2);backdrop-filter:blur(8px);}
 .vh-badge-dot{width:5px;height:5px;border-radius:50%;background:var(--gold2);animation:glow 2s ease-in-out infinite;}
 @keyframes glow{0%,100%{box-shadow:0 0 4px var(--gold2);opacity:1;}50%{box-shadow:0 0 12px var(--gold2);opacity:0.7;}}
-.vh h1{position:relative;z-index:2;font-family:var(--font-serif);font-size:clamp(32px,8vw,64px);font-weight:700;letter-spacing:-1.5px;line-height:1.05;margin-bottom:14px;color:#fff;text-shadow:0 4px 30px rgba(0,0,0,0.7);}
+.vh h1{position:relative;z-index:2;font-family:var(--font-titre,var(--font-serif));font-size:clamp(32px,8vw,64px);font-weight:700;letter-spacing:-1.5px;line-height:1.05;margin-bottom:14px;color:#fff;text-shadow:0 4px 30px rgba(0,0,0,0.7);}
 .vh-sub{position:relative;z-index:2;font-size:15px;color:#f0ebe0;line-height:1.7;max-width:360px;margin:0 auto 30px;font-weight:400;text-shadow:0 2px 12px rgba(0,0,0,0.8);}
 .lang-dropdown{position:relative;z-index:3;display:inline-block;margin-bottom:18px;}
 .lang-current{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:50px;padding:8px 16px;font-size:12px;font-weight:600;color:#fff;cursor:pointer;backdrop-filter:blur(10px);font-family:var(--font-sans);display:flex;align-items:center;gap:8px;transition:all 0.2s;}
@@ -773,6 +773,19 @@ body{top:0!important}
             </div>
             <small style="display:block;margin-top:4px;color:var(--muted);font-size:10.5px">Remplace le doré actuel</small>
           </div>
+        </div>
+        <div class="fg" style="margin-top:14px">
+          <label class="fl2">Typographie du nom du logement</label>
+          <select class="fi" id="f-typo-titre" onchange="previewTypoTitre(this.value)">
+            <option value="">Élégant serif — Playfair Display (défaut)</option>
+            <option value="'Cooper Black','Cooper Std','Bowlby One',serif">Cooper Black — chaleureux, vintage</option>
+            <option value="'Cooper Black Std','Cooper Black','Bowlby One',serif">Cooper Black Std — version Adobe Pro</option>
+            <option value="'Cooper Black Condensed','Cooper Black','Bowlby One Condensed',serif">Cooper Black Condensed — plus serré</option>
+            <option value="'Bowlby One',serif">Bowlby One — équivalent web universel</option>
+            <option value="'Alfa Slab One',serif">Alfa Slab One — slab serif épais</option>
+            <option value="'Limelight','Cooper Black',serif">Limelight — Art déco rétro</option>
+          </select>
+          <small style="display:block;margin-top:4px;color:var(--muted);font-size:10.5px">Cooper Black peut ne pas s'afficher partout (police système Mac/Windows). On retombe sur Bowlby One depuis Google Fonts si non disponible.</small>
         </div>
         <div class="fg" style="margin-top:14px">
           <label class="fl2">Couleur du filtre (sur la photo de fond)</label>
@@ -2895,6 +2908,7 @@ async function openEditor(id){
     document.getElementById('f-couleur-secondaire-hex').value=cS;
     document.getElementById('f-couleur-overlay').value=cO||cP;
     document.getElementById('f-couleur-overlay-hex').value=cO;
+    document.getElementById('f-typo-titre').value=l.typo_titre||'';
     renderColorPresets();
     document.getElementById('f-vimeo').value=l.vimeo_url||'';
     document.getElementById('f-procedure').value=l.procedure_arrivee||'';
@@ -4226,6 +4240,7 @@ async function saveLivret(){
     couleur_primaire:(()=>{const v=(document.getElementById('f-couleur-primaire-hex').value||'').trim();return /^#?[0-9a-f]{6}$/i.test(v)?(v.startsWith('#')?v:'#'+v):null;})(),
     couleur_secondaire:(()=>{const v=(document.getElementById('f-couleur-secondaire-hex').value||'').trim();return /^#?[0-9a-f]{6}$/i.test(v)?(v.startsWith('#')?v:'#'+v):null;})(),
     couleur_overlay:(()=>{const v=(document.getElementById('f-couleur-overlay-hex').value||'').trim();return /^#?[0-9a-f]{6}$/i.test(v)?(v.startsWith('#')?v:'#'+v):null;})(),
+    typo_titre:(document.getElementById('f-typo-titre').value||null),
     vimeo_url:(normalizeVideoUrl(document.getElementById('f-vimeo').value)||document.getElementById('f-vimeo').value||''),
     procedure_arrivee:document.getElementById('f-procedure').value||null,
     adresse:document.getElementById('f-adresse').value||null,
@@ -4340,7 +4355,7 @@ async function lbs(slug){
     const l=lr.data[0];
     if(l.actif===false){document.getElementById('voy-loading').innerHTML='⏸ Livret temporairement indisponible.<br>Merci de contacter votre hôte.';return;}
     // Applique les couleurs du livret AU PLUS TÔT (avant chargement adresses/services) → le splash bascule tout de suite
-    try{applyLivretColors(l.couleur_primaire,l.couleur_secondaire,l.couleur_overlay);}catch(_e){}
+    try{applyLivretColors(l.couleur_primaire,l.couleur_secondaire,l.couleur_overlay);applyLivretTypo(l.typo_titre);}catch(_e){}
     const [ar,er,sr,cat]=await Promise.all([
       axios.get(`${API}/adresses?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}),
       axios.get(`${API}/equipements?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
@@ -4860,7 +4875,7 @@ async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,chec
     const l=lr.data[0];
     if(l.actif===false){document.getElementById('voy-loading').innerHTML='⏸ Livret temporairement indisponible.<br>Merci de contacter votre hôte.';return;}
     // Applique les couleurs du livret AU PLUS TÔT → le splash bascule tout de suite
-    try{applyLivretColors(l.couleur_primaire,l.couleur_secondaire,l.couleur_overlay);}catch(_e){}
+    try{applyLivretColors(l.couleur_primaire,l.couleur_secondaire,l.couleur_overlay);applyLivretTypo(l.typo_titre);}catch(_e){}
     const [ar,er,sr,cat]=await Promise.all([
       axios.get(`${API}/adresses?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}),
       axios.get(`${API}/equipements?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
@@ -4888,7 +4903,13 @@ async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,chec
 function _hexToRgb(h){const m=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(h||'');return m?{r:parseInt(m[1],16),g:parseInt(m[2],16),b:parseInt(m[3],16)}:null;}
 function _lighten(h,pct){const c=_hexToRgb(h);if(!c)return h;const f=p=>Math.min(255,Math.round(p+(255-p)*pct/100));return '#'+[f(c.r),f(c.g),f(c.b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
 function _rgba(h,a){const c=_hexToRgb(h);return c?`rgba(${c.r},${c.g},${c.b},${a})`:'';}
-const LIVRET_CSS_VARS=['--bg','--bg2','--bg3','--card','--border','--bg-nav','--muted','--muted2','--gold','--gold2','--gold3','--gold-dim','--border-gold','--ov-top','--ov-mid','--ov-bot','--ov-vig'];
+const LIVRET_CSS_VARS=['--bg','--bg2','--bg3','--card','--border','--bg-nav','--muted','--muted2','--gold','--gold2','--gold3','--gold-dim','--border-gold','--ov-top','--ov-mid','--ov-bot','--ov-vig','--font-titre'];
+function applyLivretTypo(font){
+  const r=document.documentElement;
+  if(font&&font.trim())r.style.setProperty('--font-titre',font);
+  else r.style.removeProperty('--font-titre');
+}
+function previewTypoTitre(font){applyLivretTypo(font);}
 function clearLivretColors(){const r=document.documentElement;LIVRET_CSS_VARS.forEach(v=>r.style.removeProperty(v));}
 function applyLivretColors(primary,secondary,overlay){
   // On applique sur <html> (et plus seulement #voyageur-screen) pour que TOUS les popups/modals
@@ -4957,6 +4978,7 @@ function rv(l,adresses,equipements,back,services){
   currentLivretData=l;
   // Applique les couleurs perso du livret AVANT le rendu (sinon flash de l'ancien thème)
   applyLivretColors(l.couleur_primaire,l.couleur_secondaire,l.couleur_overlay);
+  applyLivretTypo(l.typo_titre);
   document.getElementById('voy-loading').style.display='none';
   document.getElementById('voy-content').style.display='block';
   document.getElementById('voy-nom').textContent=l.nom;
