@@ -181,8 +181,8 @@ textarea.fi{resize:vertical;min-height:80px;}
 #voyageur-screen{display:none;min-height:100vh;background:var(--bg);}
 .vh{background:#060606;padding:clamp(48px,10vw,80px) clamp(24px,6vw,48px) clamp(36px,7vw,60px);text-align:center;position:relative;overflow:hidden;border-bottom:1px solid rgba(201,168,76,0.12);}
 .vh-bg{position:absolute;inset:0;background-size:cover;background-position:center;z-index:0;}
-.vh-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,6,6,0.55) 0%,rgba(6,6,6,0.65) 40%,rgba(6,6,6,0.85) 100%);}
-.vh-bg::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 30%,rgba(6,6,6,0.4) 100%);z-index:1;}
+.vh-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,var(--ov-top,rgba(6,6,6,0.55)) 0%,var(--ov-mid,rgba(6,6,6,0.65)) 40%,var(--ov-bot,rgba(6,6,6,0.85)) 100%);}
+.vh-bg::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 30%,var(--ov-vig,rgba(6,6,6,0.4)) 100%);z-index:1;}
 .vh-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(201,168,76,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(201,168,76,0.02) 1px,transparent 1px);background-size:48px 48px;z-index:1;}
 .vh-glow{position:absolute;top:-30%;left:50%;transform:translateX(-50%);width:80%;height:120%;background:radial-gradient(ellipse,rgba(201,168,76,0.05) 0%,transparent 65%);pointer-events:none;z-index:1;}
 .vh-badge{position:relative;z-index:2;display:inline-flex;align-items:center;gap:8px;background:rgba(201,168,76,0.18);border:1px solid rgba(201,168,76,0.4);padding:6px 16px;border-radius:30px;margin-bottom:24px;font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold2);backdrop-filter:blur(8px);}
@@ -773,6 +773,15 @@ body{top:0!important}
             </div>
             <small style="display:block;margin-top:4px;color:var(--muted);font-size:10.5px">Remplace le doré actuel</small>
           </div>
+        </div>
+        <div class="fg" style="margin-top:14px">
+          <label class="fl2">Couleur du filtre (sur la photo de fond)</label>
+          <div id="presets-overlay" style="display:flex;gap:6px;margin:0 0 8px;flex-wrap:wrap"></div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="color" id="f-couleur-overlay" value="#060606" oninput="syncColorPicker('f-couleur-overlay-hex',this.value)" style="width:46px;height:38px;border:1px solid var(--border);border-radius:8px;background:transparent;cursor:pointer;padding:2px">
+            <input class="fi" id="f-couleur-overlay-hex" value="" placeholder="Vide = même que dominante" oninput="syncColorHex('f-couleur-overlay',this.value)" style="flex:1;font-family:ui-monospace,monospace">
+          </div>
+          <small style="display:block;margin-top:4px;color:var(--muted);font-size:10.5px">Teinte de l'overlay foncé qui assombrit la photo d'accueil. Si vide, on utilise la couleur dominante.</small>
         </div>
         <button class="btn-s" onclick="resetLivretColors()" style="margin-top:14px;padding:8px 14px;font-size:11.5px">↺ Revenir au thème par défaut</button>
       </div>
@@ -2879,11 +2888,13 @@ async function openEditor(id){
     document.getElementById('f-slug').value=l.slug||'';
     document.getElementById('f-bienvenue').value=l.bienvenue||'';
     // Couleurs personnalisées du livret (défaut = noir & or si vide)
-    const cP=l.couleur_primaire||'#060606',cS=l.couleur_secondaire||'#c9a84c';
+    const cP=l.couleur_primaire||'#060606',cS=l.couleur_secondaire||'#c9a84c',cO=l.couleur_overlay||'';
     document.getElementById('f-couleur-primaire').value=cP;
     document.getElementById('f-couleur-primaire-hex').value=cP;
     document.getElementById('f-couleur-secondaire').value=cS;
     document.getElementById('f-couleur-secondaire-hex').value=cS;
+    document.getElementById('f-couleur-overlay').value=cO||cP;
+    document.getElementById('f-couleur-overlay-hex').value=cO;
     renderColorPresets();
     document.getElementById('f-vimeo').value=l.vimeo_url||'';
     document.getElementById('f-procedure').value=l.procedure_arrivee||'';
@@ -4214,6 +4225,7 @@ async function saveLivret(){
     bienvenue:document.getElementById('f-bienvenue').value,
     couleur_primaire:(()=>{const v=(document.getElementById('f-couleur-primaire-hex').value||'').trim();return /^#?[0-9a-f]{6}$/i.test(v)?(v.startsWith('#')?v:'#'+v):null;})(),
     couleur_secondaire:(()=>{const v=(document.getElementById('f-couleur-secondaire-hex').value||'').trim();return /^#?[0-9a-f]{6}$/i.test(v)?(v.startsWith('#')?v:'#'+v):null;})(),
+    couleur_overlay:(()=>{const v=(document.getElementById('f-couleur-overlay-hex').value||'').trim();return /^#?[0-9a-f]{6}$/i.test(v)?(v.startsWith('#')?v:'#'+v):null;})(),
     vimeo_url:(normalizeVideoUrl(document.getElementById('f-vimeo').value)||document.getElementById('f-vimeo').value||''),
     procedure_arrivee:document.getElementById('f-procedure').value||null,
     adresse:document.getElementById('f-adresse').value||null,
@@ -4328,7 +4340,7 @@ async function lbs(slug){
     const l=lr.data[0];
     if(l.actif===false){document.getElementById('voy-loading').innerHTML='⏸ Livret temporairement indisponible.<br>Merci de contacter votre hôte.';return;}
     // Applique les couleurs du livret AU PLUS TÔT (avant chargement adresses/services) → le splash bascule tout de suite
-    try{applyLivretColors(l.couleur_primaire,l.couleur_secondaire);}catch(_e){}
+    try{applyLivretColors(l.couleur_primaire,l.couleur_secondaire,l.couleur_overlay);}catch(_e){}
     const [ar,er,sr,cat]=await Promise.all([
       axios.get(`${API}/adresses?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}),
       axios.get(`${API}/equipements?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
@@ -4563,7 +4575,8 @@ function openHorairesConfirm(url){
   // (transmet la langue ET les couleurs du livret pour que la page d'attente garde le thème)
   const cP=(currentLivretData&&currentLivretData.couleur_primaire)||'';
   const cS=(currentLivretData&&currentLivretData.couleur_secondaire)||'';
-  const extra=(cP?'&pc='+encodeURIComponent(cP):'')+(cS?'&sc='+encodeURIComponent(cS):'');
+  const cO=(currentLivretData&&currentLivretData.couleur_overlay)||'';
+  const extra=(cP?'&pc='+encodeURIComponent(cP):'')+(cS?'&sc='+encodeURIComponent(cS):'')+(cO?'&oc='+encodeURIComponent(cO):'');
   const wait=`${BASE}/?w=${encodeURIComponent(u)}&lang=${detectLang()}${extra}`;
   try{window.open(wait,'_blank','noopener');}catch(_e){}
 }
@@ -4591,9 +4604,9 @@ function showWaitScreen(targetUrl){
   const qp=new URLSearchParams(window.location.search);
   let lg=(qp.get('lang')||detectLang()||'fr').toLowerCase().split('-')[0];
   const tx=WAIT_I18N[lg]||WAIT_I18N.en;
-  // Couleurs du livret transmises via ?pc= et ?sc= (sinon thème par défaut)
-  const pc=qp.get('pc')||'',sc=qp.get('sc')||'';
-  if(pc||sc)applyLivretColors(pc,sc);
+  // Couleurs du livret transmises via ?pc= ?sc= ?oc= (sinon thème par défaut)
+  const pc=qp.get('pc')||'',sc=qp.get('sc')||'',oc=qp.get('oc')||'';
+  if(pc||sc||oc)applyLivretColors(pc,sc,oc);
   // On cache toutes les screens et on injecte la page d'attente plein écran
   ['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','demandes-screen','reservations-screen','corbeille-screen','requests-screen'].forEach(s=>{const el=document.getElementById(s);if(el)el.style.display='none';});
   const ov=document.createElement('div');
@@ -4848,7 +4861,7 @@ async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,chec
     const l=lr.data[0];
     if(l.actif===false){document.getElementById('voy-loading').innerHTML='⏸ Livret temporairement indisponible.<br>Merci de contacter votre hôte.';return;}
     // Applique les couleurs du livret AU PLUS TÔT → le splash bascule tout de suite
-    try{applyLivretColors(l.couleur_primaire,l.couleur_secondaire);}catch(_e){}
+    try{applyLivretColors(l.couleur_primaire,l.couleur_secondaire,l.couleur_overlay);}catch(_e){}
     const [ar,er,sr,cat]=await Promise.all([
       axios.get(`${API}/adresses?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}),
       axios.get(`${API}/equipements?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
@@ -4876,9 +4889,9 @@ async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,chec
 function _hexToRgb(h){const m=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(h||'');return m?{r:parseInt(m[1],16),g:parseInt(m[2],16),b:parseInt(m[3],16)}:null;}
 function _lighten(h,pct){const c=_hexToRgb(h);if(!c)return h;const f=p=>Math.min(255,Math.round(p+(255-p)*pct/100));return '#'+[f(c.r),f(c.g),f(c.b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
 function _rgba(h,a){const c=_hexToRgb(h);return c?`rgba(${c.r},${c.g},${c.b},${a})`:'';}
-const LIVRET_CSS_VARS=['--bg','--bg2','--bg3','--card','--border','--bg-nav','--muted','--muted2','--gold','--gold2','--gold3','--gold-dim','--border-gold'];
+const LIVRET_CSS_VARS=['--bg','--bg2','--bg3','--card','--border','--bg-nav','--muted','--muted2','--gold','--gold2','--gold3','--gold-dim','--border-gold','--ov-top','--ov-mid','--ov-bot','--ov-vig'];
 function clearLivretColors(){const r=document.documentElement;LIVRET_CSS_VARS.forEach(v=>r.style.removeProperty(v));}
-function applyLivretColors(primary,secondary){
+function applyLivretColors(primary,secondary,overlay){
   // On applique sur <html> (et plus seulement #voyageur-screen) pour que TOUS les popups/modals
   // ouverts dans <body> (horaires, panier, paiement, CGV, page d'attente…) héritent automatiquement
   const r=document.documentElement;
@@ -4900,6 +4913,14 @@ function applyLivretColors(primary,secondary){
     r.style.setProperty('--gold-dim',_rgba(secondary,0.12));
     r.style.setProperty('--border-gold',_rgba(secondary,0.30));
   }
+  // Filtre sur la photo de fond → couleur dédiée OU fallback primaire
+  const ov=(overlay&&_hexToRgb(overlay))?overlay:(primary&&_hexToRgb(primary)?primary:null);
+  if(ov){
+    r.style.setProperty('--ov-top',_rgba(ov,0.55));
+    r.style.setProperty('--ov-mid',_rgba(ov,0.65));
+    r.style.setProperty('--ov-bot',_rgba(ov,0.85));
+    r.style.setProperty('--ov-vig',_rgba(ov,0.40));
+  }
 }
 // Helpers éditeur (sync color picker ↔ champ hex)
 function syncColorHex(pickerId,val){const v=(val||'').trim();if(/^#?[0-9a-f]{6}$/i.test(v)){const c=v.startsWith('#')?v:'#'+v;const el=document.getElementById(pickerId);if(el)el.value=c;}}
@@ -4907,6 +4928,8 @@ function syncColorPicker(hexId,val){const el=document.getElementById(hexId);if(e
 function resetLivretColors(){
   ['f-couleur-primaire','f-couleur-primaire-hex'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='#060606';});
   ['f-couleur-secondaire','f-couleur-secondaire-hex'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='#c9a84c';});
+  const oc=document.getElementById('f-couleur-overlay');if(oc)oc.value='#060606';
+  const oh=document.getElementById('f-couleur-overlay-hex');if(oh)oh.value='';
 }
 // Palette Be Nomads — couleurs cliquables en preset
 const BENOMADS_PALETTE=[
@@ -4919,11 +4942,11 @@ const BENOMADS_PALETTE=[
   {hex:'#FDFDFC',name:'Blanc'}
 ];
 function pickPreset(role,hex){
-  const ids=role==='primaire'?['f-couleur-primaire','f-couleur-primaire-hex']:['f-couleur-secondaire','f-couleur-secondaire-hex'];
-  ids.forEach(id=>{const el=document.getElementById(id);if(el)el.value=hex;});
+  const map={primaire:['f-couleur-primaire','f-couleur-primaire-hex'],secondaire:['f-couleur-secondaire','f-couleur-secondaire-hex'],overlay:['f-couleur-overlay','f-couleur-overlay-hex']};
+  (map[role]||[]).forEach(id=>{const el=document.getElementById(id);if(el)el.value=hex;});
 }
 function renderColorPresets(){
-  ['primaire','secondaire'].forEach(role=>{
+  ['primaire','secondaire','overlay'].forEach(role=>{
     const box=document.getElementById('presets-'+role);if(!box)return;
     box.innerHTML=BENOMADS_PALETTE.map(c=>(
       `<button type="button" title="${c.name} — ${c.hex}" onclick="pickPreset('${role}','${c.hex}')" style="width:26px;height:26px;border-radius:50%;border:2px solid var(--border);background:${c.hex};cursor:pointer;padding:0;box-shadow:0 1px 3px rgba(0,0,0,0.4);transition:transform .15s" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform=''"></button>`
@@ -4934,7 +4957,7 @@ function rv(l,adresses,equipements,back,services){
   currentLivretId=l.id;
   currentLivretData=l;
   // Applique les couleurs perso du livret AVANT le rendu (sinon flash de l'ancien thème)
-  applyLivretColors(l.couleur_primaire,l.couleur_secondaire);
+  applyLivretColors(l.couleur_primaire,l.couleur_secondaire,l.couleur_overlay);
   document.getElementById('voy-loading').style.display='none';
   document.getElementById('voy-content').style.display='block';
   document.getElementById('voy-nom').textContent=l.nom;
