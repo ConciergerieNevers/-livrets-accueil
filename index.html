@@ -757,6 +757,7 @@ body{top:0!important}
         <div class="ai-grid">
           <div class="fg" style="margin-bottom:0">
             <label class="fl2">Couleur dominante (fond)</label>
+            <div id="presets-primaire" style="display:flex;gap:6px;margin:0 0 8px;flex-wrap:wrap"></div>
             <div style="display:flex;gap:8px;align-items:center">
               <input type="color" id="f-couleur-primaire" value="#060606" oninput="syncColorPicker('f-couleur-primaire-hex',this.value)" style="width:46px;height:38px;border:1px solid var(--border);border-radius:8px;background:transparent;cursor:pointer;padding:2px">
               <input class="fi" id="f-couleur-primaire-hex" value="#060606" placeholder="#060606" oninput="syncColorHex('f-couleur-primaire',this.value)" style="flex:1;font-family:ui-monospace,monospace">
@@ -765,6 +766,7 @@ body{top:0!important}
           </div>
           <div class="fg" style="margin-bottom:0">
             <label class="fl2">Couleur d'accent (or)</label>
+            <div id="presets-secondaire" style="display:flex;gap:6px;margin:0 0 8px;flex-wrap:wrap"></div>
             <div style="display:flex;gap:8px;align-items:center">
               <input type="color" id="f-couleur-secondaire" value="#c9a84c" oninput="syncColorPicker('f-couleur-secondaire-hex',this.value)" style="width:46px;height:38px;border:1px solid var(--border);border-radius:8px;background:transparent;cursor:pointer;padding:2px">
               <input class="fi" id="f-couleur-secondaire-hex" value="#c9a84c" placeholder="#c9a84c" oninput="syncColorHex('f-couleur-secondaire',this.value)" style="flex:1;font-family:ui-monospace,monospace">
@@ -2882,6 +2884,7 @@ async function openEditor(id){
     document.getElementById('f-couleur-primaire-hex').value=cP;
     document.getElementById('f-couleur-secondaire').value=cS;
     document.getElementById('f-couleur-secondaire-hex').value=cS;
+    renderColorPresets();
     document.getElementById('f-vimeo').value=l.vimeo_url||'';
     document.getElementById('f-procedure').value=l.procedure_arrivee||'';
     document.getElementById('f-adresse').value=l.adresse||'';
@@ -2914,7 +2917,8 @@ async function openEditor(id){
     btnv=Array.isArray(l.boutons_video)?l.boutons_video:[];
     procEtapes=Array.isArray(l.procedure_etapes)?l.procedure_etapes:[];
     loadSuperhoteRentals(l.superhote_rental_id||'');
-  }else{document.getElementById('editor-title').textContent='Nouveau livret';loadSuperhoteRentals('');}
+  }else{document.getElementById('editor-title').textContent='Nouveau livret';loadSuperhoteRentals('');resetLivretColors();}
+  renderColorPresets();
   ra();re();rs();rbv();rpe();loadEditorServices();show('editor-screen');
 }
 
@@ -4889,6 +4893,28 @@ function syncColorPicker(hexId,val){const el=document.getElementById(hexId);if(e
 function resetLivretColors(){
   ['f-couleur-primaire','f-couleur-primaire-hex'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='#060606';});
   ['f-couleur-secondaire','f-couleur-secondaire-hex'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='#c9a84c';});
+}
+// Palette Be Nomads — couleurs cliquables en preset
+const BENOMADS_PALETTE=[
+  {hex:'#060606',name:'Noir'},
+  {hex:'#C9A84C',name:'Doré'},
+  {hex:'#DF4B2C',name:'Orange'},
+  {hex:'#BCF0EC',name:'Menthe'},
+  {hex:'#092145',name:'Navy'},
+  {hex:'#CCB591',name:'Sable'},
+  {hex:'#FDFDFC',name:'Blanc'}
+];
+function pickPreset(role,hex){
+  const ids=role==='primaire'?['f-couleur-primaire','f-couleur-primaire-hex']:['f-couleur-secondaire','f-couleur-secondaire-hex'];
+  ids.forEach(id=>{const el=document.getElementById(id);if(el)el.value=hex;});
+}
+function renderColorPresets(){
+  ['primaire','secondaire'].forEach(role=>{
+    const box=document.getElementById('presets-'+role);if(!box)return;
+    box.innerHTML=BENOMADS_PALETTE.map(c=>(
+      `<button type="button" title="${c.name} — ${c.hex}" onclick="pickPreset('${role}','${c.hex}')" style="width:26px;height:26px;border-radius:50%;border:2px solid var(--border);background:${c.hex};cursor:pointer;padding:0;box-shadow:0 1px 3px rgba(0,0,0,0.4);transition:transform .15s" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform=''"></button>`
+    )).join('');
+  });
 }
 function rv(l,adresses,equipements,back,services){
   currentLivretId=l.id;
