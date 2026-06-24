@@ -827,6 +827,8 @@ body{top:0!important}
               <small>Affichée par-dessus la vidéo avant le clic. Format 16:9 idéal. Max 200 KO. Si vide, on prend l'aperçu auto de la vidéo.</small>
             </div>
           </div>
+          <p style="margin-top:14px;font-size:12px;color:var(--muted2);text-transform:uppercase;letter-spacing:1.5px;font-weight:700">— OU choisis un visuel pré-designé —</p>
+          <div id="preset-poster-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:10px"></div>
         </div>
         <div class="fg"><label class="fl2">Procédure d'arrivée (texte simple — fallback si pas d'étapes photo)</label><textarea class="fi" id="f-procedure" placeholder="1. Récupérez les clés dans la boîte à code (code: 1234)&#10;2. L'entrée se trouve à droite du portail..." style="min-height:140px"></textarea></div>
       </div>
@@ -2921,6 +2923,7 @@ async function openEditor(id){
     document.getElementById('f-couleur-overlay-hex').value=cO;
     document.getElementById('f-typo-titre').value=l.typo_titre||'';
     renderColorPresets();
+    renderPresetPosterPicker();
     document.getElementById('f-vimeo').value=l.vimeo_url||'';
     document.getElementById('f-procedure').value=l.procedure_arrivee||'';
     document.getElementById('f-adresse').value=l.adresse||'';
@@ -2957,6 +2960,7 @@ async function openEditor(id){
     loadSuperhoteRentals(l.superhote_rental_id||'');
   }else{document.getElementById('editor-title').textContent='Nouveau livret';loadSuperhoteRentals('');resetLivretColors();}
   renderColorPresets();
+  renderPresetPosterPicker();
   ra();re();rs();rbv();rpe();loadEditorServices();show('editor-screen');
 }
 
@@ -3295,7 +3299,14 @@ function removeFond(){imgFond='';resetFondPreview();}
 function showVimeoPosterPreview(url){
   const el=document.getElementById('upload-vimeo-poster');if(!el)return;
   el.classList.add('has-image');
-  el.innerHTML=`<img src="${url}" class="img-uploader-preview"><div class="img-uploader-info"><span>✓ Vignette active</span><button class="img-remove" onclick="event.stopPropagation();removeVimeoPoster()">Supprimer</button></div><input type="file" id="input-vimeo-poster" accept="image/*" style="display:none" onchange="uploadImage(this,'vimeo-poster')">`;
+  let inner;
+  if(typeof url==='string'&&url.startsWith('preset:')){
+    const key=url.slice(7),preset=PRESET_VIDEO_POSTERS[key];
+    inner=preset?`<div class="img-uploader-preview" style="background:var(--bg);height:160px;overflow:hidden">${preset.svg}</div><div class="img-uploader-info"><span>✓ Vignette ${preset.label}</span><button class="img-remove" onclick="event.stopPropagation();removeVimeoPoster()">Supprimer</button></div>`:'';
+  }else{
+    inner=`<img src="${url}" class="img-uploader-preview"><div class="img-uploader-info"><span>✓ Vignette active</span><button class="img-remove" onclick="event.stopPropagation();removeVimeoPoster()">Supprimer</button></div>`;
+  }
+  el.innerHTML=inner+`<input type="file" id="input-vimeo-poster" accept="image/*" style="display:none" onchange="uploadImage(this,'vimeo-poster')">`;
   el.onclick=()=>document.getElementById('input-vimeo-poster').click();
 }
 function resetVimeoPosterPreview(){
@@ -3305,6 +3316,30 @@ function resetVimeoPosterPreview(){
   el.onclick=()=>document.getElementById('input-vimeo-poster').click();
 }
 function removeVimeoPoster(){vimeoPosterUrl='';resetVimeoPosterPreview();}
+// === 6 vignettes vidéo pré-designées (SVG inline, héritent des couleurs du livret) ===
+const PRESET_VIDEO_POSTERS={
+  cinema:{label:'Cinéma',
+    svg:'<svg viewBox="0 0 800 450" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block"><defs><linearGradient id="pvpC" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--bg2)"/><stop offset="100%" stop-color="var(--bg)"/></linearGradient></defs><rect width="800" height="450" fill="url(#pvpC)"/><rect width="800" height="40" y="0" fill="var(--bg3)"/><rect width="800" height="40" y="410" fill="var(--bg3)"/>'+Array.from({length:18},(_,i)=>`<rect x="${20+i*42}" y="10" width="22" height="22" rx="3" fill="var(--gold)"/><rect x="${20+i*42}" y="420" width="22" height="22" rx="3" fill="var(--gold)"/>`).join('')+[[140,170],[230,220],[320,150],[410,200],[500,170],[590,230],[680,180]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="2.5" fill="var(--gold3)" opacity="0.7"/>`).join('')+'</svg>'},
+  constellation:{label:'Constellation',
+    svg:'<svg viewBox="0 0 800 450" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block"><defs><radialGradient id="pvpK" cx="50%" cy="40%" r="80%"><stop offset="0%" stop-color="var(--bg2)"/><stop offset="100%" stop-color="var(--bg)"/></radialGradient></defs><rect width="800" height="450" fill="url(#pvpK)"/><g stroke="var(--gold)" stroke-width="0.8" opacity="0.5" fill="none"><polyline points="120,110 200,160 280,130 360,180 280,240 200,220 120,110"/><polyline points="500,90 580,140 660,100 700,180 620,210 560,180 500,90"/></g>'+[[120,110],[200,160],[280,130],[360,180],[280,240],[200,220],[500,90],[580,140],[660,100],[700,180],[620,210],[560,180],[150,330],[230,360],[330,340],[420,380],[520,350],[620,370],[710,330]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="${1.5+Math.random()*2.5}" fill="var(--gold2)"/>`).join('')+'</svg>'},
+  artdeco:{label:'Art Déco',
+    svg:'<svg viewBox="0 0 800 450" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block"><defs><linearGradient id="pvpA" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--bg2)"/><stop offset="100%" stop-color="var(--bg)"/></linearGradient></defs><rect width="800" height="450" fill="url(#pvpA)"/><g transform="translate(400 225)" fill="none" stroke="var(--gold)" stroke-width="1.2" opacity="0.7">'+Array.from({length:12},(_,i)=>{const a=(i/12)*Math.PI*2,x1=Math.cos(a)*70,y1=Math.sin(a)*70,x2=Math.cos(a)*220,y2=Math.sin(a)*220;return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"/>`}).join('')+'<circle r="40" stroke-width="2" fill="var(--gold-dim)"/><circle r="65" stroke-width="0.8"/><circle r="180" stroke-width="0.8"/><circle r="220" stroke-width="0.6"/></g></svg>'},
+  maison:{label:'Maison cosy',
+    svg:'<svg viewBox="0 0 800 450" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block"><defs><linearGradient id="pvpM" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--bg2)"/><stop offset="100%" stop-color="var(--bg)"/></linearGradient></defs><rect width="800" height="450" fill="url(#pvpM)"/>'+[[100,90],[180,130],[280,80],[360,140],[460,100],[560,130],[640,90],[720,140],[140,200],[220,180],[420,200],[620,200]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="${1.5+Math.random()*2}" fill="var(--gold2)" opacity="0.6"/>`).join('')+'<g transform="translate(330 270)" fill="none" stroke="var(--gold)" stroke-width="3"><polyline points="0,90 0,30 70,-20 140,30 140,90"/><line x1="-15" y1="35" x2="155" y2="35"/><rect x="55" y="40" width="30" height="50" fill="var(--gold)"/><rect x="15" y="45" width="20" height="20" fill="var(--gold-dim)"/><rect x="105" y="45" width="20" height="20" fill="var(--gold-dim)"/><line x1="100" y1="20" x2="100" y2="-5" stroke-width="2"/></g></svg>'},
+  vagues:{label:'Vagues',
+    svg:'<svg viewBox="0 0 800 450" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block"><defs><linearGradient id="pvpV" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--bg2)"/><stop offset="100%" stop-color="var(--bg)"/></linearGradient></defs><rect width="800" height="450" fill="url(#pvpV)"/><g fill="none" stroke="var(--gold)" stroke-width="1.4" opacity="0.55">'+[120,160,200,240,280,320,360].map((y,i)=>`<path d="M 0 ${y} C 100 ${y-20} 200 ${y+25} 400 ${y} S 700 ${y-25} 800 ${y}" opacity="${0.85-i*0.10}"/>`).join('')+'</g><circle cx="600" cy="120" r="48" fill="var(--gold-dim)" stroke="var(--gold)" stroke-width="1"/></svg>'},
+  voyage:{label:'Voyage',
+    svg:'<svg viewBox="0 0 800 450" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block"><defs><radialGradient id="pvpJ" cx="50%" cy="50%" r="70%"><stop offset="0%" stop-color="var(--bg2)"/><stop offset="100%" stop-color="var(--bg)"/></radialGradient></defs><rect width="800" height="450" fill="url(#pvpJ)"/><g transform="translate(400 225)" fill="none" stroke="var(--gold)" stroke-width="1" opacity="0.6"><circle r="170"/><circle r="130"/><circle r="90" stroke-width="1.5"/><line x1="-180" y1="0" x2="180" y2="0"/><line x1="0" y1="-180" x2="0" y2="180"/></g><g transform="translate(400 225)" fill="var(--gold)"><polygon points="0,-100 14,0 0,8 -14,0" opacity="0.95"/><polygon points="0,100 -14,0 0,-8 14,0" opacity="0.7"/></g>'+[[120,90],[680,90],[120,360],[680,360],[400,55],[400,395]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="3" fill="var(--gold2)"/>`).join('')+'</svg>'}
+};
+function pickPresetPoster(key){
+  vimeoPosterUrl='preset:'+key;
+  showVimeoPosterPreview('preset:'+key);
+  toast('✓ Vignette '+(PRESET_VIDEO_POSTERS[key]?.label||key)+' sélectionnée');
+}
+function renderPresetPosterPicker(){
+  const box=document.getElementById('preset-poster-grid');if(!box)return;
+  box.innerHTML=Object.entries(PRESET_VIDEO_POSTERS).map(([k,v])=>`<button type="button" onclick="pickPresetPoster('${k}')" style="padding:0;border:1px solid var(--border);border-radius:10px;background:transparent;cursor:pointer;overflow:hidden;display:flex;flex-direction:column;text-align:left;transition:transform .15s,border-color .15s" onmouseover="this.style.borderColor='var(--gold2)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform=''"><div style="width:100%;aspect-ratio:16/9;background:var(--bg)">${v.svg}</div><div style="padding:6px 10px;font-size:11px;font-weight:700;color:var(--gold2);letter-spacing:.5px">${v.label}</div></button>`).join('');
+}
 // === Logo du Contact (cercle dans le panneau Contact voyageur) ===
 function showLogoPreview(url){
   const el=document.getElementById('logo-preview');
@@ -5100,19 +5135,25 @@ function rv(l,adresses,equipements,back,services){
       if(poster){
         poster.style.display='block';
         poster.style.backgroundSize='cover';poster.style.backgroundPosition='center';
-        // Si une vignette perso a été uploadée, on la met EN PRIORITÉ (sinon dégradé + tentative thumbnail auto)
-        if(l.vimeo_poster_url){
+        // 3 cas : preset SVG (inline) / image uploadée / dégradé + auto-thumbnail
+        const isPreset=(l.vimeo_poster_url||'').startsWith('preset:');
+        const presetKey=isPreset?l.vimeo_poster_url.slice(7):null;
+        const presetSvg=(presetKey&&PRESET_VIDEO_POSTERS[presetKey])?PRESET_VIDEO_POSTERS[presetKey].svg:'';
+        if(presetSvg){
+          poster.style.backgroundImage='';
+        }else if(l.vimeo_poster_url){
           poster.style.backgroundImage=`url('${l.vimeo_poster_url}')`;
         }else{
           poster.style.backgroundImage='linear-gradient(135deg,var(--bg2),var(--bg3))';
         }
-        // Habillage premium : on comprend que c'est LA vidéo de visite du logement
-        poster.innerHTML='<div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;padding:16px 18px;box-sizing:border-box;background:linear-gradient(180deg,rgba(0,0,0,.30),rgba(0,0,0,.05) 35%,rgba(0,0,0,.55))">'
+        // Habillage premium (overlay z-index:1 par dessus le SVG/image)
+        poster.innerHTML=(presetSvg?`<div style="position:absolute;inset:0;z-index:0;overflow:hidden">${presetSvg}</div>`:'')
+          +'<div style="position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;justify-content:space-between;padding:16px 18px;box-sizing:border-box;background:linear-gradient(180deg,rgba(0,0,0,.30),rgba(0,0,0,.05) 35%,rgba(0,0,0,.55))">'
           +'<div style="display:flex;align-items:center;gap:7px"><span style="font-size:10px;font-weight:800;letter-spacing:2.5px;color:var(--gold3);text-transform:uppercase;text-shadow:0 1px 6px rgba(0,0,0,.7)">✦ Visite guidée du logement</span></div>'
           +'<div style="flex:1;display:flex;align-items:center;justify-content:center"><div class="vplay-btn" style="width:84px;height:84px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold2),var(--gold3));display:flex;align-items:center;justify-content:center"><span style="color:var(--bg);font-size:34px;line-height:1;margin-left:7px">▶</span></div></div>'
           +'<div style="text-shadow:0 2px 12px rgba(0,0,0,.85)"><div class="serif" style="font-size:clamp(17px,4.4vw,24px);font-weight:700;color:#fff;line-height:1.15">Découvrez votre logement en vidéo</div><div style="font-size:12px;color:var(--gold3);margin-top:3px;font-weight:600">Tout ce qu\'il faut savoir — appuyez pour lancer ▶</div></div>'
           +'</div>';
-        // Si pas de vignette perso, on tente l'aperçu auto de la vidéo
+        // Si pas de vignette du tout, on tente l'aperçu auto de la vidéo
         if(!l.vimeo_poster_url){
           getVideoThumbnail(l.vimeo_url).then(t=>{if(t&&voyVideoUrl===playerUrl&&!voyVideoStarted)poster.style.backgroundImage=`url('${t}')`;}).catch(()=>{});
         }
