@@ -4327,6 +4327,8 @@ async function lbs(slug){
     if(!lr.data.length){document.getElementById('voy-loading').textContent='Livret introuvable.';return;}
     const l=lr.data[0];
     if(l.actif===false){document.getElementById('voy-loading').innerHTML='⏸ Livret temporairement indisponible.<br>Merci de contacter votre hôte.';return;}
+    // Applique les couleurs du livret AU PLUS TÔT (avant chargement adresses/services) → le splash bascule tout de suite
+    try{applyLivretColors(l.couleur_primaire,l.couleur_secondaire);}catch(_e){}
     const [ar,er,sr,cat]=await Promise.all([
       axios.get(`${API}/adresses?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}),
       axios.get(`${API}/equipements?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
@@ -4668,13 +4670,14 @@ function clearVoyCart(){cart=[];cartStep=1;cartDemande='';cartDemOn=false;cartCG
 function startIntro(){
   let ov=document.getElementById('voy-intro');
   if(!ov){ov=document.createElement('div');ov.id='voy-intro';document.body.appendChild(ov);}
-  ov.setAttribute('style','position:fixed;inset:0;z-index:11000;background:radial-gradient(130% 90% at 50% 28%,#1c1500 0%,#060606 62%);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center');
+  // Fond et spinner pilotés par CSS vars → suivent le thème custom du livret
+  ov.setAttribute('style','position:fixed;inset:0;z-index:11000;background:radial-gradient(130% 90% at 50% 28%,var(--bg2,#1c1500) 0%,var(--bg,#060606) 62%);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center');
   ov.style.opacity='1';ov.style.transition='';
   ov.innerHTML='<div style="max-width:440px">'
     +'<div style="font-size:11px;letter-spacing:5px;text-transform:uppercase;color:var(--gold2);opacity:0;animation:introIn .6s ease .1s forwards,introGlow 2.4s ease 1s infinite">✦ Be Nomad ✦</div>'
     +'<div id="intro-hi" style="font-family:\'Dancing Script\',cursive;font-weight:700;font-size:clamp(46px,14vw,76px);color:var(--gold3);margin:14px 0 4px;line-height:1.1;opacity:0;animation:introIn .8s ease .4s forwards,introGlow 2.8s ease 1.2s infinite">Bienvenue</div>'
     +'<div id="intro-dest" style="font-size:17px;color:var(--text);min-height:22px;opacity:0;animation:introIn .6s ease .9s forwards"></div>'
-    +'<div style="margin:30px auto 0;width:32px;height:32px;border:2px solid rgba(226,192,110,0.25);border-top-color:var(--gold2);border-radius:50%;animation:introSpin .8s linear infinite"></div>'
+    +'<div style="margin:30px auto 0;width:32px;height:32px;border:2px solid var(--gold-dim,rgba(226,192,110,0.25));border-top-color:var(--gold2);border-radius:50%;animation:introSpin .8s linear infinite"></div>'
     +'</div>';
   ov.style.display='flex';
   window._introStart=Date.now();
@@ -4843,6 +4846,8 @@ async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,chec
     if(!lr.data.length){document.getElementById('voy-loading').textContent='Votre livret d\'accueil n\'est pas encore disponible. Contactez votre hôte.';return;}
     const l=lr.data[0];
     if(l.actif===false){document.getElementById('voy-loading').innerHTML='⏸ Livret temporairement indisponible.<br>Merci de contacter votre hôte.';return;}
+    // Applique les couleurs du livret AU PLUS TÔT → le splash bascule tout de suite
+    try{applyLivretColors(l.couleur_primaire,l.couleur_secondaire);}catch(_e){}
     const [ar,er,sr,cat]=await Promise.all([
       axios.get(`${API}/adresses?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}),
       axios.get(`${API}/equipements?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
