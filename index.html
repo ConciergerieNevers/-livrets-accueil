@@ -4409,6 +4409,8 @@ async function lv(id){
 }
 
 async function lbs(slug){
+  // Anti-flash : applique IMMÉDIATEMENT le thème caché en localStorage (visite précédente du même livret)
+  applyCachedThemeNow('slug:'+slug);
   show('voyageur-screen');
   startIntro();
   document.getElementById('voy-loading').style.display='block';
@@ -4418,8 +4420,8 @@ async function lbs(slug){
     if(!lr.data.length){document.getElementById('voy-loading').textContent='Livret introuvable.';return;}
     const l=lr.data[0];
     if(l.actif===false){document.getElementById('voy-loading').innerHTML='⏸ Livret temporairement indisponible.<br>Merci de contacter votre hôte.';return;}
-    // Applique les couleurs du livret AU PLUS TÔT (avant chargement adresses/services) → le splash bascule tout de suite
-    try{applyLivretColors(l.couleur_primaire,l.couleur_secondaire,l.couleur_overlay);applyLivretTypo(l.typo_titre);}catch(_e){}
+    // Applique les couleurs fraîches + met à jour le cache pour la prochaine visite
+    try{applyLivretColors(l.couleur_primaire,l.couleur_secondaire,l.couleur_overlay);applyLivretTypo(l.typo_titre);cacheCurrentTheme('slug:'+slug,l);}catch(_e){}
     const [ar,er,sr,cat]=await Promise.all([
       axios.get(`${API}/adresses?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}),
       axios.get(`${API}/equipements?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
@@ -4924,6 +4926,8 @@ async function payCart(){if(!cart.length)return;
   for(const c of cart){if(c.demande_date){if(!c.date||!c.heure){alert('Choisis une date et une heure pour : '+c.titre);return;}if(cartDateError(c)){alert(c.titre+' : service non disponible le jour choisi.');return;}}}
   const btn=document.getElementById('voy-cart-pay');if(btn){btn.disabled=true;btn.textContent='Redirection…';}try{const qp=new URLSearchParams(window.location.search);let reload;if(qp.get('r')){reload=location.origin+'/?'+new URLSearchParams({r:qp.get('r'),k:qp.get('k')||'',d:qp.get('d')||''}).toString();}else if(currentLivretData&&currentLivretData.slug){reload=location.origin+'/'+currentLivretData.slug;}else{reload=location.origin+'/';}const r=await axios.post(`${SB}/functions/v1/create-checkout`,{livret_id:currentLivretId,return_url:reload,booking_id:(qp.get('r')||''),demande:(cartDemande||'').slice(0,500),items:cart.map(c=>({id:c.id,qty:c.qty,date:c.date||'',heure:c.heure||''}))},{headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`,'Content-Type':'application/json'}});if(r.data&&r.data.ok&&r.data.url){window.location.href=r.data.url;}else{alert('Paiement indisponible pour le moment.');if(btn){btn.disabled=false;btn.textContent='💳 Payer';}}}catch(e){console.error(e);alert('Erreur lors du paiement.');if(btn){btn.disabled=false;btn.textContent='💳 Payer';}}}
 async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,checkinTime,checkoutTime){
+  // Anti-flash : applique IMMÉDIATEMENT le thème caché (visite précédente du même booking_id)
+  applyCachedThemeNow('booking:'+bookingId);
   show('voyageur-screen');
   startIntro();
   document.getElementById('voy-loading').style.display='block';
@@ -4939,8 +4943,8 @@ async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,chec
     if(!lr.data.length){document.getElementById('voy-loading').textContent='Votre livret d\'accueil n\'est pas encore disponible. Contactez votre hôte.';return;}
     const l=lr.data[0];
     if(l.actif===false){document.getElementById('voy-loading').innerHTML='⏸ Livret temporairement indisponible.<br>Merci de contacter votre hôte.';return;}
-    // Applique les couleurs du livret AU PLUS TÔT → le splash bascule tout de suite
-    try{applyLivretColors(l.couleur_primaire,l.couleur_secondaire,l.couleur_overlay);applyLivretTypo(l.typo_titre);}catch(_e){}
+    // Applique les couleurs fraîches + met à jour le cache pour la prochaine visite
+    try{applyLivretColors(l.couleur_primaire,l.couleur_secondaire,l.couleur_overlay);applyLivretTypo(l.typo_titre);cacheCurrentTheme('booking:'+bookingId,l);cacheCurrentTheme('slug:'+l.slug,l);}catch(_e){}
     const [ar,er,sr,cat]=await Promise.all([
       axios.get(`${API}/adresses?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}),
       axios.get(`${API}/equipements?livret_id=eq.${l.id}&select=*&order=ordre.asc`,{headers:{'apikey':KEY}}).catch(()=>({data:[]})),
@@ -4975,6 +4979,11 @@ function applyLivretTypo(font){
   else r.style.removeProperty('--font-titre');
 }
 function previewTypoTitre(font){applyLivretTypo(font);}
+// === Cache localStorage du thème (anti-flash sur visites suivantes) ===
+function getCachedTheme(k){try{return JSON.parse(localStorage.getItem('lv_theme:'+k)||'null');}catch(_e){return null;}}
+function setCachedTheme(k,t){try{localStorage.setItem('lv_theme:'+k,JSON.stringify(t));}catch(_e){}}
+function applyCachedThemeNow(k){const t=getCachedTheme(k);if(t){applyLivretColors(t.p,t.s,t.o);applyLivretTypo(t.t);}}
+function cacheCurrentTheme(k,l){setCachedTheme(k,{p:l.couleur_primaire||null,s:l.couleur_secondaire||null,o:l.couleur_overlay||null,t:l.typo_titre||null});}
 function clearLivretColors(){const r=document.documentElement;LIVRET_CSS_VARS.forEach(v=>r.style.removeProperty(v));}
 function applyLivretColors(primary,secondary,overlay){
   // On applique sur <html> (et plus seulement #voyageur-screen) pour que TOUS les popups/modals
