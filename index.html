@@ -4670,14 +4670,15 @@ function clearVoyCart(){cart=[];cartStep=1;cartDemande='';cartDemOn=false;cartCG
 function startIntro(){
   let ov=document.getElementById('voy-intro');
   if(!ov){ov=document.createElement('div');ov.id='voy-intro';document.body.appendChild(ov);}
-  // Fond et spinner pilotés par CSS vars → suivent le thème custom du livret
-  ov.setAttribute('style','position:fixed;inset:0;z-index:11000;background:radial-gradient(130% 90% at 50% 28%,var(--bg2,#1c1500) 0%,var(--bg,#060606) 62%);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center');
+  // Splash INVERSÉ : fond clair (couleur secondaire) + texte foncé (couleur primaire)
+  // Très chic et différent de la home → effet "porte d'entrée" élégant
+  ov.setAttribute('style','position:fixed;inset:0;z-index:11000;background:radial-gradient(130% 90% at 50% 28%,var(--gold3,#f5e4a8) 0%,var(--gold,#c9a84c) 92%);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center');
   ov.style.opacity='1';ov.style.transition='';
   ov.innerHTML='<div style="max-width:440px">'
-    +'<div style="font-size:11px;letter-spacing:5px;text-transform:uppercase;color:var(--gold2);opacity:0;animation:introIn .6s ease .1s forwards,introGlow 2.4s ease 1s infinite">✦ Be Nomad ✦</div>'
-    +'<div id="intro-hi" style="font-family:\'Dancing Script\',cursive;font-weight:700;font-size:clamp(46px,14vw,76px);color:var(--gold3);margin:14px 0 4px;line-height:1.1;opacity:0;animation:introIn .8s ease .4s forwards,introGlow 2.8s ease 1.2s infinite">Bienvenue</div>'
-    +'<div id="intro-dest" style="font-size:17px;color:var(--text);min-height:22px;opacity:0;animation:introIn .6s ease .9s forwards"></div>'
-    +'<div style="margin:30px auto 0;width:32px;height:32px;border:2px solid var(--gold-dim,rgba(226,192,110,0.25));border-top-color:var(--gold2);border-radius:50%;animation:introSpin .8s linear infinite"></div>'
+    +'<div style="font-size:11px;letter-spacing:5px;text-transform:uppercase;color:var(--bg);opacity:0;animation:introIn .6s ease .1s forwards">✦ Be Nomad ✦</div>'
+    +'<div id="intro-hi" style="font-family:\'Dancing Script\',cursive;font-weight:700;font-size:clamp(46px,14vw,76px);color:var(--bg);margin:14px 0 4px;line-height:1.1;opacity:0;animation:introIn .8s ease .4s forwards;text-shadow:0 2px 10px rgba(0,0,0,0.10)">Bienvenue</div>'
+    +'<div id="intro-dest" style="font-size:17px;color:var(--bg);opacity:0.78;min-height:22px;animation:introIn .6s ease .9s forwards"></div>'
+    +'<div style="margin:30px auto 0;width:32px;height:32px;border:2px solid rgba(0,0,0,0.12);border-top-color:var(--bg);border-radius:50%;animation:introSpin .8s linear infinite"></div>'
     +'</div>';
   ov.style.display='flex';
   window._introStart=Date.now();
