@@ -1126,7 +1126,6 @@ body{top:0!important}
             <svg class="voy-call-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14z"/></svg>
             Appeler maintenant
           </a>
-          <div class="voy-note">Uniquement par téléphone · SMS non pris en compte</div>
         </div>
         <a id="voy-contact-email" class="voy-mail" href="#"></a>
         <div class="review-card">
@@ -5049,13 +5048,21 @@ function rv(l,adresses,equipements,back,services){
   const avEl=document.getElementById('voy-av');
   if(avEl){
     if(l.logo_url){
-      avEl.innerHTML=`<img loading="lazy" decoding="async" src="${l.logo_url}" alt="Logo" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:50%">`;
-      avEl.style.background='var(--bg3)';
+      // Logo affiché dans ses VRAIES proportions (pas dans un cercle 1:1) — on respecte le ratio
+      avEl.innerHTML=`<img loading="lazy" decoding="async" src="${l.logo_url}" alt="Logo" style="max-width:100%;max-height:100%;object-fit:contain;display:block">`;
+      avEl.style.background='transparent';
+      avEl.style.boxShadow='none';
+      avEl.style.borderRadius='0';
+      avEl.style.width='200px';
+      avEl.style.height='48px';
       avEl.style.padding='0';
-      avEl.style.overflow='hidden';
     }else{
       avEl.innerHTML='🏠';
       avEl.style.background='';
+      avEl.style.boxShadow='';
+      avEl.style.borderRadius='';
+      avEl.style.width='';
+      avEl.style.height='';
       avEl.style.padding='';
       avEl.style.overflow='';
     }
