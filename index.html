@@ -399,7 +399,7 @@ textarea.fi{resize:vertical;min-height:80px;}
 .review-title{font-family:var(--font-serif);font-size:18px;font-weight:700;margin-bottom:8px;}
 .review-sub{font-size:13px;color:var(--muted2);margin-bottom:20px;line-height:1.6;}
 .review-btn{width:100%;background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;color:#060606;border-radius:12px;padding:14px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-sans);box-shadow:0 4px 16px rgba(201,168,76,0.25);}
-.voy-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(6,6,6,0.95);backdrop-filter:blur(28px);border-top:1px solid rgba(201,168,76,0.08);display:flex;padding:10px 0 clamp(10px,3vh,22px);z-index:100;overflow-x:auto;}
+.voy-nav{position:fixed;bottom:0;left:0;right:0;background:var(--bg-nav,rgba(6,6,6,0.95));backdrop-filter:blur(28px);border-top:1px solid var(--border-gold,rgba(201,168,76,0.08));display:flex;padding:10px 0 clamp(10px,3vh,22px);z-index:100;overflow-x:auto;}
 .voy-nav-btn{flex:1;min-width:60px;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;color:var(--muted);font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:4px 0;font-family:var(--font-sans);}
 .voy-nav-btn .ni{width:22px;height:22px;transition:transform 0.2s;}
 .voy-nav-btn.active{color:var(--gold2);}
@@ -4859,13 +4859,18 @@ function _rgba(h,a){const c=_hexToRgb(h);return c?`rgba(${c.r},${c.g},${c.b},${a
 function applyLivretColors(primary,secondary){
   const sc=document.getElementById('voyageur-screen');if(!sc)return;
   // Reset avant chaque application (sinon un livret B garde les couleurs du livret A)
-  ['--bg','--bg2','--bg3','--card','--border','--gold','--gold2','--gold3','--gold-dim','--border-gold'].forEach(v=>sc.style.removeProperty(v));
+  ['--bg','--bg2','--bg3','--card','--border','--bg-nav','--muted','--muted2','--gold','--gold2','--gold3','--gold-dim','--border-gold'].forEach(v=>sc.style.removeProperty(v));
   if(primary&&_hexToRgb(primary)){
     sc.style.setProperty('--bg',primary);
     sc.style.setProperty('--bg2',_lighten(primary,3));
     sc.style.setProperty('--bg3',_lighten(primary,8));
     sc.style.setProperty('--card',_lighten(primary,5));
     sc.style.setProperty('--border',_lighten(primary,14));
+    // Nav bottom : même teinte que le fond mais semi-transparente (pour le blur)
+    sc.style.setProperty('--bg-nav',_rgba(primary,0.95));
+    // Textes "muted" : variantes plus claires du fond pour rester lisibles
+    sc.style.setProperty('--muted',_lighten(primary,38));
+    sc.style.setProperty('--muted2',_lighten(primary,58));
   }
   if(secondary&&_hexToRgb(secondary)){
     sc.style.setProperty('--gold',secondary);
