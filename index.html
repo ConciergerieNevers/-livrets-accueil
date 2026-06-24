@@ -4871,7 +4871,8 @@ async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,chec
     try{const gr=await axios.get(fn,{headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`}});g=gr.data;}
     catch(err){g=err.response?err.response.data:null;}
     if(!g||!g.ok){document.getElementById('voy-loading').textContent='Lien invalide ou expiré. Contactez votre hôte.';return;}
-    const lr=await axios.get(`${API}/livrets?superhote_rental_id=eq.${encodeURIComponent(g.rental_id)}&select=*`,{headers:{'apikey':KEY}});
+    // ⚠️ Filtre deleted_at IS NULL : sinon un ancien livret supprimé encore lié au même rental SuperHote pourrait être renvoyé en premier
+    const lr=await axios.get(`${API}/livrets?superhote_rental_id=eq.${encodeURIComponent(g.rental_id)}&deleted_at=is.null&select=*`,{headers:{'apikey':KEY}});
     if(!lr.data.length){document.getElementById('voy-loading').textContent='Votre livret d\'accueil n\'est pas encore disponible. Contactez votre hôte.';return;}
     const l=lr.data[0];
     if(l.actif===false){document.getElementById('voy-loading').innerHTML='⏸ Livret temporairement indisponible.<br>Merci de contacter votre hôte.';return;}
