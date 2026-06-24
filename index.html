@@ -752,6 +752,29 @@ body{top:0!important}
         </div>
       </div>
       <div class="sc">
+        <div class="sc-title">Couleurs du livret <span style="font-weight:400;opacity:.6;font-size:13px">(optionnel)</span></div>
+        <p style="font-size:11.5px;color:var(--muted2);margin-bottom:14px;line-height:1.6">Personnalise les 2 couleurs principales du livret côté voyageur. Laisse vide pour garder le thème noir & or par défaut.</p>
+        <div class="ai-grid">
+          <div class="fg" style="margin-bottom:0">
+            <label class="fl2">Couleur dominante (fond)</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="color" id="f-couleur-primaire" value="#060606" oninput="syncColorPicker('f-couleur-primaire-hex',this.value)" style="width:46px;height:38px;border:1px solid var(--border);border-radius:8px;background:transparent;cursor:pointer;padding:2px">
+              <input class="fi" id="f-couleur-primaire-hex" value="#060606" placeholder="#060606" oninput="syncColorHex('f-couleur-primaire',this.value)" style="flex:1;font-family:ui-monospace,monospace">
+            </div>
+            <small style="display:block;margin-top:4px;color:var(--muted);font-size:10.5px">Remplace le noir actuel</small>
+          </div>
+          <div class="fg" style="margin-bottom:0">
+            <label class="fl2">Couleur d'accent (or)</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="color" id="f-couleur-secondaire" value="#c9a84c" oninput="syncColorPicker('f-couleur-secondaire-hex',this.value)" style="width:46px;height:38px;border:1px solid var(--border);border-radius:8px;background:transparent;cursor:pointer;padding:2px">
+              <input class="fi" id="f-couleur-secondaire-hex" value="#c9a84c" placeholder="#c9a84c" oninput="syncColorHex('f-couleur-secondaire',this.value)" style="flex:1;font-family:ui-monospace,monospace">
+            </div>
+            <small style="display:block;margin-top:4px;color:var(--muted);font-size:10.5px">Remplace le doré actuel</small>
+          </div>
+        </div>
+        <button class="btn-s" onclick="resetLivretColors()" style="margin-top:14px;padding:8px 14px;font-size:11.5px">↺ Revenir au thème par défaut</button>
+      </div>
+      <div class="sc">
         <div class="sc-title">Connexion SuperHote</div>
         <div class="fg">
           <label class="fl2">Logement SuperHote lié <span style="opacity:.6;font-weight:400">(livret auto par voyageur)</span></label>
@@ -2853,6 +2876,12 @@ async function openEditor(id){
     document.getElementById('f-nom').value=l.nom||'';
     document.getElementById('f-slug').value=l.slug||'';
     document.getElementById('f-bienvenue').value=l.bienvenue||'';
+    // Couleurs personnalisées du livret (défaut = noir & or si vide)
+    const cP=l.couleur_primaire||'#060606',cS=l.couleur_secondaire||'#c9a84c';
+    document.getElementById('f-couleur-primaire').value=cP;
+    document.getElementById('f-couleur-primaire-hex').value=cP;
+    document.getElementById('f-couleur-secondaire').value=cS;
+    document.getElementById('f-couleur-secondaire-hex').value=cS;
     document.getElementById('f-vimeo').value=l.vimeo_url||'';
     document.getElementById('f-procedure').value=l.procedure_arrivee||'';
     document.getElementById('f-adresse').value=l.adresse||'';
@@ -4179,6 +4208,8 @@ async function saveLivret(){
     nom:document.getElementById('f-nom').value.trim(),
     slug:document.getElementById('f-slug').value.toLowerCase().trim().replace(/\s+/g,'-'),
     bienvenue:document.getElementById('f-bienvenue').value,
+    couleur_primaire:(()=>{const v=(document.getElementById('f-couleur-primaire-hex').value||'').trim();return /^#?[0-9a-f]{6}$/i.test(v)?(v.startsWith('#')?v:'#'+v):null;})(),
+    couleur_secondaire:(()=>{const v=(document.getElementById('f-couleur-secondaire-hex').value||'').trim();return /^#?[0-9a-f]{6}$/i.test(v)?(v.startsWith('#')?v:'#'+v):null;})(),
     vimeo_url:(normalizeVideoUrl(document.getElementById('f-vimeo').value)||document.getElementById('f-vimeo').value||''),
     procedure_arrivee:document.getElementById('f-procedure').value||null,
     adresse:document.getElementById('f-adresse').value||null,
@@ -4821,9 +4852,41 @@ async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,chec
   }catch(e){console.error(e);document.getElementById('voy-loading').textContent='Erreur de chargement du livret.';}
 }
 
+// ===== Couleurs personnalisées par livret (CSS vars scopées au voyageur-screen) =====
+function _hexToRgb(h){const m=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(h||'');return m?{r:parseInt(m[1],16),g:parseInt(m[2],16),b:parseInt(m[3],16)}:null;}
+function _lighten(h,pct){const c=_hexToRgb(h);if(!c)return h;const f=p=>Math.min(255,Math.round(p+(255-p)*pct/100));return '#'+[f(c.r),f(c.g),f(c.b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+function _rgba(h,a){const c=_hexToRgb(h);return c?`rgba(${c.r},${c.g},${c.b},${a})`:'';}
+function applyLivretColors(primary,secondary){
+  const sc=document.getElementById('voyageur-screen');if(!sc)return;
+  // Reset avant chaque application (sinon un livret B garde les couleurs du livret A)
+  ['--bg','--bg2','--bg3','--card','--border','--gold','--gold2','--gold3','--gold-dim','--border-gold'].forEach(v=>sc.style.removeProperty(v));
+  if(primary&&_hexToRgb(primary)){
+    sc.style.setProperty('--bg',primary);
+    sc.style.setProperty('--bg2',_lighten(primary,3));
+    sc.style.setProperty('--bg3',_lighten(primary,8));
+    sc.style.setProperty('--card',_lighten(primary,5));
+    sc.style.setProperty('--border',_lighten(primary,14));
+  }
+  if(secondary&&_hexToRgb(secondary)){
+    sc.style.setProperty('--gold',secondary);
+    sc.style.setProperty('--gold2',_lighten(secondary,12));
+    sc.style.setProperty('--gold3',_lighten(secondary,28));
+    sc.style.setProperty('--gold-dim',_rgba(secondary,0.12));
+    sc.style.setProperty('--border-gold',_rgba(secondary,0.30));
+  }
+}
+// Helpers éditeur (sync color picker ↔ champ hex)
+function syncColorHex(pickerId,val){const v=(val||'').trim();if(/^#?[0-9a-f]{6}$/i.test(v)){const c=v.startsWith('#')?v:'#'+v;const el=document.getElementById(pickerId);if(el)el.value=c;}}
+function syncColorPicker(hexId,val){const el=document.getElementById(hexId);if(el)el.value=val;}
+function resetLivretColors(){
+  ['f-couleur-primaire','f-couleur-primaire-hex'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='#060606';});
+  ['f-couleur-secondaire','f-couleur-secondaire-hex'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='#c9a84c';});
+}
 function rv(l,adresses,equipements,back,services){
   currentLivretId=l.id;
   currentLivretData=l;
+  // Applique les couleurs perso du livret AVANT le rendu (sinon flash de l'ancien thème)
+  applyLivretColors(l.couleur_primaire,l.couleur_secondaire);
   document.getElementById('voy-loading').style.display='none';
   document.getElementById('voy-content').style.display='block';
   document.getElementById('voy-nom').textContent=l.nom;
