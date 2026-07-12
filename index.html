@@ -2810,22 +2810,34 @@ async function showStats(id,nom){
 
 async function dup(id,nom){
   const nn=await askPrompt(`Nom du nouveau livret :`,`${nom} - Copie`);if(!nn)return;
-  const ns=nn.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  const base=nn.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
   try{
+    // Auto-incrémente le slug si déjà pris (incluant les soft-deleted) : base, base-2, base-3…
+    const existing=await axios.get(`${API}/livrets?slug=like.${base}*&select=slug`,{headers:hd()});
+    const taken=new Set((existing.data||[]).map(x=>x.slug));
+    let ns=base,idx=2;while(taken.has(ns)){ns=base+'-'+(idx++);}
     const [lr,ar,er,sr]=await Promise.all([
       axios.get(`${API}/livrets?id=eq.${id}&select=*`,{headers:hd()}),
       axios.get(`${API}/adresses?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}),
       axios.get(`${API}/equipements?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]})),
       axios.get(`${API}/services?livret_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()}).catch(()=>({data:[]}))
     ]);
-    const l={...lr.data[0],nom:nn,slug:ns};delete l.id;delete l.created_at;
+    const l={...lr.data[0],nom:nn,slug:ns};
+    delete l.id;delete l.created_at;
+    // Le duplicata démarre "libre" : pas de lien SuperHote (à re-lier manuellement), pas dans la corbeille
+    l.superhote_rental_id=null;
+    l.deleted_at=null;
     const nr=await axios.post(`${API}/livrets`,l,{headers:{...hd(),'Prefer':'return=representation'}});
     const nid=nr.data[0].id;
     if(ar.data.length){const na=ar.data.map(a=>{const x=cleanRow(a);x.livret_id=nid;return x;});await axios.post(`${API}/adresses`,na,{headers:{...hd(),'Prefer':'return=minimal'}});}
     if(er.data.length){const ne=er.data.map(e=>{const x=cleanRow(e);x.livret_id=nid;return x;});await axios.post(`${API}/equipements`,ne,{headers:{...hd(),'Prefer':'return=minimal'}});}
     if(sr.data.length){const nsv=sr.data.map(s=>{const x=cleanRow(s);x.livret_id=nid;return x;});await axios.post(`${API}/services`,nsv,{headers:{...hd(),'Prefer':'return=minimal'}});}
-    toast('📋 Livret dupliqué !');ll();
-  }catch(e){console.error(e);alert('Erreur. Le slug existe peut-être déjà.');}
+    toast('📋 Livret dupliqué (slug : '+ns+')');ll();
+  }catch(e){
+    console.error(e);
+    const msg=e.response?.data?.message||e.message||'Erreur inconnue';
+    alert('❌ Impossible de dupliquer.\n\nDétail : '+msg);
+  }
 }
 
 async function del(id,nom){
