@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Bloque l'indexation par TOUS les moteurs (Google, Bing, etc.) — contenu privé voyageurs uniquement -->
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+<meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
 <title>Be Nomads — Livret d'accueil voyageur</title>
 <meta name="description" content="Votre livret d'accueil premium par Be Nomads Nevers. Toutes les infos pour profiter pleinement de votre séjour : wifi, accès, recommandations, services à la carte.">
 <!-- Open Graph (aperçu lien partagé sur SMS, WhatsApp, Messenger, Facebook, LinkedIn…) -->
@@ -5523,14 +5526,16 @@ function selectReviewStar(note){
 
 function showPositiveReview(){
   const lien=(currentLivretData&&currentLivretData.lien_avis_google||'').trim();
-  // 4 ou 5 étoiles : redirection automatique vers la page Google d'avis configurée
+  // 5 étoiles : redirection IMMÉDIATE vers Google (pas d'écran "merci" intermédiaire)
   if(lien){
+    // Ferme la modale d'avis avant la redirection
+    const m=document.getElementById('review-modal');if(m)m.style.display='none';
+    document.body.style.overflow='';
+    // Redirection dans un nouvel onglet pour garder le livret ouvert derrière
     window.open(lien,'_blank','noopener,noreferrer');
-    document.getElementById('review-step-1').style.display='none';
-    document.getElementById('review-step-thanks').style.display='block';
     return;
   }
-  // Pas de lien configuré : message de remerciement par défaut
+  // Pas de lien configuré : fallback message de remerciement
   document.getElementById('review-step-1').style.display='none';
   document.getElementById('review-step-positive').style.display='block';
   const ctas=document.getElementById('review-positive-ctas');
