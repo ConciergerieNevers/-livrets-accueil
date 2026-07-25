@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: /
+
+# Livret d'accueil voyageur privé — pas d'indexation moteurs de recherche.
