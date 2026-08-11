@@ -2558,15 +2558,16 @@ async function ensureFichFonts(){
   if(_fichFontsLoaded)return;
   const link=document.createElement('link');
   link.rel='stylesheet';
-  link.href='https://fonts.googleapis.com/css2?family=Bowlby+One&family=Rubik:wght@400;500;700&display=swap';
+  link.href='https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Plus+Jakarta+Sans:ital,wght@0,500;0,700;0,800;1,500&display=swap';
   document.head.appendChild(link);
   _fichFontsLoaded=true;
   try{
     await Promise.all([
-      document.fonts.load('400 40px "Bowlby One"'),
-      document.fonts.load('400 14px "Bowlby One"'),
-      document.fonts.load('700 12px "Rubik"'),
-      document.fonts.load('400 12px "Rubik"'),
+      document.fonts.load('400 96px "Bagel Fat One"'),
+      document.fonts.load('400 26px "Bagel Fat One"'),
+      document.fonts.load('700 12px "Plus Jakarta Sans"'),
+      document.fonts.load('500 11px "Plus Jakarta Sans"'),
+      document.fonts.load('italic 500 11px "Plus Jakarta Sans"'),
     ]);
     await document.fonts.ready;
   }catch(_){}
@@ -2582,6 +2583,8 @@ function ficheHTML(l,theme,qrLivret,qrWifi){
     footerBg:'#CCB591', footerText:'#092145', border:'transparent',
     ruleIconBg:'#CCB591', ruleIconFg:'#092145'
   };
+  const CHUNKY=`'Bagel Fat One','Bowlby One','Ultra',cursive`;
+  const BODY=`'Plus Jakarta Sans','Segoe UI',system-ui,sans-serif`;
   const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const nom=esc(l.nom||'—').toUpperCase();
   const adresse=esc(l.adresse||'—');
@@ -2595,88 +2598,96 @@ function ficheHTML(l,theme,qrLivret,qrWifi){
   const co=esc(l.checkout||'11h');
   const regles=(l.regles&&l.regles.length)?l.regles:['Ne pas fumer à l\'intérieur','Pas d\'animaux sauf sur demande','Pas de bruit après 23h'];
   const ruleEN=r=>{const t=r.toLowerCase();if(t.includes('fum'))return'No smoking inside';if(t.includes('animaux')||t.includes('animal'))return'No pets except on request';if(t.includes('bruit')||t.includes('musique'))return'No noise after 11pm';return'';};
-  const ruleIco=r=>{const t=r.toLowerCase();if(t.includes('fum'))return `<svg viewBox="0 0 24 24" width="14" height="14" fill="${P.ruleIconFg}"><path d="M2 15h13v3H2zm14 0h1v3h-1zm2 0h4v3h-4zM17 4c0 2 2 3 2 5h1c0-3-2-3-2-5h-1zm3 0c0 2 2 3 2 5h1c0-3-2-3-2-5h-1z"/><path stroke="${P.ruleIconFg}" stroke-width="2" d="M4 20L20 4"/></svg>`;if(t.includes('animaux')||t.includes('animal'))return `<svg viewBox="0 0 24 24" width="14" height="14" fill="${P.ruleIconFg}"><ellipse cx="12" cy="15" rx="4" ry="3"/><circle cx="7" cy="10" r="1.5"/><circle cx="17" cy="10" r="1.5"/><circle cx="9" cy="7" r="1.5"/><circle cx="15" cy="7" r="1.5"/></svg>`;if(t.includes('bruit')||t.includes('musique'))return `<svg viewBox="0 0 24 24" width="14" height="14" fill="${P.ruleIconFg}"><path d="M3 8h4l6-4v16l-6-4H3z"/><path stroke="${P.ruleIconFg}" stroke-width="2" fill="none" d="M17 9l5 5m0-5l-5 5"/></svg>`;return `<span style="font-family:'Bowlby One';color:${P.ruleIconFg};font-size:12px;line-height:1">!</span>`;};
+  const ruleIco=r=>{const t=r.toLowerCase();
+    if(t.includes('fum'))return`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="${P.ruleIconFg}" stroke-width="1.8"><rect x="2" y="15" width="14" height="4" rx="0.5"/><line x1="6" y1="15" x2="6" y2="19"/><line x1="10" y1="15" x2="10" y2="19"/><path d="M17 4c0 2 2 3 2 5M20 4c0 2 2 3 2 5" stroke-linecap="round"/><line x1="3" y1="21" x2="21" y2="3" stroke-width="2"/></svg>`;
+    if(t.includes('animaux')||t.includes('animal'))return`<svg viewBox="0 0 24 24" width="16" height="16" fill="${P.ruleIconFg}"><ellipse cx="12" cy="15.5" rx="4.5" ry="3.5"/><circle cx="6.5" cy="10" r="1.8"/><circle cx="17.5" cy="10" r="1.8"/><circle cx="9" cy="6.5" r="1.6"/><circle cx="15" cy="6.5" r="1.6"/></svg>`;
+    if(t.includes('bruit')||t.includes('musique'))return`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="${P.ruleIconFg}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9v6h3l5 4V5L6 9H3z" fill="${P.ruleIconFg}"/><line x1="16" y1="9" x2="21" y2="14"/><line x1="21" y1="9" x2="16" y2="14"/></svg>`;
+    return`<span style="font-family:${CHUNKY};color:${P.ruleIconFg};font-size:13px;line-height:1">!</span>`;
+  };
   const parkingBlock = l.parking ? `
-    <div style="margin-bottom:14px">
-      <div style="font-family:'Bowlby One',sans-serif;font-size:22px;color:${P.primary};line-height:1;margin-bottom:2px">PARKING</div>
-      <div style="font-family:'Rubik',sans-serif;font-weight:500;font-size:9px;color:${P.muted};letter-spacing:1.5px;margin-bottom:8px">PARKING</div>
-      <div style="font-weight:700;font-size:11.5px;line-height:1.4">${parking}</div>
+    <div style="margin-bottom:24px">
+      <div style="font-family:${CHUNKY};font-weight:400;font-size:26px;color:${P.primary};line-height:1;margin-bottom:3px;letter-spacing:0.5px">PARKING</div>
+      <div style="font-family:${BODY};font-weight:500;font-size:10px;color:${P.muted};letter-spacing:1.8px;margin-bottom:10px">PARKING</div>
+      <div style="font-family:${BODY};font-weight:700;font-size:12px;line-height:1.45">${parking}</div>
     </div>` : '';
-  const wifiQRBlock = qrWifi ? `<div style="background:#fff;padding:4px;border-radius:4px;flex-shrink:0"><img src="${qrWifi}" style="width:56px;height:56px;display:block"/></div>` : '';
-  // Icônes sociaux : SVG inline pour éviter les emojis instables en canvas
+  const wifiQRBlock = qrWifi ? `<div style="background:#fff;padding:5px;border-radius:6px;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,0.05)"><img src="${qrWifi}" style="width:72px;height:72px;display:block"/></div>` : '';
   const socialIcon={
     fb:`<svg viewBox="0 0 24 24" width="14" height="14" fill="${P.footerBg}"><path d="M13 3h4v4h-4c-.6 0-1 .4-1 1v3h5l-1 4h-4v6H8V15H5v-4h3V8c0-2.8 2.2-5 5-5z"/></svg>`,
     ig:`<svg viewBox="0 0 24 24" width="14" height="14" fill="${P.footerBg}"><path d="M7 2h10c2.8 0 5 2.2 5 5v10c0 2.8-2.2 5-5 5H7c-2.8 0-5-2.2-5-5V7c0-2.8 2.2-5 5-5zm5 5.5A4.5 4.5 0 0 0 7.5 12 4.5 4.5 0 0 0 12 16.5 4.5 4.5 0 0 0 16.5 12 4.5 4.5 0 0 0 12 7.5zm0 2A2.5 2.5 0 0 1 14.5 12 2.5 2.5 0 0 1 12 14.5 2.5 2.5 0 0 1 9.5 12 2.5 2.5 0 0 1 12 9.5zM17.5 5.5A1 1 0 0 0 16.5 6.5 1 1 0 0 0 17.5 7.5 1 1 0 0 0 18.5 6.5 1 1 0 0 0 17.5 5.5z"/></svg>`,
     li:`<svg viewBox="0 0 24 24" width="14" height="14" fill="${P.footerBg}"><path d="M4.98 3.5c0 1.4-1.1 2.5-2.5 2.5S0 4.9 0 3.5 1.1 1 2.5 1s2.5 1.1 2.5 2.5zM0 24h5V7H0v17zm7-17h5v2.3c.7-1.3 2.6-2.7 5-2.7 5 0 7 3 7 7v10h-5V15c0-2-.7-3-2-3-1.5 0-3 1-3 3v9H7V7z"/></svg>`
   };
-  return `<div style="width:794px;height:1123px;background:${P.bg};font-family:'Rubik',sans-serif;color:${P.text};box-sizing:border-box;position:relative;overflow:hidden;padding:${theme==='rouge'?'22px':'0'}">
-    <div style="${theme==='rouge'?`border:4px solid ${P.border};border-radius:14px;`:''}height:100%;box-sizing:border-box;position:relative;padding:${theme==='rouge'?'22px 28px 0':'28px 34px 0'}">
+  // Helpers de titres/labels
+  const sectTitle=(fr,en)=>`
+    <div style="font-family:${CHUNKY};font-weight:400;font-size:26px;color:${P.primary};line-height:1;margin-bottom:3px;letter-spacing:0.5px">${fr}</div>
+    <div style="font-family:${BODY};font-weight:500;font-size:10px;color:${P.muted};letter-spacing:1.8px;margin-bottom:12px">${en}</div>`;
+  const labelPair=(lab,val)=>`
+    <div style="line-height:1.45;margin-bottom:8px">
+      <span style="font-family:${CHUNKY};font-weight:400;font-size:15px;color:${P.primary};letter-spacing:0.4px">${lab}</span>
+      <span style="font-family:${BODY};font-weight:700;font-size:12px;color:${P.text};margin-left:8px">${val}</span>
+    </div>`;
+  return `<div style="width:794px;height:1123px;background:${P.bg};font-family:${BODY};color:${P.text};box-sizing:border-box;position:relative;overflow:hidden;padding:${theme==='rouge'?'26px':'0'}">
+    <div style="${theme==='rouge'?`border:5px solid ${P.border};border-radius:16px;`:''}height:100%;box-sizing:border-box;position:relative;padding:${theme==='rouge'?'30px 36px 0':'40px 44px 0'};display:flex;flex-direction:column">
       <!-- BIENVENUE -->
-      <div style="text-align:center;padding:8px 0 18px">
-        <div style="font-family:'Bowlby One',sans-serif;font-size:82px;color:${P.primary};line-height:0.95;letter-spacing:2px">BIENVENUE</div>
-        <div style="font-family:'Bowlby One',sans-serif;font-size:13px;color:${P.primary};margin-top:12px;letter-spacing:1.2px;line-height:1.2">${bienvenue}</div>
+      <div style="text-align:center;padding:10px 0 26px">
+        <div style="font-family:${CHUNKY};font-weight:400;font-size:96px;color:${P.primary};line-height:0.95;letter-spacing:2.5px">BIENVENUE</div>
+        <div style="font-family:${CHUNKY};font-weight:400;font-size:16px;color:${P.primary};margin-top:18px;letter-spacing:1.4px;line-height:1.25;max-width:600px;margin-left:auto;margin-right:auto">${bienvenue}</div>
       </div>
       <!-- LOGEMENT / HOST -->
-      <div style="display:flex;gap:26px;margin-bottom:22px">
+      <div style="display:flex;gap:40px;margin-bottom:36px;padding:0 4px">
         <div style="flex:1">
-          <div style="line-height:1.5"><span style="font-family:'Bowlby One',sans-serif;font-size:13px;color:${P.primary}">LOGEMENT :</span> <span style="font-family:'Rubik',sans-serif;font-weight:700;font-size:11.5px;color:${P.text}">${nom}</span></div>
-          <div style="line-height:1.5;margin-top:4px"><span style="font-family:'Bowlby One',sans-serif;font-size:13px;color:${P.primary}">ADRESSE :</span> <span style="font-family:'Rubik',sans-serif;font-weight:700;font-size:11.5px;color:${P.text}">${adresse}</span></div>
+          ${labelPair('LOGEMENT :',nom)}
+          ${labelPair('ADRESSE :',adresse)}
         </div>
         <div style="flex:1">
-          <div style="line-height:1.5"><span style="font-family:'Bowlby One',sans-serif;font-size:13px;color:${P.primary}">HOST :</span> <span style="font-family:'Rubik',sans-serif;font-weight:700;font-size:11.5px;color:${P.text}">${hote}</span></div>
-          <div style="line-height:1.5;margin-top:4px"><span style="font-family:'Bowlby One',sans-serif;font-size:13px;color:${P.primary}">CONTACT :</span> <span style="font-family:'Rubik',sans-serif;font-weight:700;font-size:11.5px;color:${P.text}">${contact}</span></div>
+          ${labelPair('HOST :',hote)}
+          ${labelPair('CONTACT :',contact)}
         </div>
       </div>
       <!-- 2 COLONNES -->
-      <div style="display:flex;gap:34px">
-        <div style="flex:1">
+      <div style="display:flex;gap:48px;padding:0 4px;flex:1">
+        <div style="flex:1;min-width:0">
           <!-- WIFI -->
-          <div style="margin-bottom:20px">
-            <div style="font-family:'Bowlby One',sans-serif;font-size:22px;color:${P.primary};line-height:1;margin-bottom:2px">WIFI</div>
-            <div style="font-family:'Rubik',sans-serif;font-weight:500;font-size:9px;color:${P.muted};letter-spacing:1.5px;margin-bottom:8px">NETWORK</div>
-            <div style="display:flex;gap:12px;align-items:flex-start">
-              <div style="flex:1">
-                <div style="font-weight:700;font-size:11.5px;line-height:1.6">Network : ${wifiName}</div>
-                <div style="font-weight:700;font-size:11.5px;line-height:1.6">Password : ${wifiPass}</div>
+          <div style="margin-bottom:26px">
+            ${sectTitle('WIFI','NETWORK')}
+            <div style="display:flex;gap:16px;align-items:flex-start">
+              <div style="flex:1;min-width:0">
+                <div style="font-family:${BODY};font-weight:700;font-size:12px;line-height:1.7">Network : ${wifiName}</div>
+                <div style="font-family:${BODY};font-weight:700;font-size:12px;line-height:1.7">Password : ${wifiPass}</div>
               </div>
               ${wifiQRBlock}
             </div>
           </div>
           <!-- URGENCES -->
-          <div style="margin-bottom:20px">
-            <div style="font-family:'Bowlby One',sans-serif;font-size:22px;color:${P.primary};line-height:1;margin-bottom:2px">URGENCES</div>
-            <div style="font-family:'Rubik',sans-serif;font-weight:500;font-size:9px;color:${P.muted};letter-spacing:1.5px;margin-bottom:8px">EMERGENCY INFOS</div>
-            <div style="display:flex;gap:24px;font-weight:700;font-size:11.5px;line-height:1.6">
+          <div style="margin-bottom:26px">
+            ${sectTitle('URGENCES','EMERGENCY INFOS')}
+            <div style="display:flex;gap:28px;font-family:${BODY};font-weight:700;font-size:12px;line-height:1.7">
               <div>112<br>Police 17</div>
               <div>Pompier 18<br>Samu 15</div>
             </div>
           </div>
           <!-- RAPPEL DES RÈGLES -->
-          <div style="margin-bottom:20px">
-            <div style="font-family:'Bowlby One',sans-serif;font-size:22px;color:${P.primary};line-height:1;margin-bottom:2px">RAPPEL DES RÈGLES</div>
-            <div style="font-family:'Rubik',sans-serif;font-weight:500;font-size:9px;color:${P.muted};letter-spacing:1.5px;margin-bottom:10px">HOUSE RULES</div>
+          <div style="margin-bottom:24px">
+            ${sectTitle('RAPPEL DES RÈGLES','HOUSE RULES')}
             ${regles.slice(0,4).map(r=>`
-              <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px">
-                <div style="width:22px;height:22px;border-radius:50%;background:${P.ruleIconBg};display:flex;align-items:center;justify-content:center;flex-shrink:0">${ruleIco(r)}</div>
-                <div style="flex:1;line-height:1.3">
-                  <div style="font-weight:700;font-size:11.5px">${esc(r)}</div>
-                  ${ruleEN(r)?`<div style="font-family:'Rubik',sans-serif;font-style:italic;font-size:9.5px;color:${P.muted}">${ruleEN(r)}</div>`:''}
+              <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
+                <div style="width:28px;height:28px;border-radius:50%;background:${P.ruleIconBg};display:flex;align-items:center;justify-content:center;flex-shrink:0">${ruleIco(r)}</div>
+                <div style="flex:1;line-height:1.3;min-width:0">
+                  <div style="font-family:${BODY};font-weight:700;font-size:12px">${esc(r)}</div>
+                  ${ruleEN(r)?`<div style="font-family:${BODY};font-style:italic;font-weight:500;font-size:10.5px;color:${P.muted};margin-top:1px">${ruleEN(r)}</div>`:''}
                 </div>
               </div>`).join('')}
           </div>
           ${parkingBlock}
         </div>
-        <div style="flex:1">
+        <div style="flex:1;min-width:0">
           <!-- POUBELLES -->
-          <div style="margin-bottom:20px">
-            <div style="font-family:'Bowlby One',sans-serif;font-size:22px;color:${P.primary};line-height:1;margin-bottom:2px">JOURS DES POUBELLES</div>
-            <div style="font-family:'Rubik',sans-serif;font-weight:500;font-size:9px;color:${P.muted};letter-spacing:1.5px;margin-bottom:8px">TRASH DAYS</div>
-            <div style="font-weight:700;font-size:11.5px;line-height:1.4;white-space:pre-wrap">${poubelles}</div>
+          <div style="margin-bottom:26px">
+            ${sectTitle('JOURS DES POUBELLES','TRASH DAYS')}
+            <div style="font-family:${BODY};font-weight:700;font-size:12px;line-height:1.5;white-space:pre-wrap">${poubelles}</div>
           </div>
           <!-- CHECK-OUT -->
           <div>
-            <div style="font-family:'Bowlby One',sans-serif;font-size:22px;color:${P.primary};line-height:1;margin-bottom:2px">CHECK-OUT</div>
-            <div style="font-family:'Rubik',sans-serif;font-weight:500;font-size:9px;color:${P.muted};letter-spacing:1.5px;margin-bottom:10px">CHECK-OUT</div>
+            ${sectTitle('CHECK-OUT','CHECK-OUT')}
             ${[
               ['Départ à '+co,'Check-out at '+co],
               ['Éteignez les lumières','Turn off the lights'],
@@ -2684,26 +2695,26 @@ function ficheHTML(l,theme,qrLivret,qrWifi){
               ['Sortez les poubelles','Take out the trash'],
               ['Revenez dès que possible !','Come back as soon as possible!'],
             ].map(s=>`
-              <div style="margin-bottom:8px;line-height:1.3">
-                <div style="font-weight:700;font-size:11.5px">${s[0]}</div>
-                <div style="font-family:'Rubik',sans-serif;font-style:italic;font-size:9.5px;color:${P.muted}">${s[1]}</div>
+              <div style="margin-bottom:10px;line-height:1.3">
+                <div style="font-family:${BODY};font-weight:700;font-size:12px">${s[0]}</div>
+                <div style="font-family:${BODY};font-style:italic;font-weight:500;font-size:10.5px;color:${P.muted};margin-top:1px">${s[1]}</div>
               </div>`).join('')}
           </div>
         </div>
       </div>
       <!-- FOOTER -->
-      <div style="position:absolute;left:${theme==='rouge'?'22px':'0'};right:${theme==='rouge'?'22px':'0'};bottom:${theme==='rouge'?'22px':'0'};height:110px;background:${P.footerBg};color:${P.footerText};padding:16px 26px;display:flex;align-items:center;gap:18px;box-sizing:border-box;border-radius:${theme==='rouge'?'0 0 10px 10px':'0'}">
-        <div style="background:#fff;padding:5px;border-radius:6px;flex-shrink:0"><img src="${qrLivret}" style="width:76px;height:76px;display:block"/></div>
-        <div style="flex:1">
-          <div style="font-family:'Bowlby One',sans-serif;font-size:17px;line-height:1;letter-spacing:0.8px;margin-bottom:6px">LIVRET D'ACCUEIL</div>
-          <div style="font-size:10px;line-height:1.35;max-width:220px">Scannez ce QR code pour retrouver toutes les infos du logement et bien plus.</div>
+      <div style="position:absolute;left:${theme==='rouge'?'26px':'0'};right:${theme==='rouge'?'26px':'0'};bottom:${theme==='rouge'?'26px':'0'};height:128px;background:${P.footerBg};color:${P.footerText};padding:20px 30px;display:flex;align-items:center;gap:22px;box-sizing:border-box;border-radius:${theme==='rouge'?'0 0 11px 11px':'0'}">
+        <div style="background:#fff;padding:6px;border-radius:8px;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,0.08)"><img src="${qrLivret}" style="width:82px;height:82px;display:block"/></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-family:${CHUNKY};font-weight:400;font-size:20px;line-height:1;letter-spacing:1px;margin-bottom:8px">LIVRET D'ACCUEIL</div>
+          <div style="font-family:${BODY};font-weight:500;font-size:11px;line-height:1.4;max-width:230px">Scannez pour retrouver toutes les infos du logement.</div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:5px;font-size:10.5px;font-weight:600;flex-shrink:0">
-          <div style="display:flex;align-items:center;gap:8px"><span style="width:22px;height:22px;background:${P.footerText};border-radius:50%;display:inline-flex;align-items:center;justify-content:center">${socialIcon.fb}</span> benomads</div>
-          <div style="display:flex;align-items:center;gap:8px"><span style="width:22px;height:22px;background:${P.footerText};border-radius:6px;display:inline-flex;align-items:center;justify-content:center">${socialIcon.ig}</span> benomads</div>
-          <div style="display:flex;align-items:center;gap:8px"><span style="width:22px;height:22px;background:${P.footerText};border-radius:4px;display:inline-flex;align-items:center;justify-content:center">${socialIcon.li}</span> benomads</div>
+        <div style="display:flex;flex-direction:column;gap:7px;font-family:${BODY};font-size:11px;font-weight:600;flex-shrink:0">
+          <div style="display:flex;align-items:center;gap:9px"><span style="width:24px;height:24px;background:${P.footerText};border-radius:50%;display:inline-flex;align-items:center;justify-content:center">${socialIcon.fb}</span> benomads</div>
+          <div style="display:flex;align-items:center;gap:9px"><span style="width:24px;height:24px;background:${P.footerText};border-radius:6px;display:inline-flex;align-items:center;justify-content:center">${socialIcon.ig}</span> benomads</div>
+          <div style="display:flex;align-items:center;gap:9px"><span style="width:24px;height:24px;background:${P.footerText};border-radius:4px;display:inline-flex;align-items:center;justify-content:center">${socialIcon.li}</span> benomads</div>
         </div>
-        <div style="border:2.5px solid ${P.footerText};border-radius:26px;padding:9px 22px;font-family:'Bowlby One',sans-serif;font-size:18px;letter-spacing:1.5px;line-height:1;flex-shrink:0">BE NOMADS</div>
+        <div style="border:3px solid ${P.footerText};border-radius:28px;padding:11px 24px;font-family:${CHUNKY};font-weight:400;font-size:20px;letter-spacing:1.8px;line-height:1;flex-shrink:0">BE NOMADS</div>
       </div>
     </div>
   </div>`;
