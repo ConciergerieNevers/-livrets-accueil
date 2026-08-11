@@ -1358,6 +1358,7 @@ function loadScript(src){
 }
 const LIBS={
   jspdf:'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  html2canvas:'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
   vimeo:'https://cdn.jsdelivr.net/npm/@vimeo/player@2.20.1/dist/player.min.js'
 };
 function ensureLib(name){return loadScript(LIBS[name]);}
@@ -2551,6 +2552,162 @@ const LOGO_BENOMADS_NAVY_B64='iVBORw0KGgoAAAANSUhEUgAAArwAAACMCAYAAACeX3rHAAAJYU
 // Wrappers boutons admin — 2 thèmes
 function downloadFicheRouge(id,nom){return downloadFiche(id,nom,'rouge');}
 function downloadFicheBleu(id,nom){return downloadFiche(id,nom,'bleu');}
+// Google Fonts Bowlby One + Rubik — chargées uniquement à la génération du PDF
+let _fichFontsLoaded=false;
+async function ensureFichFonts(){
+  if(_fichFontsLoaded)return;
+  const link=document.createElement('link');
+  link.rel='stylesheet';
+  link.href='https://fonts.googleapis.com/css2?family=Bowlby+One&family=Rubik:wght@400;500;700&display=swap';
+  document.head.appendChild(link);
+  _fichFontsLoaded=true;
+  try{
+    await Promise.all([
+      document.fonts.load('400 40px "Bowlby One"'),
+      document.fonts.load('400 14px "Bowlby One"'),
+      document.fonts.load('700 12px "Rubik"'),
+      document.fonts.load('400 12px "Rubik"'),
+    ]);
+    await document.fonts.ready;
+  }catch(_){}
+}
+// Construit le HTML fidèle aux 2 modèles Be Nomads (rouge ou bleu/or)
+function ficheHTML(l,theme,qrLivret,qrWifi){
+  const P = theme==='rouge' ? {
+    bg:'#F8F0DE', primary:'#E22C1E', text:'#0F2A45', muted:'#8E8878',
+    footerBg:'#E22C1E', footerText:'#F8F0DE', border:'#E22C1E',
+    ruleIconBg:'#0F2A45', ruleIconFg:'#F8F0DE'
+  } : {
+    bg:'#092145', primary:'#CCB591', text:'#F5EDDA', muted:'#B9AC91',
+    footerBg:'#CCB591', footerText:'#092145', border:'transparent',
+    ruleIconBg:'#CCB591', ruleIconFg:'#092145'
+  };
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const nom=esc(l.nom||'—').toUpperCase();
+  const adresse=esc(l.adresse||'—');
+  const hote=esc(l.hote||l.contact_nom||'BE NOMADS').toUpperCase();
+  const contact=esc(l.contact_tel||l.contact_email||'—');
+  const bienvenue=esc(l.bienvenue||'Bienvenue chez Be Nomads · Nevers').toUpperCase();
+  const wifiName=esc(l.wifi_nom||'—');
+  const wifiPass=esc(l.wifi_mdp||'—');
+  const parking=esc(l.parking||'');
+  const poubelles=esc(l.poubelles||'À préciser · To be specified');
+  const co=esc(l.checkout||'11h');
+  const regles=(l.regles&&l.regles.length)?l.regles:['Ne pas fumer à l\'intérieur','Pas d\'animaux sauf sur demande','Pas de bruit après 23h'];
+  const ruleEN=r=>{const t=r.toLowerCase();if(t.includes('fum'))return'No smoking inside';if(t.includes('animaux')||t.includes('animal'))return'No pets except on request';if(t.includes('bruit')||t.includes('musique'))return'No noise after 11pm';return'';};
+  const ruleIco=r=>{const t=r.toLowerCase();if(t.includes('fum'))return `<svg viewBox="0 0 24 24" width="14" height="14" fill="${P.ruleIconFg}"><path d="M2 15h13v3H2zm14 0h1v3h-1zm2 0h4v3h-4zM17 4c0 2 2 3 2 5h1c0-3-2-3-2-5h-1zm3 0c0 2 2 3 2 5h1c0-3-2-3-2-5h-1z"/><path stroke="${P.ruleIconFg}" stroke-width="2" d="M4 20L20 4"/></svg>`;if(t.includes('animaux')||t.includes('animal'))return `<svg viewBox="0 0 24 24" width="14" height="14" fill="${P.ruleIconFg}"><ellipse cx="12" cy="15" rx="4" ry="3"/><circle cx="7" cy="10" r="1.5"/><circle cx="17" cy="10" r="1.5"/><circle cx="9" cy="7" r="1.5"/><circle cx="15" cy="7" r="1.5"/></svg>`;if(t.includes('bruit')||t.includes('musique'))return `<svg viewBox="0 0 24 24" width="14" height="14" fill="${P.ruleIconFg}"><path d="M3 8h4l6-4v16l-6-4H3z"/><path stroke="${P.ruleIconFg}" stroke-width="2" fill="none" d="M17 9l5 5m0-5l-5 5"/></svg>`;return `<span style="font-family:'Bowlby One';color:${P.ruleIconFg};font-size:12px;line-height:1">!</span>`;};
+  const parkingBlock = l.parking ? `
+    <div style="margin-bottom:14px">
+      <div style="font-family:'Bowlby One',sans-serif;font-size:22px;color:${P.primary};line-height:1;margin-bottom:2px">PARKING</div>
+      <div style="font-family:'Rubik',sans-serif;font-weight:500;font-size:9px;color:${P.muted};letter-spacing:1.5px;margin-bottom:8px">PARKING</div>
+      <div style="font-weight:700;font-size:11.5px;line-height:1.4">${parking}</div>
+    </div>` : '';
+  const wifiQRBlock = qrWifi ? `<div style="background:#fff;padding:4px;border-radius:4px;flex-shrink:0"><img src="${qrWifi}" style="width:56px;height:56px;display:block"/></div>` : '';
+  // Icônes sociaux : SVG inline pour éviter les emojis instables en canvas
+  const socialIcon={
+    fb:`<svg viewBox="0 0 24 24" width="14" height="14" fill="${P.footerBg}"><path d="M13 3h4v4h-4c-.6 0-1 .4-1 1v3h5l-1 4h-4v6H8V15H5v-4h3V8c0-2.8 2.2-5 5-5z"/></svg>`,
+    ig:`<svg viewBox="0 0 24 24" width="14" height="14" fill="${P.footerBg}"><path d="M7 2h10c2.8 0 5 2.2 5 5v10c0 2.8-2.2 5-5 5H7c-2.8 0-5-2.2-5-5V7c0-2.8 2.2-5 5-5zm5 5.5A4.5 4.5 0 0 0 7.5 12 4.5 4.5 0 0 0 12 16.5 4.5 4.5 0 0 0 16.5 12 4.5 4.5 0 0 0 12 7.5zm0 2A2.5 2.5 0 0 1 14.5 12 2.5 2.5 0 0 1 12 14.5 2.5 2.5 0 0 1 9.5 12 2.5 2.5 0 0 1 12 9.5zM17.5 5.5A1 1 0 0 0 16.5 6.5 1 1 0 0 0 17.5 7.5 1 1 0 0 0 18.5 6.5 1 1 0 0 0 17.5 5.5z"/></svg>`,
+    li:`<svg viewBox="0 0 24 24" width="14" height="14" fill="${P.footerBg}"><path d="M4.98 3.5c0 1.4-1.1 2.5-2.5 2.5S0 4.9 0 3.5 1.1 1 2.5 1s2.5 1.1 2.5 2.5zM0 24h5V7H0v17zm7-17h5v2.3c.7-1.3 2.6-2.7 5-2.7 5 0 7 3 7 7v10h-5V15c0-2-.7-3-2-3-1.5 0-3 1-3 3v9H7V7z"/></svg>`
+  };
+  return `<div style="width:794px;height:1123px;background:${P.bg};font-family:'Rubik',sans-serif;color:${P.text};box-sizing:border-box;position:relative;overflow:hidden;padding:${theme==='rouge'?'22px':'0'}">
+    <div style="${theme==='rouge'?`border:4px solid ${P.border};border-radius:14px;`:''}height:100%;box-sizing:border-box;position:relative;padding:${theme==='rouge'?'22px 28px 0':'28px 34px 0'}">
+      <!-- BIENVENUE -->
+      <div style="text-align:center;padding:8px 0 18px">
+        <div style="font-family:'Bowlby One',sans-serif;font-size:82px;color:${P.primary};line-height:0.95;letter-spacing:2px">BIENVENUE</div>
+        <div style="font-family:'Bowlby One',sans-serif;font-size:13px;color:${P.primary};margin-top:12px;letter-spacing:1.2px;line-height:1.2">${bienvenue}</div>
+      </div>
+      <!-- LOGEMENT / HOST -->
+      <div style="display:flex;gap:26px;margin-bottom:22px">
+        <div style="flex:1">
+          <div style="line-height:1.5"><span style="font-family:'Bowlby One',sans-serif;font-size:13px;color:${P.primary}">LOGEMENT :</span> <span style="font-family:'Rubik',sans-serif;font-weight:700;font-size:11.5px;color:${P.text}">${nom}</span></div>
+          <div style="line-height:1.5;margin-top:4px"><span style="font-family:'Bowlby One',sans-serif;font-size:13px;color:${P.primary}">ADRESSE :</span> <span style="font-family:'Rubik',sans-serif;font-weight:700;font-size:11.5px;color:${P.text}">${adresse}</span></div>
+        </div>
+        <div style="flex:1">
+          <div style="line-height:1.5"><span style="font-family:'Bowlby One',sans-serif;font-size:13px;color:${P.primary}">HOST :</span> <span style="font-family:'Rubik',sans-serif;font-weight:700;font-size:11.5px;color:${P.text}">${hote}</span></div>
+          <div style="line-height:1.5;margin-top:4px"><span style="font-family:'Bowlby One',sans-serif;font-size:13px;color:${P.primary}">CONTACT :</span> <span style="font-family:'Rubik',sans-serif;font-weight:700;font-size:11.5px;color:${P.text}">${contact}</span></div>
+        </div>
+      </div>
+      <!-- 2 COLONNES -->
+      <div style="display:flex;gap:34px">
+        <div style="flex:1">
+          <!-- WIFI -->
+          <div style="margin-bottom:20px">
+            <div style="font-family:'Bowlby One',sans-serif;font-size:22px;color:${P.primary};line-height:1;margin-bottom:2px">WIFI</div>
+            <div style="font-family:'Rubik',sans-serif;font-weight:500;font-size:9px;color:${P.muted};letter-spacing:1.5px;margin-bottom:8px">NETWORK</div>
+            <div style="display:flex;gap:12px;align-items:flex-start">
+              <div style="flex:1">
+                <div style="font-weight:700;font-size:11.5px;line-height:1.6">Network : ${wifiName}</div>
+                <div style="font-weight:700;font-size:11.5px;line-height:1.6">Password : ${wifiPass}</div>
+              </div>
+              ${wifiQRBlock}
+            </div>
+          </div>
+          <!-- URGENCES -->
+          <div style="margin-bottom:20px">
+            <div style="font-family:'Bowlby One',sans-serif;font-size:22px;color:${P.primary};line-height:1;margin-bottom:2px">URGENCES</div>
+            <div style="font-family:'Rubik',sans-serif;font-weight:500;font-size:9px;color:${P.muted};letter-spacing:1.5px;margin-bottom:8px">EMERGENCY INFOS</div>
+            <div style="display:flex;gap:24px;font-weight:700;font-size:11.5px;line-height:1.6">
+              <div>112<br>Police 17</div>
+              <div>Pompier 18<br>Samu 15</div>
+            </div>
+          </div>
+          <!-- RAPPEL DES RÈGLES -->
+          <div style="margin-bottom:20px">
+            <div style="font-family:'Bowlby One',sans-serif;font-size:22px;color:${P.primary};line-height:1;margin-bottom:2px">RAPPEL DES RÈGLES</div>
+            <div style="font-family:'Rubik',sans-serif;font-weight:500;font-size:9px;color:${P.muted};letter-spacing:1.5px;margin-bottom:10px">HOUSE RULES</div>
+            ${regles.slice(0,4).map(r=>`
+              <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px">
+                <div style="width:22px;height:22px;border-radius:50%;background:${P.ruleIconBg};display:flex;align-items:center;justify-content:center;flex-shrink:0">${ruleIco(r)}</div>
+                <div style="flex:1;line-height:1.3">
+                  <div style="font-weight:700;font-size:11.5px">${esc(r)}</div>
+                  ${ruleEN(r)?`<div style="font-family:'Rubik',sans-serif;font-style:italic;font-size:9.5px;color:${P.muted}">${ruleEN(r)}</div>`:''}
+                </div>
+              </div>`).join('')}
+          </div>
+          ${parkingBlock}
+        </div>
+        <div style="flex:1">
+          <!-- POUBELLES -->
+          <div style="margin-bottom:20px">
+            <div style="font-family:'Bowlby One',sans-serif;font-size:22px;color:${P.primary};line-height:1;margin-bottom:2px">JOURS DES POUBELLES</div>
+            <div style="font-family:'Rubik',sans-serif;font-weight:500;font-size:9px;color:${P.muted};letter-spacing:1.5px;margin-bottom:8px">TRASH DAYS</div>
+            <div style="font-weight:700;font-size:11.5px;line-height:1.4;white-space:pre-wrap">${poubelles}</div>
+          </div>
+          <!-- CHECK-OUT -->
+          <div>
+            <div style="font-family:'Bowlby One',sans-serif;font-size:22px;color:${P.primary};line-height:1;margin-bottom:2px">CHECK-OUT</div>
+            <div style="font-family:'Rubik',sans-serif;font-weight:500;font-size:9px;color:${P.muted};letter-spacing:1.5px;margin-bottom:10px">CHECK-OUT</div>
+            ${[
+              ['Départ à '+co,'Check-out at '+co],
+              ['Éteignez les lumières','Turn off the lights'],
+              ['Fermez les portes et les fenêtres','Close doors and windows'],
+              ['Sortez les poubelles','Take out the trash'],
+              ['Revenez dès que possible !','Come back as soon as possible!'],
+            ].map(s=>`
+              <div style="margin-bottom:8px;line-height:1.3">
+                <div style="font-weight:700;font-size:11.5px">${s[0]}</div>
+                <div style="font-family:'Rubik',sans-serif;font-style:italic;font-size:9.5px;color:${P.muted}">${s[1]}</div>
+              </div>`).join('')}
+          </div>
+        </div>
+      </div>
+      <!-- FOOTER -->
+      <div style="position:absolute;left:${theme==='rouge'?'22px':'0'};right:${theme==='rouge'?'22px':'0'};bottom:${theme==='rouge'?'22px':'0'};height:110px;background:${P.footerBg};color:${P.footerText};padding:16px 26px;display:flex;align-items:center;gap:18px;box-sizing:border-box;border-radius:${theme==='rouge'?'0 0 10px 10px':'0'}">
+        <div style="background:#fff;padding:5px;border-radius:6px;flex-shrink:0"><img src="${qrLivret}" style="width:76px;height:76px;display:block"/></div>
+        <div style="flex:1">
+          <div style="font-family:'Bowlby One',sans-serif;font-size:17px;line-height:1;letter-spacing:0.8px;margin-bottom:6px">LIVRET D'ACCUEIL</div>
+          <div style="font-size:10px;line-height:1.35;max-width:220px">Scannez ce QR code pour retrouver toutes les infos du logement et bien plus.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px;font-size:10.5px;font-weight:600;flex-shrink:0">
+          <div style="display:flex;align-items:center;gap:8px"><span style="width:22px;height:22px;background:${P.footerText};border-radius:50%;display:inline-flex;align-items:center;justify-content:center">${socialIcon.fb}</span> benomads</div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="width:22px;height:22px;background:${P.footerText};border-radius:6px;display:inline-flex;align-items:center;justify-content:center">${socialIcon.ig}</span> benomads</div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="width:22px;height:22px;background:${P.footerText};border-radius:4px;display:inline-flex;align-items:center;justify-content:center">${socialIcon.li}</span> benomads</div>
+        </div>
+        <div style="border:2.5px solid ${P.footerText};border-radius:26px;padding:9px 22px;font-family:'Bowlby One',sans-serif;font-size:18px;letter-spacing:1.5px;line-height:1;flex-shrink:0">BE NOMADS</div>
+      </div>
+    </div>
+  </div>`;
+}
 async function downloadFiche(id,nom,theme='bleu'){
   toast('📄 Génération de la fiche…');
   let l;
@@ -2559,243 +2716,34 @@ async function downloadFiche(id,nom,theme='bleu'){
     l=r.data[0];
     if(!l){toast('Livret introuvable.');return;}
   }catch(e){toast('Erreur de chargement.');return;}
-
   const pub=`${BASE}/${l.slug}`;
-  const qrLivret=await makeQRDataURL(pub,300);
-  const showWifiQR=l.qr_wifi_show!==false; // ON par défaut
-  let qrWifi=null;
+  const qrLivret=await makeQRDataURL(pub,400);
+  const showWifiQR=l.qr_wifi_show!==false;
+  let qrWifi='';
   if(l.wifi_nom&&showWifiQR){
     const wifiStr=`WIFI:T:WPA;S:${wifiEscape(l.wifi_nom)};P:${wifiEscape(l.wifi_mdp)};;`;
-    qrWifi=await makeQRDataURL(wifiStr,300);
+    qrWifi=await makeQRDataURL(wifiStr,400);
   }
-
-  await ensureLib('jspdf');
+  await Promise.all([ensureLib('jspdf'),ensureLib('html2canvas'),ensureFichFonts()]);
+  const host=document.createElement('div');
+  host.style.cssText='position:fixed;left:-99999px;top:0;pointer-events:none;z-index:-1';
+  host.innerHTML=ficheHTML(l,theme,qrLivret,qrWifi);
+  document.body.appendChild(host);
+  try{await document.fonts.ready;}catch(_){}
+  await new Promise(r=>setTimeout(r,300));
+  const target=host.firstElementChild;
+  let canvas;
+  try{
+    canvas=await html2canvas(target,{scale:2.5,backgroundColor:null,useCORS:true,logging:false,imageTimeout:5000});
+  }catch(e){document.body.removeChild(host);toast('Erreur rendu PDF.');console.error(e);return;}
+  document.body.removeChild(host);
   const {jsPDF}=window.jspdf;
-  const doc=new jsPDF({unit:'mm',format:'a4'});
-  const W=210,H=297,M=14;
-  // ===== Palette selon le thème (rouge / bleu) — conforme aux modèles Be Nomads =====
-  // ROUGE : rouge vif sur fond crème, texte navy foncé
-  // BLEU : navy sur fond navy, texte or/beige, bandeau footer beige
-  const PAL = theme==='rouge' ? {
-    BG      : [248,240,222], // fond crème
-    PRIMARY : [226,44,30],   // rouge Be Nomads
-    PRIMARY_D:[178,32,22],   // rouge foncé
-    ACCENT  : [204,181,145], // beige (footer chip)
-    TEXT    : [26,44,78],    // navy pour body
-    MUTED   : [110,124,148], // navy désaturé
-    ONPRIM  : [248,240,222], // texte sur bloc rouge = crème
-    FOOTER_BG:[226,44,30],   // footer rouge
-    FOOTER_TX:[248,240,222], // texte footer crème
-  } : {
-    BG      : [9,33,69],     // fond navy
-    PRIMARY : [204,181,145], // or/beige Be Nomads
-    PRIMARY_D:[156,128,92],  // or foncé
-    ACCENT  : [204,181,145], // beige
-    TEXT    : [232,225,208], // texte principal beige clair
-    MUTED   : [180,168,145], // texte secondaire beige moyen
-    ONPRIM  : [9,33,69],     // texte sur bloc beige = navy
-    FOOTER_BG:[204,181,145], // footer beige/or
-    FOOTER_TX:[9,33,69],     // texte footer navy
-  };
-  const colGap=10;
-  const colW=(W-2*M-colGap)/2;
-  const xL=M, xR=M+colW+colGap;
-
-  // ===== FOND =====
-  doc.setFillColor(...PAL.BG);doc.rect(0,0,W,H,'F');
-
-  // ===== Helpers =====
-  // Bloc de titre : gros titre "chunky" en primary + sous-titre EN plus petit
-  function sectionTitle(x,y,fr,en){
-    doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(...PAL.PRIMARY);
-    doc.text(fr.toUpperCase(),x,y,{charSpace:0.6});
-    if(en){
-      doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...PAL.MUTED);
-      doc.text(en.toUpperCase(),x,y+4,{charSpace:0.6});
-    }
-    return y+9;
-  }
-  // Bloc bilingue FR gras + EN italique dessous
-  function bil(x,y,fr,en,maxw,opt={}){
-    const size=opt.size||9;
-    doc.setFont('helvetica',opt.bold===false?'normal':'bold');
-    doc.setFontSize(size);
-    doc.setTextColor(...(opt.color||PAL.TEXT));
-    const frLines=doc.splitTextToSize(fr,maxw);
-    doc.text(frLines,x,y);
-    let yy=y+frLines.length*(size*0.42);
-    if(en){
-      doc.setFont('helvetica','italic');
-      doc.setFontSize(size-1.5);
-      doc.setTextColor(...PAL.MUTED);
-      const enLines=doc.splitTextToSize(en,maxw);
-      doc.text(enLines,x,yy+0.4);
-      yy+=enLines.length*((size-1.5)*0.42)+0.4;
-    }
-    return yy;
-  }
-
-  // ===== BANDEAU HAUT — Grand "BIENVENUE" + sous-titre =====
-  // Rectangle du bandeau (rempli en primary pour rouge, transparent pour bleu déjà navy)
-  const headerH=48;
-  if(theme==='rouge'){
-    doc.setFillColor(...PAL.PRIMARY);
-    doc.roundedRect(M-1,M-1,W-2*M+2,headerH,3,3,'F');
-  }
-  // Titre "BIENVENUE" énorme, centré
-  const titleColor = theme==='rouge' ? PAL.ONPRIM : PAL.PRIMARY;
-  doc.setFont('helvetica','bold');doc.setFontSize(46);doc.setTextColor(...titleColor);
-  doc.text('BIENVENUE',W/2,M+22,{align:'center',charSpace:1.8});
-  // Sous-titre
-  const bienvSub=(l.bienvenue||'Bienvenue chez Be Nomads · Nevers').toUpperCase();
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...titleColor);
-  const subLines=doc.splitTextToSize(bienvSub,W-2*M-20);
-  doc.text(subLines,W/2,M+32,{align:'center',charSpace:0.4});
-
-  let y = M + headerH + 6;
-
-  // ===== BLOC LOGEMENT / CONTACT (2 colonnes) =====
-  const infoBoxH=22;
-  const primTx = theme==='rouge' ? PAL.PRIMARY_D : PAL.PRIMARY;
-  // Colonne gauche : Logement + Adresse
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...primTx);
-  doc.text('LOGEMENT :',xL,y);
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...PAL.TEXT);
-  doc.text(String(l.nom||'—').toUpperCase(),xL+22,y);
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...primTx);
-  doc.text('ADRESSE :',xL,y+5.5);
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...PAL.TEXT);
-  const adrLines=doc.splitTextToSize(l.adresse||'—',colW-22);
-  doc.text(adrLines.slice(0,2),xL+22,y+5.5);
-  // Colonne droite : Host + Contact
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...primTx);
-  doc.text('HOST :',xR,y);
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...PAL.TEXT);
-  doc.text(String(l.hote||l.contact_nom||'BE NOMADS').toUpperCase(),xR+14,y);
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...primTx);
-  doc.text('CONTACT :',xR,y+5.5);
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...PAL.TEXT);
-  const ctc=l.contact_tel||l.contact_email||'—';
-  doc.text(ctc,xR+22,y+5.5);
-  y += infoBoxH;
-
-  // ===== 2 COLONNES DE CONTENU =====
-  let yL=y, yR=y;
-
-  // ----- COLONNE GAUCHE -----
-  // WIFI (avec QR conditionnel)
-  yL=sectionTitle(xL,yL,'WIFI','NETWORK');
-  const wifiTextX = qrWifi ? xL : xL;
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...PAL.TEXT);
-  doc.text(`Network : ${l.wifi_nom||'—'}`,wifiTextX,yL);
-  doc.text(`Password : ${l.wifi_mdp||'—'}`,wifiTextX,yL+5);
-  if(qrWifi){
-    doc.setFillColor(255,255,255);
-    doc.roundedRect(xL+colW-24,yL-6,22,22,1.5,1.5,'F');
-    doc.addImage(qrWifi,'PNG',xL+colW-23,yL-5,20,20);
-    yL+=18;
-  }else{
-    yL+=10;
-  }
-  yL+=6;
-
-  // URGENCES
-  yL=sectionTitle(xL,yL,'URGENCES','EMERGENCY INFOS');
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...PAL.TEXT);
-  doc.text('112',xL,yL);
-  doc.text('Police 17',xL,yL+5);
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...PAL.TEXT);
-  doc.text('Pompier 18',xL+colW/2,yL);
-  doc.text('Samu 15',xL+colW/2,yL+5);
-  yL+=13;
-
-  // RAPPEL DES RÈGLES
-  yL=sectionTitle(xL,yL,'RAPPEL DES RÈGLES','HOUSE RULES');
-  const defaultRules=[
-    ['Ne pas fumer à l\'intérieur','No smoking inside'],
-    ['Pas d\'animaux sauf sur demande','No pets except on request'],
-    ['Pas de bruit après 23h','No noise after 11pm'],
-  ];
-  const rulesToShow = (l.regles && l.regles.length) ? l.regles.map(r=>[r,'']) : defaultRules;
-  rulesToShow.slice(0,6).forEach(r=>{
-    doc.setFillColor(...PAL.PRIMARY);
-    doc.circle(xL+2.5,yL-1,2,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(4.5);doc.setTextColor(...PAL.ONPRIM);
-    doc.text('!',xL+2.5,yL+0.2,{align:'center'});
-    yL=bil(xL+7,yL,r[0],r[1],colW-7,{size:8.5})+3;
-  });
-  yL+=4;
-
-  // PARKING
-  if(l.parking){
-    yL=sectionTitle(xL,yL,'PARKING','PARKING');
-    yL=bil(xL,yL,l.parking,'',colW,{size:8.5})+5;
-  }
-
-  // ----- COLONNE DROITE -----
-  // JOURS DES POUBELLES
-  yR=sectionTitle(xR,yR,'JOURS DES POUBELLES','TRASH DAYS');
-  if(l.poubelles){
-    yR=bil(xR,yR,l.poubelles,'',colW,{size:8.5})+4;
-  }else{
-    doc.setFont('helvetica','italic');doc.setFontSize(8.5);doc.setTextColor(...PAL.MUTED);
-    doc.text('À préciser · To be specified',xR,yR);
-    yR+=8;
-  }
-
-  // CHECK-OUT
-  yR=sectionTitle(xR,yR,'CHECK-OUT','CHECK-OUT');
-  if(l.checkout){
-    yR=bil(xR,yR,`Départ à ${l.checkout}`,`Check-out at ${l.checkout}`,colW,{size:9})+3;
-  }
-  const coSteps=[
-    ['Éteignez les lumières','Turn off the lights'],
-    ['Fermez les portes et les fenêtres','Close doors and windows'],
-    ['Sortez les poubelles','Take out the trash'],
-    ['Revenez dès que possible !','Come back as soon as possible!'],
-  ];
-  coSteps.forEach(s=>{
-    yR=bil(xR,yR,s[0],s[1],colW,{size:8.5})+3;
-  });
-
-  // ===== FOOTER =====
-  const footerH = 30;
-  const footerY = H - footerH;
-  doc.setFillColor(...PAL.FOOTER_BG);
-  doc.rect(0,footerY,W,footerH,'F');
-  // Bloc gauche : QR livret + "LIVRET D'ACCUEIL" + slogan
-  const qrSize=20;
-  const qrX = M, qrY = footerY + (footerH-qrSize)/2;
-  doc.setFillColor(255,255,255);
-  doc.roundedRect(qrX-0.8,qrY-0.8,qrSize+1.6,qrSize+1.6,1.5,1.5,'F');
-  doc.addImage(qrLivret,'PNG',qrX,qrY,qrSize,qrSize);
-  // Texte à côté du QR
-  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...PAL.FOOTER_TX);
-  doc.text('LIVRET D\'ACCUEIL',qrX+qrSize+4,footerY+10,{charSpace:0.5});
-  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...PAL.FOOTER_TX);
-  doc.text('Scannez pour toutes',qrX+qrSize+4,footerY+15);
-  doc.text('les infos du logement',qrX+qrSize+4,footerY+18.5);
-  // Réseaux sociaux (icônes simples cercle + lettre)
-  const socX = W-M-56, socY = footerY+9;
-  const socials=[['f','benomads'],['O','benomads'],['in','benomads']];
-  socials.forEach((s,i)=>{
-    const sx=socX+i*20;
-    doc.setFillColor(...PAL.FOOTER_TX);
-    doc.circle(sx,socY,2.6,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(4.5);doc.setTextColor(...PAL.FOOTER_BG);
-    doc.text(s[0],sx,socY+0.7,{align:'center'});
-    doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(...PAL.FOOTER_TX);
-    doc.text(s[1],sx+4,socY+1);
-  });
-  // Logo BE NOMADS en bas à droite (chip)
-  const chipW=42, chipH=8, chipX=W-M-chipW, chipY=footerY+footerH-13;
-  doc.setDrawColor(...PAL.FOOTER_TX);doc.setLineWidth(0.8);
-  doc.roundedRect(chipX,chipY,chipW,chipH,chipH/2,chipH/2,'S');
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...PAL.FOOTER_TX);
-  doc.text('BE NOMADS',chipX+chipW/2,chipY+chipH/2+1,{align:'center',charSpace:1.5});
-
-  doc.save(`fiche-accueil-${theme}-${(l.slug||nom||'livret').replace(/\s+/g,'-')}.pdf`);
+  const pdf=new jsPDF({unit:'mm',format:'a4',orientation:'portrait'});
+  const imgData=canvas.toDataURL('image/jpeg',0.92);
+  pdf.addImage(imgData,'JPEG',0,0,210,297,undefined,'FAST');
+  pdf.save(`fiche-accueil-${theme}-${(l.slug||nom||'livret').replace(/\s+/g,'-')}.pdf`);
   toast('✅ Fiche téléchargée !');
+  return;
 }
 
 async function showStats(id,nom){
