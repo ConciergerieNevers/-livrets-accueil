@@ -2608,10 +2608,11 @@ function ficheHTML(l,theme,qrLivret,qrWifi,opts){
     footerBg:'#E22C1E', footerText:'#F8F0DE', border:'#E22C1E',
     ruleIconBg:'#0F2A45', ruleIconFg:'#F8F0DE'
   } : {
-    // Bleu INVERSÉ pour impression : fond crème + tout en navy, footer navy signature avec texte beige
-    bg:'#F8F0DE', primary:'#092145', text:'#0F2A45', muted:'#6B7A94',
-    footerBg:'#092145', footerText:'#F5EDDA', border:'transparent',
-    ruleIconBg:'#092145', ruleIconFg:'#F8F0DE'
+    // Bleu INVERSÉ pour impression : fond crème + titres navy (lisibilité) + accents dorés Be Nomads
+    // Doré actif : cadre extérieur · sous-titres EN · fond des icônes règles · texte footer · chip BE NOMADS
+    bg:'#F8F0DE', primary:'#092145', text:'#0F2A45', muted:'#9C8B6E',
+    footerBg:'#092145', footerText:'#CCB591', border:'#CCB591',
+    ruleIconBg:'#CCB591', ruleIconFg:'#092145'
   };
   const CHUNKY=`'403 Cusion','Bagel Fat One','Bowlby One',cursive`;
   const BODY=`'Plus Jakarta Sans','Segoe UI',system-ui,sans-serif`;
@@ -2686,9 +2687,10 @@ function ficheHTML(l,theme,qrLivret,qrWifi,opts){
   // A3 = 297×420mm | + bleed 4mm de chaque côté = 305×428mm
   // Canvas 96dpi : A3 = 1123×1587px | + bleed = 1170×1640px
   // Zone safe intérieure : padding 60px (~15mm) pour éviter la coupe
+  const hasFrame = P.border && P.border!=='transparent';
   return `<div style="width:1170px;height:1640px;background:${P.bg};font-family:${BODY};color:${P.text};box-sizing:border-box;position:relative;overflow:hidden">
-    <div style="${theme==='rouge'?`position:absolute;inset:36px;border:7px solid ${P.border};border-radius:22px;pointer-events:none;`:''}"></div>
-    <div style="position:relative;height:100%;box-sizing:border-box;padding:${theme==='rouge'?'70px 78px 60px':'70px 78px 60px'};display:flex;flex-direction:column">
+    <div style="${hasFrame?`position:absolute;inset:36px;border:7px solid ${P.border};border-radius:22px;pointer-events:none;`:''}"></div>
+    <div style="position:relative;height:100%;box-sizing:border-box;padding:70px 78px 60px;display:flex;flex-direction:column">
       <!-- BIENVENUE -->
       <div style="text-align:center;padding:0 0 34px">
         <div style="font-family:${CHUNKY};font-weight:400;font-size:140px;color:${P.primary};line-height:0.92;letter-spacing:3.5px">BIENVENUE</div>
@@ -2768,7 +2770,7 @@ function ficheHTML(l,theme,qrLivret,qrWifi,opts){
         </div>
       </div>
       <!-- FOOTER -->
-      <div style="position:absolute;left:${theme==='rouge'?'36px':'0'};right:${theme==='rouge'?'36px':'0'};bottom:${theme==='rouge'?'36px':'0'};height:180px;background:${P.footerBg};color:${P.footerText};padding:28px 44px;display:flex;align-items:center;gap:30px;box-sizing:border-box;border-radius:${theme==='rouge'?'0 0 15px 15px':'0'}">
+      <div style="position:absolute;left:${hasFrame?'36px':'0'};right:${hasFrame?'36px':'0'};bottom:${hasFrame?'36px':'0'};height:180px;background:${P.footerBg};color:${P.footerText};padding:28px 44px;display:flex;align-items:center;gap:30px;box-sizing:border-box;border-radius:${hasFrame?'0 0 15px 15px':'0'}">
         <div style="background:#fff;padding:8px;border-radius:11px;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,0.08)"><img src="${qrLivret}" style="width:116px;height:116px;display:block"/></div>
         <div style="flex:1;min-width:0">
           <div style="font-family:${CHUNKY};font-weight:400;font-size:30px;line-height:1;letter-spacing:1.3px;margin-bottom:4px">LIVRET D'ACCUEIL</div>
