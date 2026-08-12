@@ -2608,9 +2608,10 @@ function ficheHTML(l,theme,qrLivret,qrWifi,opts){
     footerBg:'#E22C1E', footerText:'#F8F0DE', border:'#E22C1E',
     ruleIconBg:'#0F2A45', ruleIconFg:'#F8F0DE'
   } : {
-    bg:'#092145', primary:'#CCB591', text:'#F5EDDA', muted:'#B9AC91',
-    footerBg:'#CCB591', footerText:'#092145', border:'transparent',
-    ruleIconBg:'#CCB591', ruleIconFg:'#092145'
+    // Bleu INVERSÉ pour impression : fond crème + tout en navy, footer navy signature avec texte beige
+    bg:'#F8F0DE', primary:'#092145', text:'#0F2A45', muted:'#6B7A94',
+    footerBg:'#092145', footerText:'#F5EDDA', border:'transparent',
+    ruleIconBg:'#092145', ruleIconFg:'#F8F0DE'
   };
   const CHUNKY=`'403 Cusion','Bagel Fat One','Bowlby One',cursive`;
   const BODY=`'Plus Jakarta Sans','Segoe UI',system-ui,sans-serif`;
