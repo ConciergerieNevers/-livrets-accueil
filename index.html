@@ -1363,8 +1363,10 @@ const LIBS={
 };
 function ensureLib(name){return loadScript(LIBS[name]);}
 
+// Session admin : TTL 30 jours (au lieu de 8h) + refresh de l'horodatage à chaque appel
+const SESSION_TTL_MS=30*24*3600*1000; // 30 jours
 const ss=u=>localStorage.setItem('lv',JSON.stringify({u,t:Date.now()}));
-const ls=()=>{try{const s=JSON.parse(localStorage.getItem('lv'));if(!s)return null;if(Date.now()-s.t>28800000){localStorage.removeItem('lv');return null;}return s.u;}catch{return null;}};
+const ls=()=>{try{const s=JSON.parse(localStorage.getItem('lv'));if(!s)return null;if(Date.now()-s.t>SESSION_TTL_MS){localStorage.removeItem('lv');return null;}s.t=Date.now();localStorage.setItem('lv',JSON.stringify(s));return s.u;}catch{return null;}};
 const cs=()=>localStorage.removeItem('lv');
 const hd=()=>({'Content-Type':'application/json','apikey':KEY,'Authorization':`Bearer ${cu?.access_token||KEY}`});
 const hdf=()=>({'apikey':KEY,'Authorization':`Bearer ${cu?.access_token||KEY}`});
@@ -2194,7 +2196,20 @@ async function delCatService(id){
     catalogue=catalogue.filter(x=>x!==s);renderCatalogue();toast('Service supprimé');
   }catch(e){alert('Erreur suppression : '+(e.response?.data?.message||e.message));}
 }
-function showAdmin(){show('admin-screen');applyTenantUI();ll();if(isSuperAdmin())loadAvisBadge();ensureLib('jspdf').catch(()=>{});}
+function showAdmin(){show('admin-screen');applyTenantUI();ll();if(isSuperAdmin())loadAvisBadge();refreshBadges();ensureLib('jspdf').catch(()=>{});}
+// Compte les commandes payées non traitées + demandes récentes → alimente les pastilles rouges
+async function refreshBadges(){
+  try{
+    const [c,d]=await Promise.all([
+      axios.get(`${API}/commandes?select=id&statut=eq.paye&traitee=eq.false`,{headers:hd()}).catch(()=>({data:[]})),
+      axios.get(`${API}/demandes?select=id&traitee=eq.false`,{headers:hd()}).catch(()=>({data:[]}))
+    ]);
+    setDemBadge((c.data||[]).length);
+    setReqBadge((d.data||[]).length);
+  }catch(_){}
+}
+// Rafraîchit les pastilles toutes les 60s tant que l'admin est affiché
+setInterval(()=>{if(document.getElementById('admin-screen')?.style.display!=='none')refreshBadges();},60000);
 
 async function loadAvisBadge(){
   try{
@@ -4887,7 +4902,7 @@ function bookableDay(c,dt){const now=new Date();const dl=parseInt(c.delai_jours)
 let heureOpen=null;
 function toggleHeure(lineId){heureOpen=(heureOpen===lineId?null:lineId);calOpen=null;renderCart();}
 function pickHeure(lineId,v){const c=cart.find(x=>x.lineId===lineId);if(!c)return;c.heure=v;saveCart();heureOpen=null;renderCart();}
-function heureGrid(c){let html='<div style="margin-top:8px;background:#0e0e0e;border:1px solid var(--border-gold);border-radius:12px;padding:10px"><div style="font-size:11px;color:var(--muted2);margin-bottom:8px">Choisis l\'heure souhaitée</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">';for(let h=7;h<=20;h++){const v=(h<10?'0'+h:''+h)+':00';const sel=c.heure===v;html+='<div onclick="pickHeure(\''+c.lineId+'\',\''+v+'\')" style="padding:9px 0;border-radius:8px;text-align:center;cursor:pointer;font-size:13px;'+(sel?'background:linear-gradient(135deg,#b8922a,#e2c06e);color:#060606;font-weight:700':'color:#fff;background:#1a1a1a')+'">'+h+'h</div>';}html+='</div></div>';return html;}
+function heureGrid(c){let html='<div style="margin-top:8px;background:var(--card);border:1px solid var(--border-gold);border-radius:12px;padding:10px"><div style="font-size:11px;color:var(--muted2);margin-bottom:8px">Choisis l\'heure souhaitée</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">';for(let h=7;h<=20;h++){const v=(h<10?'0'+h:''+h)+':00';const sel=c.heure===v;html+='<div onclick="pickHeure(\''+c.lineId+'\',\''+v+'\')" style="padding:9px 0;border-radius:8px;text-align:center;cursor:pointer;font-size:13px;'+(sel?'background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--bg);font-weight:700':'color:var(--gold3);background:var(--bg3)')+'">'+h+'h</div>';}html+='</div></div>';return html;}
 function calGrid(c){
   const today=new Date();today.setHours(0,0,0,0);
   const y=calMonth.y,m=calMonth.m;
@@ -4895,8 +4910,8 @@ function calGrid(c){
   const dim=new Date(y,m+1,0).getDate();
   const moisN=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
   const jd=c.jours_dispo||[0,1,2,3,4,5,6];
-  let html='<div style="margin-top:8px;background:#0e0e0e;border:1px solid var(--border-gold);border-radius:12px;padding:10px">';
-  html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><button type="button" onclick="calNav(-1)" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border-gold);background:#1a1a1a;color:var(--gold2);cursor:pointer">‹</button><span style="color:#fff;font-weight:600;font-size:13px;text-transform:capitalize">'+moisN[m]+' '+y+'</span><button type="button" onclick="calNav(1)" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border-gold);background:#1a1a1a;color:var(--gold2);cursor:pointer">›</button></div>';
+  let html='<div style="margin-top:8px;background:var(--card);border:1px solid var(--border-gold);border-radius:12px;padding:10px">';
+  html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><button type="button" onclick="calNav(-1)" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border-gold);background:var(--bg3);color:var(--gold2);cursor:pointer">‹</button><span style="color:var(--gold3);font-weight:600;font-size:13px;text-transform:capitalize">'+moisN[m]+' '+y+'</span><button type="button" onclick="calNav(1)" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border-gold);background:var(--bg3);color:var(--gold2);cursor:pointer">›</button></div>';
   html+='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center">';
   ['L','M','M','J','V','S','D'].forEach(d=>{html+='<div style="font-size:10px;color:var(--muted2);padding:2px 0">'+d+'</div>';});
   for(let i=0;i<startDow;i++)html+='<div></div>';
@@ -4904,8 +4919,8 @@ function calGrid(c){
     const dt=new Date(y,m,day),dow=dt.getDay();
     const iso=y+'-'+String(m+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
     const past=dt<today,allowed=jd.includes(dow),sel=c.date===iso,late=allowed&&!past&&!bookableDay(c,dt);
-    if(allowed&&!past&&!late){html+='<div onclick="pickCalDay(\''+c.lineId+'\',\''+iso+'\')" style="padding:7px 0;border-radius:6px;cursor:pointer;font-size:13px;'+(sel?'background:linear-gradient(135deg,#b8922a,#e2c06e);color:#060606;font-weight:700':'color:#fff;background:#1a1a1a')+'">'+day+'</div>';}
-    else if(past){html+='<div style="padding:7px 0;border-radius:6px;font-size:13px;color:#555">'+day+'</div>';}
+    if(allowed&&!past&&!late){html+='<div onclick="pickCalDay(\''+c.lineId+'\',\''+iso+'\')" style="padding:7px 0;border-radius:6px;cursor:pointer;font-size:13px;'+(sel?'background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--bg);font-weight:700':'color:var(--gold3);background:var(--bg3)')+'">'+day+'</div>';}
+    else if(past){html+='<div style="padding:7px 0;border-radius:6px;font-size:13px;color:var(--muted2);opacity:0.4">'+day+'</div>';}
     else{html+='<div title="'+(late?'Trop tard pour réserver':'Non disponible')+'" style="padding:7px 0;border-radius:6px;font-size:13px;color:#e0556b;text-decoration:line-through;opacity:0.55">'+day+'</div>';}
   }
   html+='</div></div>';
