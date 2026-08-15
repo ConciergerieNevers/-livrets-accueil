@@ -4841,6 +4841,8 @@ async function sendVoyDemande(){
   const payload={livret_id:currentLivretId||null,livret_nom:(currentLivretData&&currentLivretData.nom)||null,booking_id:(parseInt(qp.get('r'))||null),guest_nom:(guestNom||null),message:msg.slice(0,2000)};
   try{
     await axios.post(`${API}/demandes`,payload,{headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'}});
+    // Notification email à nevers@be-nomads.fr (ne bloque pas l'UX même si échec)
+    fetch(`${SB}/functions/v1/notify`,{method:'POST',headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`,'Content-Type':'application/json'},body:JSON.stringify({type:'demande',data:payload})}).catch(()=>{});
     const ov=document.getElementById('voy-demande');if(ov)ov.innerHTML='<div style="max-width:480px;width:100%;margin:auto;background:var(--card);border:1px solid var(--border-gold);border-radius:20px;padding:30px;text-align:center"><div style="font-size:40px">✅</div><div class="serif" style="font-size:20px;color:var(--gold3);margin:10px 0 6px">Demande envoyée&nbsp;!</div><p style="font-size:13px;color:var(--muted2)">Nous revenons vers vous au plus vite.</p><button onclick="var o=document.getElementById(\'voy-demande\');if(o)o.style.display=\'none\'" style="margin-top:14px;padding:12px 22px;border:none;border-radius:12px;background:linear-gradient(135deg,#b8922a,#e2c06e,#d4a843);color:#060606;font-weight:700;cursor:pointer">Fermer</button></div>';
   }catch(e){alert('Envoi impossible, réessayez.');if(btn){btn.disabled=false;btn.textContent='Envoyer ma demande';}}
 }
