@@ -1498,8 +1498,10 @@ function renderRequests(){
 }
 async function markReqTraitee(id,val){
   const d=reqData.find(x=>x.id===id);if(!d)return;
-  try{await axios.patch(`${API}/demandes?id=eq.${id}`,{traitee:val},{headers:{...hd(),'Prefer':'return=minimal'}});d.traitee=val;renderRequests();toast(val?'✅ Demande traitée':'Demande rouverte');}
-  catch(e){alert('Impossible de mettre à jour.');}
+  try{await axios.patch(`${API}/demandes?id=eq.${id}`,{traitee:val},{headers:{...hd(),'Prefer':'return=minimal'}});d.traitee=val;renderRequests();toast(val?'✅ Demande traitée':'Demande rouverte');refreshBadges();
+    // Envoi d'un email de confirmation au client si on marque "traitée"
+    if(val&&d.guest_email){fetch(`${SB}/functions/v1/notify`,{method:'POST',headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`,'Content-Type':'application/json'},body:JSON.stringify({type:'demande_traitee',data:d})}).catch(()=>{});}
+  }catch(e){alert('Impossible de mettre à jour.');}
 }
 async function deleteReq(id){
   if(!confirm('Supprimer cette demande ?'))return;
@@ -1510,7 +1512,9 @@ async function markTraitee(id,val){
   const c=demData.find(x=>x.id===id);if(!c)return;
   try{
     await axios.patch(`${API}/commandes?id=eq.${id}`,{traitee:val},{headers:{...hd(),'Prefer':'return=minimal'}});
-    c.traitee=val;renderDemDetail();renderDemandes();toast(val?'✅ Demande traitée':'Demande rouverte');
+    c.traitee=val;renderDemDetail();renderDemandes();toast(val?'✅ Commande traitée':'Commande rouverte');refreshBadges();
+    // Envoi d'un email de confirmation au client si on marque "traitée"
+    if(val&&c.guest_email){fetch(`${SB}/functions/v1/notify`,{method:'POST',headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`,'Content-Type':'application/json'},body:JSON.stringify({type:'commande_traitee',data:c})}).catch(()=>{});}
   }catch(e){alert('Impossible de mettre à jour.');}
 }
 function setDemChart(m){demChartMode=m;renderDemandes();}
