@@ -2069,7 +2069,8 @@ function catEditHtml(s){
   const checks=allLivrets.map(lv=>`<label style="display:inline-flex;align-items:center;gap:6px;margin:4px 14px 4px 0;font-size:13px;cursor:pointer"><input type="checkbox" ${(s.livret_ids||[]).includes(lv.id)?'checked':''} onchange="toggleCatLivret('${id}','${lv.id}',this.checked)">${(lv.nom||'').replace(/</g,'&lt;')}</label>`).join('')||'<span style="color:var(--muted);font-size:13px">Aucun livret.</span>';
   return `<div class="fg"><label class="fl2">Titre</label><input class="fi" id="catf-titre-${id}" value="${(s.titre||'').replace(/"/g,'&quot;')}" placeholder="Ex: Ménage mi-séjour"></div>
     <div class="fg"><label class="fl2">Catégorie</label><input class="fi" id="catf-cat-${id}" value="${(s.categorie||'').replace(/"/g,'&quot;')}" placeholder="Ex: Restauration, Ménage, Bien-être" list="cat-cats-dl"></div>
-    <div class="fg"><label class="fl2">Prix</label><input class="fi" id="catf-prix-${id}" value="${(s.prix||'').replace(/"/g,'&quot;')}" placeholder="Ex: 25€"></div>
+    <div class="fg"><label class="fl2">Prix TTC</label><input class="fi" id="catf-prix-${id}" value="${(s.prix||'').replace(/"/g,'&quot;')}" placeholder="Ex: 25€"></div>
+    <div class="fg"><label class="fl2">TVA applicable</label><select class="fi" id="catf-tva-${id}"><option value="">— non défini —</option><option value="100" ${s.tva_taux==100?'selected':''}>10% (restauration, transport, fleurs coupées)</option><option value="200" ${s.tva_taux==200?'selected':''}>20% (services, ménage, bien-être, location)</option><option value="55" ${s.tva_taux==55?'selected':''}>5,5% (aliments à emporter — usage rare)</option></select><div style="font-size:11px;color:var(--muted2);margin-top:4px">Applique automatiquement le bon Tax Rate Stripe. Facture détaillée HT/TVA.</div></div>
     <div class="fg"><label class="fl2">Description</label><textarea class="fi" id="catf-desc-${id}" placeholder="Détails du service">${(s.description||'').replace(/</g,'&lt;')}</textarea></div>
     <div class="fg"><label class="fl2">Photo</label>${s.image_url?`<img src="${s.image_url}" style="width:84px;height:84px;object-fit:cover;border-radius:12px;display:block;margin-bottom:8px">`:''}<input type="file" accept="image/*" onchange="uploadImage(this,'cat-${id}')"></div>
     <div class="fg"><label class="fl2" style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="catf-demdate-${id}" ${s.demande_date?'checked':''}> 📅 Demander une date et heure de livraison</label></div>
@@ -2197,6 +2198,7 @@ async function saveCatService(id){
   s.titre=(document.getElementById('catf-titre-'+id).value||'').trim();
   s.categorie=(document.getElementById('catf-cat-'+id).value||'').trim();
   s.prix=(document.getElementById('catf-prix-'+id).value||'').trim();
+  {const _tv=document.getElementById('catf-tva-'+id)?.value;s.tva_taux=(_tv===''||_tv==null)?null:parseInt(_tv);}
   s.description=document.getElementById('catf-desc-'+id).value;
   s.demande_date=document.getElementById('catf-demdate-'+id)?.checked||false;
   const _j=document.getElementById('catf-jours-'+id);
@@ -2206,7 +2208,7 @@ async function saveCatService(id){
   s.heure_limite=(_hl===''||_hl==null)?null:parseInt(_hl);
   if(!s.titre){alert('Mets au moins un titre.');return;}
   if(!cu||!cu.access_token){alert('Session expirée, reconnecte-toi.');return;}
-  const payload={titre:s.titre,categorie:s.categorie||null,description:s.description||null,prix:s.prix||null,image_url:s.image_url||null,livret_ids:s.livret_ids||[],demande_date:s.demande_date,jours_dispo:s.jours_dispo,delai_jours:s.delai_jours,heure_limite:s.heure_limite,ordre:s.ordre||0};
+  const payload={titre:s.titre,categorie:s.categorie||null,description:s.description||null,prix:s.prix||null,image_url:s.image_url||null,livret_ids:s.livret_ids||[],demande_date:s.demande_date,jours_dispo:s.jours_dispo,delai_jours:s.delai_jours,heure_limite:s.heure_limite,ordre:s.ordre||0,tva_taux:s.tva_taux||null};
   try{
     if(s._new){const r=await axios.post(`${API}/catalogue_services`,payload,{headers:{...hd(),'Prefer':'return=representation'}});s.id=r.data[0].id;delete s._new;}
     else{await axios.patch(`${API}/catalogue_services?id=eq.${s.id}`,payload,{headers:{...hd(),'Prefer':'return=minimal'}});}
