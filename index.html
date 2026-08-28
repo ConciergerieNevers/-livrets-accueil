@@ -5504,7 +5504,10 @@ function rv(l,adresses,equipements,back,services){
       if(_mw>=2)_notes.push(`👥 Minimum ${_mw} personnes le week-end`);
       const _mh=parseInt(s.heure_min_weekend)||0;
       if(_mh>0)_notes.push(`🌅 Livraison à partir de ${_mh}h le week-end`);
-      if(s.demande_date&&s.heure_limite!=null&&(parseInt(s.delai_jours)||0)===1)_notes.push(`🕐 À commander avant ${s.heure_limite}h la veille`);
+      if(s.demande_date&&s.heure_limite!=null){const _dj=parseInt(s.delai_jours)||0;
+        if(_dj===0)_notes.push(`🕐 Commande le jour même jusqu'à ${s.heure_limite}h`);
+        else if(_dj===1)_notes.push(`🕐 À commander avant ${s.heure_limite}h la veille`);
+        else _notes.push(`🕐 À commander ${_dj} jours à l'avance (avant ${s.heure_limite}h)`);}
       const _noteHtml=_notes.length?`<div style="font-size:11.5px;color:var(--gold2);line-height:1.5;margin-bottom:10px">${_notes.join('<br>')}</div>`:'';
       return `<div class="eq-card" ${cardStyle}><div class="sv-row">${imgWrap}<div class="sv-body">${favBadgeAboveTitle}<div class="eq-header" style="margin-bottom:6px"><div class="eq-nom" style="${titleStyle}">${s.titre||''}</div>${s.prix?`<span style="margin-left:auto;color:var(--gold2);font-weight:700;font-size:14px;white-space:nowrap">${s.prix}</span>`:''}</div><div class="eq-desc" style="margin-bottom:10px">${s.description||''}</div>${_noteHtml}${_btn}</div></div></div>`;
     };
