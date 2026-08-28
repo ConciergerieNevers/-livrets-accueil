@@ -2077,6 +2077,7 @@ function catEditHtml(s){
     <div class="fg"><label class="fl2">Jours de disponibilité</label><div id="catf-jours-${id}" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">${[['Lun',1],['Mar',2],['Mer',3],['Jeu',4],['Ven',5],['Sam',6],['Dim',0]].map(([lbl,d])=>`<label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" data-d="${d}" ${(s.jours_dispo||[0,1,2,3,4,5,6]).includes(d)?'checked':''}>${lbl}</label>`).join('')}</div></div>
     <div class="fg"><label class="fl2">Délai de réservation (combien de temps à l'avance)</label><select class="fi" id="catf-delai-${id}">${[[0,'Le jour même'],[1,'La veille (1 jour avant)'],[2,'2 jours avant'],[3,'3 jours avant'],[4,'4 jours avant'],[5,'5 jours avant'],[7,'1 semaine avant']].map(([v,l])=>`<option value="${v}" ${(s.delai_jours||0)==v?'selected':''}>${l}</option>`).join('')}</select></div>
     <div class="fg"><label class="fl2">Heure limite de réservation</label><select class="fi" id="catf-hlimite-${id}"><option value="">Aucune (toute la journée)</option>${Array.from({length:18},(_,i)=>i+6).map(h=>`<option value="${h}" ${(s.heure_limite!=null&&s.heure_limite==h)?'selected':''}>${h}h</option>`).join('')}</select></div>
+    <div class="fg"><label class="fl2">Minimum de personnes le week-end</label><select class="fi" id="catf-minwe-${id}"><option value="">Aucun minimum</option>${[2,3,4,5,6].map(n=>`<option value="${n}" ${s.min_qty_weekend==n?'selected':''}>${n} personnes minimum (sam. &amp; dim.)</option>`).join('')}</select><div style="font-size:11px;color:var(--muted2);margin-top:4px">Bloque la commande si la date choisie tombe un samedi ou dimanche avec une quantité inférieure.</div></div>
     <div class="fg"><label class="fl2">Logements qui proposent ce service</label>
       <div style="display:flex;gap:8px;margin:6px 0 10px;flex-wrap:wrap">
         <button class="adm-add-s" onclick="selectAllCatLivrets('${id}')" style="padding:6px 12px;font-size:11.5px">✅ Tout cocher</button>
@@ -2206,9 +2207,10 @@ async function saveCatService(id){
   s.delai_jours=parseInt(document.getElementById('catf-delai-'+id)?.value)||0;
   const _hl=document.getElementById('catf-hlimite-'+id)?.value;
   s.heure_limite=(_hl===''||_hl==null)?null:parseInt(_hl);
+  {const _mw=document.getElementById('catf-minwe-'+id)?.value;s.min_qty_weekend=(_mw===''||_mw==null)?null:parseInt(_mw);}
   if(!s.titre){alert('Mets au moins un titre.');return;}
   if(!cu||!cu.access_token){alert('Session expirée, reconnecte-toi.');return;}
-  const payload={titre:s.titre,categorie:s.categorie||null,description:s.description||null,prix:s.prix||null,image_url:s.image_url||null,livret_ids:s.livret_ids||[],demande_date:s.demande_date,jours_dispo:s.jours_dispo,delai_jours:s.delai_jours,heure_limite:s.heure_limite,ordre:s.ordre||0,tva_taux:s.tva_taux||null};
+  const payload={titre:s.titre,categorie:s.categorie||null,description:s.description||null,prix:s.prix||null,image_url:s.image_url||null,livret_ids:s.livret_ids||[],demande_date:s.demande_date,jours_dispo:s.jours_dispo,delai_jours:s.delai_jours,heure_limite:s.heure_limite,ordre:s.ordre||0,tva_taux:s.tva_taux||null,min_qty_weekend:s.min_qty_weekend||null};
   try{
     if(s._new){const r=await axios.post(`${API}/catalogue_services`,payload,{headers:{...hd(),'Prefer':'return=representation'}});s.id=r.data[0].id;delete s._new;}
     else{await axios.patch(`${API}/catalogue_services?id=eq.${s.id}`,payload,{headers:{...hd(),'Prefer':'return=minimal'}});}
@@ -4907,7 +4909,7 @@ async function showCGV(){
 function priceToCentsClient(t){const s=(t||'').replace(/\s/g,'').replace(',','.');const m=s.match(/(\d+(\.\d+)?)/);return m?Math.round(parseFloat(m[1])*100):0;}
 function saveCart(){try{localStorage.setItem(voyCartKey,JSON.stringify(cart));}catch(e){}}
 function newLineId(){return 'L'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
-function addToCart(id){const s=(voyServices||[]).find(x=>String(x.id)===String(id));if(!s)return;const c=priceToCentsClient(s.prix);if(c<=0)return;const dem=!!s.demande_date;const ex=!dem&&cart.find(x=>String(x.id)===String(id)&&!x.demande_date);if(ex){ex.qty++;}else{cart.push({lineId:newLineId(),id:s.id,titre:s.titre||'Service',cents:c,qty:1,demande_date:dem,jours_dispo:s.jours_dispo||[0,1,2,3,4,5,6],delai_jours:s.delai_jours||0,heure_limite:(s.heure_limite==null?null:s.heure_limite),date:'',heure:''});}cartStep=1;saveCart();renderCart();toast(dem?'Ajouté · choisis sa date 👇':'Ajouté au panier');}
+function addToCart(id){const s=(voyServices||[]).find(x=>String(x.id)===String(id));if(!s)return;const c=priceToCentsClient(s.prix);if(c<=0)return;const dem=!!s.demande_date;const ex=!dem&&cart.find(x=>String(x.id)===String(id)&&!x.demande_date);if(ex){ex.qty++;}else{cart.push({lineId:newLineId(),id:s.id,titre:s.titre||'Service',cents:c,qty:1,demande_date:dem,jours_dispo:s.jours_dispo||[0,1,2,3,4,5,6],delai_jours:s.delai_jours||0,heure_limite:(s.heure_limite==null?null:s.heure_limite),min_qty_weekend:(s.min_qty_weekend||null),date:'',heure:''});}cartStep=1;saveCart();renderCart();toast(dem?'Ajouté · choisis sa date 👇':'Ajouté au panier');}
 function changeQty(lineId,d){const c=cart.find(x=>x.lineId===lineId);if(!c)return;c.qty+=d;if(c.qty<=0)cart=cart.filter(x=>x.lineId!==lineId);saveCart();renderCart();}
 function removeCartLine(lineId){cart=cart.filter(x=>x.lineId!==lineId);saveCart();renderCart();}
 function addAnotherDay(lineId){const c=cart.find(x=>x.lineId===lineId);if(!c)return;cart.push({lineId:newLineId(),id:c.id,titre:c.titre,cents:c.cents,qty:1,demande_date:true,jours_dispo:c.jours_dispo,delai_jours:c.delai_jours||0,heure_limite:(c.heure_limite==null?null:c.heure_limite),date:'',heure:''});cartStep=1;saveCart();renderCart();toast('Nouvelle ligne · choisis sa date 👇');}
@@ -4940,7 +4942,16 @@ function finishIntro(prenom,dest){
 function hideIntro(){const ov=document.getElementById('voy-intro');if(!ov)return;ov.style.transition='opacity .6s ease';ov.style.opacity='0';setTimeout(function(){ov.style.display='none';},650);}
 const JOURS_LBL=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 function joursTxt(arr){if(!arr||arr.length>=7)return'tous les jours';return [1,2,3,4,5,6,0].filter(d=>arr.includes(d)).map(d=>JOURS_LBL[d]).join(', ')||'aucun jour';}
-function cartDateError(c){if(!c.demande_date||!c.date)return'';const dt=new Date(c.date+'T12:00:00');if(!(c.jours_dispo||[0,1,2,3,4,5,6]).includes(dt.getDay()))return '❌ Service non disponible ce jour-là';if(typeof bookableDay==='function'&&!bookableDay(c,dt))return '❌ Trop tard pour réserver ce service';return'';}
+// Minimum de personnes le week-end (samedi=6, dimanche=0) — ex : petits-déj / planches = min 2
+function weekendMinError(c){
+  const mn=parseInt(c.min_qty_weekend)||0;
+  if(mn<2||!c.date)return'';
+  const dow=new Date(c.date+'T12:00:00').getDay();
+  if(dow!==0&&dow!==6)return'';
+  if((parseInt(c.qty)||1)>=mn)return'';
+  return '⚠️ Minimum '+mn+' personnes le week-end — ajoutez-en '+(mn-(parseInt(c.qty)||1));
+}
+function cartDateError(c){if(!c.demande_date||!c.date)return'';const dt=new Date(c.date+'T12:00:00');if(!(c.jours_dispo||[0,1,2,3,4,5,6]).includes(dt.getDay()))return '❌ Service non disponible ce jour-là';if(typeof bookableDay==='function'&&!bookableDay(c,dt))return '❌ Trop tard pour réserver ce service';const we=weekendMinError(c);if(we)return we;return'';}
 function heureOptions(sel){let o='<option value="">Heure…</option>';for(let h=7;h<=20;h++){const v=(h<10?'0'+h:''+h)+':00';o+='<option value="'+v+'"'+(sel===v?' selected':'')+'>'+h+'h</option>';}return o;}
 function setCartDate(lineId,v){const c=cart.find(x=>x.lineId===lineId);if(!c)return;c.date=v;saveCart();const e=document.getElementById('cart-err-'+lineId);if(e)e.textContent=cartDateError(c);}
 function setCartHeure(lineId,v){const c=cart.find(x=>x.lineId===lineId);if(!c)return;c.heure=v;saveCart();}
@@ -5024,7 +5035,7 @@ function renderCart(){
   const box=document.getElementById('voy-cart');if(!box)return;
   const body=document.getElementById('voy-cart-body'),titleEl=document.getElementById('voy-cart-title');
   if(!cart.length){box.style.display='none';cartStep=1;closeCheckout();return;}
-  cart.forEach(c=>{if(!c.lineId)c.lineId=newLineId();const sv=(voyServices||[]).find(x=>String(x.id)===String(c.id));if(sv){c.demande_date=!!sv.demande_date;c.jours_dispo=sv.jours_dispo||[0,1,2,3,4,5,6];c.delai_jours=sv.delai_jours||0;c.heure_limite=(sv.heure_limite==null?null:sv.heure_limite);}});
+  cart.forEach(c=>{if(!c.lineId)c.lineId=newLineId();const sv=(voyServices||[]).find(x=>String(x.id)===String(c.id));if(sv){c.demande_date=!!sv.demande_date;c.jours_dispo=sv.jours_dispo||[0,1,2,3,4,5,6];c.delai_jours=sv.delai_jours||0;c.heure_limite=(sv.heure_limite==null?null:sv.heure_limite);c.min_qty_weekend=sv.min_qty_weekend||null;}});
   let total=0;cart.forEach(c=>total+=c.cents*c.qty);
   if(titleEl)titleEl.innerHTML='🛒 Mon panier';
   body.innerHTML=cartItemsHtml()
@@ -5043,7 +5054,7 @@ function renderCheckout(total){
   ov.style.display='block';
 }
 function goToRecap(){
-  for(const c of cart){if(c.demande_date){if(!c.date||!c.heure){alert('Choisis une date et une heure pour : '+c.titre);return;}if(cartDateError(c)){alert(c.titre+' : service non disponible le jour choisi.');return;}}}
+  for(const c of cart){if(c.demande_date){if(!c.date||!c.heure){alert('Choisis une date et une heure pour : '+c.titre);return;}const we=weekendMinError(c);if(we){alert(c.titre+'\n\n'+we.replace(/^⚠️\s*/,''));return;}if(cartDateError(c)){alert(c.titre+' : service non disponible le jour choisi.');return;}}}
   cartStep=2;calOpen=null;heureOpen=null;
   renderCheckout();
   const ov=document.getElementById('voy-payscreen');if(ov)ov.scrollTop=0;
@@ -5074,7 +5085,7 @@ function closeSuccess(){
 }
 async function payCart(){if(!cart.length)return;
   if(!cartCGV){alert('Merci d\'accepter les conditions générales de vente avant de payer.');return;}
-  for(const c of cart){if(c.demande_date){if(!c.date||!c.heure){alert('Choisis une date et une heure pour : '+c.titre);return;}if(cartDateError(c)){alert(c.titre+' : service non disponible le jour choisi.');return;}}}
+  for(const c of cart){if(c.demande_date){if(!c.date||!c.heure){alert('Choisis une date et une heure pour : '+c.titre);return;}const we=weekendMinError(c);if(we){alert(c.titre+'\n\n'+we.replace(/^⚠️\s*/,''));return;}if(cartDateError(c)){alert(c.titre+' : service non disponible le jour choisi.');return;}}}
   const btn=document.getElementById('voy-cart-pay');if(btn){btn.disabled=true;btn.textContent='Redirection…';}try{const qp=new URLSearchParams(window.location.search);let reload;if(qp.get('r')){reload=location.origin+'/?'+new URLSearchParams({r:qp.get('r'),k:qp.get('k')||'',d:qp.get('d')||''}).toString();}else if(currentLivretData&&currentLivretData.slug){reload=location.origin+'/'+currentLivretData.slug;}else{reload=location.origin+'/';}const r=await axios.post(`${SB}/functions/v1/create-checkout`,{livret_id:currentLivretId,return_url:reload,booking_id:(qp.get('r')||''),demande:(cartDemande||'').slice(0,500),items:cart.map(c=>({id:c.id,qty:c.qty,date:c.date||'',heure:c.heure||''}))},{headers:{'apikey':KEY,'Authorization':`Bearer ${KEY}`,'Content-Type':'application/json'}});if(r.data&&r.data.ok&&r.data.url){window.location.href=r.data.url;}else{alert('Paiement indisponible pour le moment.');if(btn){btn.disabled=false;btn.textContent='💳 Payer';}}}catch(e){console.error(e);alert('Erreur lors du paiement.');if(btn){btn.disabled=false;btn.textContent='💳 Payer';}}}
 async function lbres(bookingId,lastName,checkinDate,invoiceUrl,guestPageUrl,checkinTime,checkoutTime){
   // Anti-flash : applique IMMÉDIATEMENT le thème caché (visite précédente du même booking_id)
@@ -5478,7 +5489,13 @@ function rv(l,adresses,equipements,back,services){
       const favBadgeAboveTitle=fav&&!s.image_url?'<div style="display:inline-block;background:linear-gradient(135deg,var(--gold),var(--gold2),var(--gold3));color:var(--bg);font-size:9px;font-weight:800;letter-spacing:1.2px;padding:3px 9px;border-radius:8px;text-transform:uppercase;margin-bottom:6px">⭐ Coup de cœur</div>':'';
       const titleStyle=fav?'font-size:15.5px;color:var(--gold3);font-weight:700':'font-size:15px';
       const imgWrap=s.image_url?`<div style="position:relative;flex-shrink:0">${favBadgeOnImg}<img loading="lazy" decoding="async" src="${s.image_url}" class="sv-img"${fav?' style="border:1px solid var(--border-gold)"':''}></div>`:'';
-      return `<div class="eq-card" ${cardStyle}><div class="sv-row">${imgWrap}<div class="sv-body">${favBadgeAboveTitle}<div class="eq-header" style="margin-bottom:6px"><div class="eq-nom" style="${titleStyle}">${s.titre||''}</div>${s.prix?`<span style="margin-left:auto;color:var(--gold2);font-weight:700;font-size:14px;white-space:nowrap">${s.prix}</span>`:''}</div><div class="eq-desc" style="margin-bottom:10px">${s.description||''}</div>${_btn}</div></div></div>`;
+      // Notes de commande : minimum week-end + deadline de réservation
+      const _mw=parseInt(s.min_qty_weekend)||0;
+      const _notes=[];
+      if(_mw>=2)_notes.push(`👥 Minimum ${_mw} personnes le week-end`);
+      if(s.demande_date&&s.heure_limite!=null&&(parseInt(s.delai_jours)||0)===1)_notes.push(`🕐 À commander avant ${s.heure_limite}h la veille`);
+      const _noteHtml=_notes.length?`<div style="font-size:11.5px;color:var(--gold2);line-height:1.5;margin-bottom:10px">${_notes.join('<br>')}</div>`:'';
+      return `<div class="eq-card" ${cardStyle}><div class="sv-row">${imgWrap}<div class="sv-body">${favBadgeAboveTitle}<div class="eq-header" style="margin-bottom:6px"><div class="eq-nom" style="${titleStyle}">${s.titre||''}</div>${s.prix?`<span style="margin-left:auto;color:var(--gold2);font-weight:700;font-size:14px;white-space:nowrap">${s.prix}</span>`:''}</div><div class="eq-desc" style="margin-bottom:10px">${s.description||''}</div>${_noteHtml}${_btn}</div></div></div>`;
     };
     // Sépare les "coups de cœur" (s'il y en a) en première section, puis regroupe le reste par catégorie (ordre = celui du back-office)
     const groups={},order=[];
