@@ -1667,7 +1667,11 @@ function renderCourses(){
 let demData=[],demFilter='all',demChartMode='mois',demView='list',planMode='semaine',planRef=null,planGroup='personne';
 async function openDemandes(){
   show('demandes-screen');
-  loadPrestataires();loadCatalogueForPrep();
+  Promise.all([loadPrestataires(),loadCatalogueForPrep()]).then(()=>{
+    // Si une fiche détail est déjà ouverte, on la re-rend avec le bloc « À préparer »
+    const ov=document.getElementById('dem-detail');
+    if(ov&&ov.style.display!=='none'&&typeof renderDemDetail==='function'){try{renderDemDetail();}catch(_e){}}
+  });
   document.getElementById('dem-loading').style.display='block';
   document.getElementById('dem-list').innerHTML='';
   try{
