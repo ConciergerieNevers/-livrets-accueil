@@ -598,6 +598,9 @@ body{top:0!important}
           📨 Avis négatifs
           <span class="badge" id="avis-badge" style="display:none">0</span>
         </button>
+        <button class="adm-add-s" onclick="openCourses()">
+          🛒 Liste de courses
+        </button>
         <button class="adm-add-s" data-su-only onclick="openCatalogue()">
           🛎️ Mes services
         </button>
@@ -626,6 +629,41 @@ body{top:0!important}
   </div>
 </div>
 
+<!-- CARNET DE PRESTATAIRES -->
+<div id="prestataires-screen" style="display:none">
+  <nav class="adm-nav">
+    <div class="adm-nav-left">
+      <button class="adm-logout" onclick="openCatalogue()">← Mes services</button>
+      <div class="adm-nav-title serif">Prestataires</div>
+    </div>
+    <div class="adm-nav-right">
+      <button class="adm-add" onclick="addPresta()">+ Nouveau prestataire</button>
+    </div>
+  </nav>
+  <div class="adm-body">
+    <div class="adm-hero"><div class="adm-hero-text">
+      <h2 class="serif gold-text">Carnet de prestataires</h2>
+      <p>Vos partenaires (masseurs, traiteurs, fleuristes…). Rattachez-les aux services : ils apparaîtront dans chaque commande.</p>
+    </div></div>
+    <div id="presta-list"><div class="loading">Chargement…</div></div>
+  </div>
+</div>
+
+<!-- LISTE DE COURSES DU JOUR -->
+<div id="courses-screen" style="display:none">
+  <nav class="adm-nav">
+    <div class="adm-nav-left">
+      <button class="adm-logout" onclick="showAdmin()">← Retour</button>
+      <div class="adm-nav-title serif">Liste de courses</div>
+    </div>
+    <div class="adm-nav-right">
+      <input type="date" id="courses-date" onchange="renderCourses()" style="padding:9px 12px;border-radius:10px;border:1px solid var(--border-gold);background:var(--card);color:var(--gold3);font-size:13px;color-scheme:dark">
+      <button class="adm-logout" onclick="window.print()">🖨 Imprimer</button>
+    </div>
+  </nav>
+  <div class="adm-body"><div id="courses-content"><div class="loading">Chargement…</div></div></div>
+</div>
+
 <!-- CATALOGUE SERVICES -->
 <div id="catalogue-screen" style="display:none">
   <nav class="adm-nav">
@@ -634,6 +672,7 @@ body{top:0!important}
       <div class="adm-nav-title serif">Mes services</div>
     </div>
     <div class="adm-nav-right">
+      <button class="adm-logout" onclick="openPrestataires()">📞 Prestataires</button>
       <button class="adm-add" onclick="addCatService()">+ Nouveau service</button>
     </div>
   </nav>
@@ -1439,12 +1478,196 @@ async function register(){
   catch{alert('Erreur.');}
 }
 function logout(){cu=null;cs();show('login-screen');}
-function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','demandes-screen','reservations-screen','corbeille-screen','requests-screen'].forEach(s=>document.getElementById(s).style.display=s===id?'block':'none');if(id!=='voyageur-screen'){try{clearLivretColors();}catch(_e){}}}
+function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','prestataires-screen','courses-screen','demandes-screen','reservations-screen','corbeille-screen','requests-screen'].forEach(s=>document.getElementById(s).style.display=s===id?'block':'none');if(id!=='voyageur-screen'){try{clearLivretColors();}catch(_e){}}}
+
+
+// ===== CARNET DE PRESTATAIRES =====
+let prestaData=[];
+async function loadPrestataires(force){
+  if(prestaData.length&&!force)return prestaData;
+  try{const r=await axios.get(`${API}/prestataires?select=*&order=ordre.asc,nom.asc`,{headers:hd()});prestaData=r.data||[];}catch(e){prestaData=[];}
+  return prestaData;
+}
+async function openPrestataires(){
+  show('prestataires-screen');
+  document.getElementById('presta-list').innerHTML='<div class="loading">Chargement…</div>';
+  await loadPrestataires(true);
+  renderPrestataires();
+}
+function prestaById(id){return prestaData.find(p=>String(p.id)===String(id));}
+function addPresta(){
+  prestaData.unshift({id:'new_'+Date.now(),_new:true,nom:'',specialite:'',tel:'',email:'',zone:'',notes:'',actif:true,ordre:0});
+  renderPrestataires();
+  setTimeout(()=>{const el=document.getElementById('pf-nom-'+prestaData[0].id);if(el)el.focus();},60);
+}
+function renderPrestataires(){
+  const box=document.getElementById('presta-list');if(!box)return;
+  if(!prestaData.length){box.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun prestataire. Cliquez sur « + Nouveau prestataire ».</div>';return;}
+  box.innerHTML=prestaData.map(p=>{
+    const id=p.id, open=p._new||p._edit;
+    const sub=[p.specialite,p.tel,p.zone].filter(Boolean).join(' · ');
+    return `<div class="sc" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:180px">
+          <div style="font-weight:700;color:#fff;font-size:15px">${(p.nom||'(sans nom)').replace(/</g,'&lt;')}${p.actif===false?' <span style="font-size:10px;color:var(--muted2)">(inactif)</span>':''}</div>
+          <div style="font-size:12px;color:var(--muted2);margin-top:2px">${(sub||'—').replace(/</g,'&lt;')}</div>
+        </div>
+        <button class="lv-btn" style="width:auto" onclick="togglePresta('${id}')">${open?'Fermer':'✏️ Modifier'}</button>
+        <button class="lv-btn danger" style="width:auto;font-size:11px;padding:7px 10px" onclick="deletePresta('${id}')">🗑</button>
+      </div>
+      <div style="display:${open?'block':'none'};margin-top:14px">
+        <div class="fg"><label class="fl2">Nom / Société</label><input class="fi" id="pf-nom-${id}" value="${(p.nom||'').replace(/"/g,'&quot;')}" placeholder="Ex : Sophie — Massages bien-être"></div>
+        <div class="fg"><label class="fl2">Spécialité</label><input class="fi" id="pf-spe-${id}" value="${(p.specialite||'').replace(/"/g,'&quot;')}" placeholder="Ex : Massage à domicile, Traiteur, Fleuriste"></div>
+        <div class="fg"><label class="fl2">Téléphone</label><input class="fi" id="pf-tel-${id}" value="${(p.tel||'').replace(/"/g,'&quot;')}" placeholder="Ex : +33 6 12 34 56 78"></div>
+        <div class="fg"><label class="fl2">E-mail</label><input class="fi" id="pf-mail-${id}" value="${(p.email||'').replace(/"/g,'&quot;')}" placeholder="Ex : contact@…"></div>
+        <div class="fg"><label class="fl2">Zone / Disponibilités</label><input class="fi" id="pf-zone-${id}" value="${(p.zone||'').replace(/"/g,'&quot;')}" placeholder="Ex : Nevers + 20 km · lun-sam 9h-19h"></div>
+        <div class="fg"><label class="fl2">Notes internes</label><textarea class="fi" id="pf-notes-${id}" placeholder="Tarifs négociés, délai de prévenance, préférences…">${(p.notes||'').replace(/</g,'&lt;')}</textarea></div>
+        <div class="fg"><label class="fl2" style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="pf-actif-${id}" ${p.actif!==false?'checked':''}> Prestataire actif</label></div>
+        <button class="adm-add" onclick="savePresta('${id}')">💾 Enregistrer</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function togglePresta(id){const p=prestaById(id);if(!p)return;p._edit=!p._edit;renderPrestataires();}
+async function savePresta(id){
+  const p=prestaById(id);if(!p)return;
+  const g=k=>document.getElementById('pf-'+k+'-'+id);
+  p.nom=(g('nom')?.value||'').trim();
+  p.specialite=(g('spe')?.value||'').trim();
+  p.tel=(g('tel')?.value||'').trim();
+  p.email=(g('mail')?.value||'').trim();
+  p.zone=(g('zone')?.value||'').trim();
+  p.notes=g('notes')?.value||'';
+  p.actif=g('actif')?.checked!==false;
+  if(!p.nom){alert('Indiquez au moins un nom.');return;}
+  const payload={nom:p.nom,specialite:p.specialite||null,tel:p.tel||null,email:p.email||null,zone:p.zone||null,notes:p.notes||null,actif:p.actif,ordre:p.ordre||0};
+  try{
+    if(p._new){const r=await axios.post(`${API}/prestataires`,payload,{headers:{...hd(),'Prefer':'return=representation'}});p.id=r.data[0].id;delete p._new;}
+    else{await axios.patch(`${API}/prestataires?id=eq.${p.id}`,payload,{headers:{...hd(),'Prefer':'return=minimal'}});}
+    p._edit=false;toast('✓ Prestataire enregistré');renderPrestataires();
+  }catch(e){alert('Erreur : '+(e.response?.data?.message||e.message));}
+}
+async function deletePresta(id){
+  const p=prestaById(id);if(!p)return;
+  if(!(await askConfirm(`Supprimer « ${p.nom||'ce prestataire'} » ?`,{danger:true,okText:'Supprimer'})))return;
+  try{
+    if(!p._new)await axios.delete(`${API}/prestataires?id=eq.${p.id}`,{headers:{...hd(),'Prefer':'return=minimal'}});
+    prestaData=prestaData.filter(x=>String(x.id)!==String(id));renderPrestataires();toast('Prestataire supprimé');
+  }catch(e){alert('Suppression impossible.');}
+}
+// Bloc « À préparer » : liste de courses + prestataires, pour une commande
+function prepBlockHtml(items,opts){
+  opts=opts||{};
+  const cats=(window.catData||[]);
+  const seen=new Set(); const courses=[]; const prestas=[];
+  (items||[]).forEach(it=>{
+    if(it.statut==='refuse')return;
+    const sv=cats.find(c=>(c.titre||'')===(it.titre||''));
+    if(!sv)return;
+    const q=Math.max(1,parseInt(it.qty)||1);
+    if(sv.prep_courses&&sv.prep_courses.trim()){
+      courses.push({titre:sv.titre,qty:q,txt:sv.prep_courses.trim()});
+    }
+    (sv.prestataire_ids||[]).forEach(pid=>{
+      if(seen.has(pid))return;seen.add(pid);
+      const pr=prestaById(pid); if(pr&&pr.actif!==false)prestas.push(pr);
+    });
+  });
+  if(!courses.length&&!prestas.length)return '';
+  const esc=s=>(''+(s||'')).replace(/</g,'&lt;');
+  let h='<div style="background:var(--bg3);border:1px solid var(--border-gold);border-radius:14px;padding:14px;margin-top:14px">';
+  h+='<div style="font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold2);margin-bottom:10px">📋 À préparer</div>';
+  if(courses.length){
+    h+='<div style="font-size:11px;color:var(--muted2);margin-bottom:6px">🛒 Courses / préparation</div>';
+    courses.forEach(c=>{
+      h+='<div style="margin-bottom:9px;padding-left:10px;border-left:2px solid var(--gold-dim)"><div style="font-size:12.5px;font-weight:700;color:var(--gold3)">'+esc(c.titre)+(c.qty>1?' × '+c.qty:'')+'</div><div style="font-size:12.5px;color:var(--text);line-height:1.5;white-space:pre-wrap">'+esc(c.txt)+'</div></div>';
+    });
+  }
+  if(prestas.length){
+    h+='<div style="font-size:11px;color:var(--muted2);margin:12px 0 6px">📞 Prestataires</div>';
+    prestas.forEach(p=>{
+      const tel=p.tel?'<a href="tel:'+esc(p.tel).replace(/\s/g,'')+'" style="color:var(--gold2);text-decoration:none">'+esc(p.tel)+'</a>':'';
+      const mail=p.email?'<a href="mailto:'+esc(p.email)+'" style="color:var(--gold2);text-decoration:none">'+esc(p.email)+'</a>':'';
+      const line=[tel,mail].filter(Boolean).join(' · ');
+      h+='<div style="margin-bottom:8px;padding-left:10px;border-left:2px solid var(--gold-dim)"><div style="font-size:12.5px;font-weight:700;color:#fff">'+esc(p.nom)+(p.specialite?' <span style="font-weight:400;color:var(--muted2)">· '+esc(p.specialite)+'</span>':'')+'</div>'+(line?'<div style="font-size:12.5px">'+line+'</div>':'')+(p.zone?'<div style="font-size:11.5px;color:var(--muted2)">'+esc(p.zone)+'</div>':'')+(p.notes&&opts.notes!==false?'<div style="font-size:11.5px;color:var(--muted2);font-style:italic;white-space:pre-wrap">'+esc(p.notes)+'</div>':'')+'</div>';
+    });
+  }
+  return h+'</div>';
+}
+// ===== LISTE DE COURSES DU JOUR =====
+async function openCourses(){
+  show('courses-screen');
+  const di=document.getElementById('courses-date');
+  if(di&&!di.value)di.value=new Date().toISOString().slice(0,10);
+  document.getElementById('courses-content').innerHTML='<div class="loading">Chargement…</div>';
+  await Promise.all([loadPrestataires(),loadCatalogueForPrep()]);
+  if(!demData.length){try{const r=await axios.get(`${API}/commandes?select=*&order=created_at.desc`,{headers:hd()});demData=r.data||[];}catch(e){}}
+  renderCourses();
+}
+async function loadCatalogueForPrep(){
+  if(window.catData&&window.catData.length)return;
+  try{const r=await axios.get(`${API}/catalogue_services?select=*`,{headers:hd()});window.catData=r.data||[];}catch(e){window.catData=[];}
+}
+function renderCourses(){
+  const box=document.getElementById('courses-content');if(!box)return;
+  const day=(document.getElementById('courses-date')||{}).value||new Date().toISOString().slice(0,10);
+  const cats=(window.catData||[]);
+  const esc=s=>(''+(s||'')).replace(/</g,'&lt;');
+  // Toutes les prestations payées prévues ce jour-là
+  const lignes=[];
+  (demData||[]).filter(c=>c.statut==='paye'||c.statut==='rembourse_partiel').forEach(c=>{
+    (c.items||[]).forEach(it=>{
+      if(it.statut==='refuse'||it.date!==day)return;
+      lignes.push({cmd:c,it:it,sv:cats.find(s=>(s.titre||'')===(it.titre||''))});
+    });
+  });
+  const dLabel=new Date(day+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  if(!lignes.length){box.innerHTML='<div class="sc" style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucune prestation prévue le '+dLabel+'.</div>';return;}
+  // Agrégation par service
+  const parService={};
+  lignes.forEach(l=>{
+    const t=l.it.titre||'Service';
+    if(!parService[t])parService[t]={qty:0,sv:l.sv,livraisons:[]};
+    parService[t].qty+=Math.max(1,parseInt(l.it.qty)||1);
+    parService[t].livraisons.push({heure:l.it.heure||'',livret:l.cmd.livret_nom||'',guest:l.cmd.guest_nom||'',tel:l.cmd.guest_tel||''});
+  });
+  // Prestataires concernés
+  const seen=new Set(),prestas=[];
+  Object.values(parService).forEach(v=>((v.sv&&v.sv.prestataire_ids)||[]).forEach(pid=>{
+    if(seen.has(pid))return;seen.add(pid);const p=prestaById(pid);if(p&&p.actif!==false)prestas.push(p);}));
+  let h='<div class="adm-hero"><div class="adm-hero-text"><h2 class="serif gold-text" style="text-transform:capitalize">'+dLabel+'</h2><p>'+lignes.length+' prestation'+(lignes.length>1?'s':'')+' à préparer</p></div></div>';
+  h+='<div class="sc"><div class="sc-title">🛒 Ce qu\'il faut acheter / préparer</div>';
+  Object.entries(parService).forEach(([titre,v])=>{
+    h+='<div style="padding:12px 0;border-bottom:1px solid var(--border)">';
+    h+='<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><div style="font-size:15px;font-weight:700;color:var(--gold3)">'+esc(titre)+'</div><div style="font-size:13px;color:var(--gold2);font-weight:700">× '+v.qty+'</div></div>';
+    if(v.sv&&v.sv.prep_courses&&v.sv.prep_courses.trim())
+      h+='<div style="font-size:13px;color:var(--text);line-height:1.55;margin-top:6px;white-space:pre-wrap;padding-left:10px;border-left:2px solid var(--gold-dim)">'+esc(v.sv.prep_courses.trim())+'</div>';
+    else h+='<div style="font-size:12px;color:var(--muted2);font-style:italic;margin-top:4px">Aucune liste de courses renseignée pour ce service.</div>';
+    h+='<div style="margin-top:8px">'+v.livraisons.map(L=>'<div style="font-size:12px;color:var(--muted2)">🕐 '+(L.heure?(''+parseInt(L.heure)+'h'):'—')+' · '+esc(L.livret)+(L.guest?' · '+esc(L.guest):'')+(L.tel?' · '+esc(L.tel):'')+'</div>').join('')+'</div>';
+    h+='</div>';
+  });
+  h+='</div>';
+  if(prestas.length){
+    h+='<div class="sc" style="margin-top:16px"><div class="sc-title">📞 Prestataires à contacter</div>';
+    prestas.forEach(p=>{
+      h+='<div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="font-weight:700;color:#fff;font-size:14px">'+esc(p.nom)+(p.specialite?' <span style="font-weight:400;color:var(--muted2);font-size:12px">· '+esc(p.specialite)+'</span>':'')+'</div>';
+      const tel=p.tel?'<a href="tel:'+esc(p.tel).replace(/\s/g,'')+'" style="color:var(--gold2);text-decoration:none">📞 '+esc(p.tel)+'</a>':'';
+      const mail=p.email?'<a href="mailto:'+esc(p.email)+'" style="color:var(--gold2);text-decoration:none">📧 '+esc(p.email)+'</a>':'';
+      if(tel||mail)h+='<div style="font-size:13px;margin-top:2px">'+[tel,mail].filter(Boolean).join(' · ')+'</div>';
+      if(p.zone)h+='<div style="font-size:12px;color:var(--muted2)">'+esc(p.zone)+'</div>';
+      if(p.notes)h+='<div style="font-size:12px;color:var(--muted2);font-style:italic;white-space:pre-wrap;margin-top:2px">'+esc(p.notes)+'</div>';
+      h+='</div>';
+    });
+    h+='</div>';
+  }
+  box.innerHTML=h;
+}
 
 // ===== Mes demandes (tableau de bord) =====
 let demData=[],demFilter='all',demChartMode='mois',demView='list',planMode='semaine',planRef=null,planGroup='personne';
 async function openDemandes(){
   show('demandes-screen');
+  loadPrestataires();loadCatalogueForPrep();
   document.getElementById('dem-loading').style.display='block';
   document.getElementById('dem-list').innerHTML='';
   try{
@@ -1692,6 +1915,7 @@ function renderDemDetail(){
     +'<div style="font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);margin-bottom:4px">Services</div>'+items
     +(c.demande?'<div style="margin-top:12px;padding:10px 12px;background:var(--bg3);border-radius:10px;font-size:13px;color:#e8e2d4">📝 '+(''+c.demande).replace(/</g,'&lt;')+'</div>':'')
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--border-gold)"><span style="color:var(--muted2);font-size:13px">Total</span>'+totalLine+'</div>'
+    +prepBlockHtml(c.items)
     +((st==='paye')?(c.traitee
       ?'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(80,200,120,0.1);border:1px solid rgba(80,200,120,0.3)"><span style="color:#7fe0a0;font-weight:700;font-size:13px">✓ Demande traitée</span><button onclick="markTraitee(\''+c.id+'\',false)" style="background:none;border:none;color:var(--muted2);font-size:12px;cursor:pointer;text-decoration:underline">Rouvrir</button></div>'
       :'<button onclick="markTraitee(\''+c.id+'\',true)" style="width:100%;margin-top:14px;padding:14px;border:1px solid rgba(80,200,120,0.35);border-radius:12px;background:rgba(80,200,120,0.18);color:#7fe0a0;font-weight:700;font-size:14px;cursor:pointer">✅ Marquer comme traitée</button>')
@@ -2014,7 +2238,13 @@ function planningHtml(){
   let title='',body='';
   if(planMode==='mois'){title=planRef.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});body=planMonthHtml(planRef,byDate);}
   else if(planMode==='semaine'){const mon=planMonday(planRef),sun=new Date(mon);sun.setDate(sun.getDate()+6);title='Semaine du '+mon.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' au '+sun.toLocaleDateString('fr-FR',{day:'numeric',month:'short'});body=planDaysHtml(mon,7,byDate);}
-  else{title=planRef.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});body=planDaysHtml(planRef,1,byDate);}
+  else{title=planRef.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});body=planDaysHtml(planRef,1,byDate);
+    // Mode Jour : récap « À préparer » (courses + prestataires) pour cette journée
+    const _iso=planRef.getFullYear()+'-'+String(planRef.getMonth()+1).padStart(2,'0')+'-'+String(planRef.getDate()).padStart(2,'0');
+    const _items=(byDate[_iso]||[]).map(e=>({titre:e.titre,qty:e.qty}));
+    const _prep=_items.length?prepBlockHtml(_items):'';
+    if(_prep)body+=_prep+'<div style="text-align:center;margin-top:10px"><button onclick="openCourses();setTimeout(()=>{const d=document.getElementById(\'courses-date\');if(d){d.value=\''+_iso+'\';renderCourses();}},300)" style="background:none;border:none;color:var(--gold2);font-size:12.5px;cursor:pointer;text-decoration:underline">🛒 Voir la liste de courses complète du jour</button></div>';
+  }
   const arrow=(t)=>'width:38px;height:38px;border-radius:10px;border:1px solid var(--border-gold);background:var(--bg3);color:var(--gold2);font-size:18px;cursor:pointer;line-height:1;flex-shrink:0';
   let html='<div style="display:flex;gap:6px;margin-bottom:12px">'+tg('mois','Mois')+tg('semaine','Semaine')+tg('jour','Jour')+'</div>';
   html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:8px"><button onclick="planNav(-1)" style="'+arrow()+'">‹</button><div style="font-weight:700;color:var(--gold3);text-transform:capitalize;text-align:center;flex:1;font-size:15px">'+title+'</div><button onclick="planNav(1)" style="'+arrow()+'">›</button></div>';
@@ -2031,6 +2261,7 @@ function planningHtml(){
 let catalogue=[],allLivrets=[],catSearch='';
 async function openCatalogue(){
   show('catalogue-screen');
+  loadPrestataires().then(()=>{try{renderCatalogue();}catch(_e){}});
   document.getElementById('cat-loading').style.display='block';
   document.getElementById('cat-list').innerHTML='';
   catSearch='';
@@ -2077,6 +2308,8 @@ function catEditHtml(s){
     <div class="fg"><label class="fl2">Jours de disponibilité</label><div id="catf-jours-${id}" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">${[['Lun',1],['Mar',2],['Mer',3],['Jeu',4],['Ven',5],['Sam',6],['Dim',0]].map(([lbl,d])=>`<label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" data-d="${d}" ${(s.jours_dispo||[0,1,2,3,4,5,6]).includes(d)?'checked':''}>${lbl}</label>`).join('')}</div></div>
     <div class="fg"><label class="fl2">Délai de réservation (combien de temps à l'avance)</label><select class="fi" id="catf-delai-${id}">${[[0,'Le jour même'],[1,'La veille (1 jour avant)'],[2,'2 jours avant'],[3,'3 jours avant'],[4,'4 jours avant'],[5,'5 jours avant'],[7,'1 semaine avant']].map(([v,l])=>`<option value="${v}" ${(s.delai_jours||0)==v?'selected':''}>${l}</option>`).join('')}</select></div>
     <div class="fg"><label class="fl2">Heure limite de réservation</label><select class="fi" id="catf-hlimite-${id}"><option value="">Aucune (toute la journée)</option>${Array.from({length:18},(_,i)=>i+6).map(h=>`<option value="${h}" ${(s.heure_limite!=null&&s.heure_limite==h)?'selected':''}>${h}h</option>`).join('')}</select></div>
+    <div class="fg"><label class="fl2">🛒 À acheter / préparer (interne)</label><textarea class="fi" id="catf-prep-${id}" placeholder="Ex :&#10;- 2 pains au chocolat&#10;- 2 croissants&#10;- 1 jus d'orange 1L&#10;→ Boulangerie Martin, av. de Gaulle">${(s.prep_courses||'').replace(/</g,'&lt;')}</textarea><div style="font-size:11px;color:var(--muted2);margin-top:4px">Visible uniquement par vous : dans la fiche commande, le planning et la liste de courses du jour.</div></div>
+    <div class="fg"><label class="fl2">📞 Prestataires rattachés</label><div id="catf-presta-${id}" style="display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:4px">${(prestaData.length?prestaData.filter(pr=>pr.actif!==false).map(pr=>`<label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" data-pid="${pr.id}" ${(s.prestataire_ids||[]).includes(pr.id)?'checked':''}>${(pr.nom||'').replace(/</g,'&lt;')}${pr.specialite?` <span style="color:var(--muted2);font-size:11px">(${(pr.specialite||'').replace(/</g,'&lt;')})</span>`:''}</label>`).join(''):'<span style="color:var(--muted2);font-size:12.5px">Aucun prestataire. <a onclick="openPrestataires()" style="color:var(--gold2);cursor:pointer;text-decoration:underline">Créer le carnet →</a></span>')}</div></div>
     <div class="fg"><label class="fl2">Heure de livraison minimum le week-end</label><select class="fi" id="catf-hminwe-${id}"><option value="">Aucune contrainte</option>${Array.from({length:8},(_,i)=>i+7).map(hh=>`<option value="${hh}" ${s.heure_min_weekend==hh?'selected':''}>Pas avant ${hh}h (sam. &amp; dim.)</option>`).join('')}</select></div>
     <div class="fg"><label class="fl2">Minimum de personnes le week-end</label><select class="fi" id="catf-minwe-${id}"><option value="">Aucun minimum</option>${[2,3,4,5,6].map(n=>`<option value="${n}" ${s.min_qty_weekend==n?'selected':''}>${n} personnes minimum (sam. &amp; dim.)</option>`).join('')}</select><div style="font-size:11px;color:var(--muted2);margin-top:4px">Bloque la commande si la date choisie tombe un samedi ou dimanche avec une quantité inférieure.</div></div>
     <div class="fg"><label class="fl2">Logements qui proposent ce service</label>
@@ -2210,9 +2443,11 @@ async function saveCatService(id){
   s.heure_limite=(_hl===''||_hl==null)?null:parseInt(_hl);
   {const _mw=document.getElementById('catf-minwe-'+id)?.value;s.min_qty_weekend=(_mw===''||_mw==null)?null:parseInt(_mw);}
   {const _mh=document.getElementById('catf-hminwe-'+id)?.value;s.heure_min_weekend=(_mh===''||_mh==null)?null:parseInt(_mh);}
+  s.prep_courses=document.getElementById('catf-prep-'+id)?.value||null;
+  {const _pb=document.getElementById('catf-presta-'+id);s.prestataire_ids=_pb?[..._pb.querySelectorAll('input:checked')].map(c=>c.dataset.pid):(s.prestataire_ids||[]);}
   if(!s.titre){alert('Mets au moins un titre.');return;}
   if(!cu||!cu.access_token){alert('Session expirée, reconnecte-toi.');return;}
-  const payload={titre:s.titre,categorie:s.categorie||null,description:s.description||null,prix:s.prix||null,image_url:s.image_url||null,livret_ids:s.livret_ids||[],demande_date:s.demande_date,jours_dispo:s.jours_dispo,delai_jours:s.delai_jours,heure_limite:s.heure_limite,ordre:s.ordre||0,tva_taux:s.tva_taux||null,min_qty_weekend:s.min_qty_weekend||null,heure_min_weekend:s.heure_min_weekend||null};
+  const payload={titre:s.titre,categorie:s.categorie||null,description:s.description||null,prix:s.prix||null,image_url:s.image_url||null,livret_ids:s.livret_ids||[],demande_date:s.demande_date,jours_dispo:s.jours_dispo,delai_jours:s.delai_jours,heure_limite:s.heure_limite,ordre:s.ordre||0,tva_taux:s.tva_taux||null,min_qty_weekend:s.min_qty_weekend||null,heure_min_weekend:s.heure_min_weekend||null,prep_courses:s.prep_courses||null,prestataire_ids:s.prestataire_ids||[]};
   try{
     if(s._new){const r=await axios.post(`${API}/catalogue_services`,payload,{headers:{...hd(),'Prefer':'return=representation'}});s.id=r.data[0].id;delete s._new;}
     else{await axios.patch(`${API}/catalogue_services?id=eq.${s.id}`,payload,{headers:{...hd(),'Prefer':'return=minimal'}});}
@@ -4842,7 +5077,7 @@ function showWaitScreen(targetUrl){
   const pc=qp.get('pc')||'',sc=qp.get('sc')||'',oc=qp.get('oc')||'';
   if(pc||sc||oc)applyLivretColors(pc,sc,oc);
   // On cache toutes les screens et on injecte la page d'attente plein écran
-  ['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','demandes-screen','reservations-screen','corbeille-screen','requests-screen'].forEach(s=>{const el=document.getElementById(s);if(el)el.style.display='none';});
+  ['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','prestataires-screen','courses-screen','demandes-screen','reservations-screen','corbeille-screen','requests-screen'].forEach(s=>{const el=document.getElementById(s);if(el)el.style.display='none';});
   const ov=document.createElement('div');
   ov.id='voy-wait-screen';
   ov.style.cssText='position:fixed;inset:0;z-index:100000;background:radial-gradient(ellipse at center,var(--bg2,#1a1611) 0%,var(--bg,#0a0908) 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;padding:24px;font-family:var(--font-sans,system-ui)';
