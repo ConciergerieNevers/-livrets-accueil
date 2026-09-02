@@ -166,6 +166,20 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-sans);min-hei
 .sc-title{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold2);margin-bottom:22px;display:flex;align-items:center;gap:8px;}
 .fg{margin-bottom:20px;}
 .fl2{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);margin-bottom:9px;display:block;}
+/* ===== MOBILE : empêche le zoom automatique iOS ===== */
+/* iOS Safari zoome dès qu'un champ a une police < 16px. On force 16px sur mobile
+   (le !important bat les styles inline), le rendu desktop reste inchangé. */
+@media (max-width:768px){
+  input,select,textarea,.fi,input[type="date"],input[type="time"],input[type="number"],
+  input[type="email"],input[type="tel"],input[type="search"],input[type="url"]{
+    font-size:16px !important;
+  }
+}
+/* Supprime le zoom au double-tap et le délai de 300 ms sur tout l'écran */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+body,button,a,label,select,input,textarea,.eq-card,.sc,.lv-card,.adm-add,.adm-add-s,.adm-logout,.lv-btn{
+  touch-action:manipulation;
+}
 .fi{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:13px 16px;color:var(--text);font-size:14px;outline:none;transition:border-color 0.2s;font-family:var(--font-sans);}
 .fi:focus{border-color:rgba(201,168,76,0.4);}
 .fi::placeholder{color:var(--muted);font-size:13px;}
