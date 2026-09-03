@@ -1564,7 +1564,7 @@ async function register(){
   catch{alert('Erreur.');}
 }
 function logout(){cu=null;cs();show('login-screen');}
-function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','prestataires-screen','courses-screen','demandes-screen','reservations-screen','corbeille-screen','requests-screen'].forEach(s=>document.getElementById(s).style.display=s===id?'block':'none');if(id!=='voyageur-screen'){try{clearLivretColors();}catch(_e){}}}
+function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','prestataires-screen','courses-screen','demandes-screen','reservations-screen','corbeille-screen','requests-screen','stock-screen'].forEach(s=>{const el=document.getElementById(s);if(el)el.style.display=s===id?'block':'none';});if(id!=='voyageur-screen'){try{clearLivretColors();}catch(_e){}}}
 
 
 // ===== CARNET DE PRESTATAIRES =====
