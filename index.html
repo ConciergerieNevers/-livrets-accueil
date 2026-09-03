@@ -615,6 +615,10 @@ body{top:0!important}
         <button class="adm-add-s" onclick="openCourses()">
           🛒 Liste de courses
         </button>
+        <button class="adm-add-s" onclick="openStock()">
+          📦 Stocks
+          <span class="badge" id="stk-badge" style="display:none">0</span>
+        </button>
         <button class="adm-add-s" data-su-only onclick="openCatalogue()">
           🛎️ Mes services
         </button>
@@ -676,6 +680,41 @@ body{top:0!important}
     </div>
   </nav>
   <div class="adm-body"><div id="courses-content"><div class="loading">Chargement…</div></div></div>
+</div>
+
+<!-- STOCKS DE CONSOMMABLES -->
+<div id="stock-screen" style="display:none">
+  <nav class="adm-nav">
+    <div class="adm-nav-left">
+      <button class="adm-logout" onclick="showAdmin()">← Retour</button>
+      <div class="adm-nav-title serif">Stocks</div>
+    </div>
+    <div class="adm-nav-right">
+      <button class="adm-logout" onclick="syncConso()" title="Déduire la consommation des séjours terminés">🔄 Calculer la conso</button>
+      <button class="adm-add" onclick="addConso()">+ Consommable</button>
+    </div>
+  </nav>
+  <div class="adm-body">
+    <div class="adm-hero">
+      <div class="adm-hero-text">
+        <h2 class="serif gold-text">Stocks du local</h2>
+        <p>Consommation calculée automatiquement à partir des réservations SuperHote.</p>
+      </div>
+      <div class="adm-hero-stats">
+        <div class="adm-stat"><div class="adm-stat-num gold-text serif" id="stk-alert">—</div><div class="adm-stat-lbl">À commander</div></div>
+        <div class="adm-stat"><div class="adm-stat-num gold-text serif" id="stk-valeur">—</div><div class="adm-stat-lbl">Valeur stock</div></div>
+        <div class="adm-stat"><div class="adm-stat-num gold-text serif" id="stk-mois">—</div><div class="adm-stat-lbl">Coût / mois</div></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">
+      <button class="adm-add-s" id="stkt-etat"   onclick="setStockTab('etat')">📦 État des stocks</button>
+      <button class="adm-add-s" id="stkt-reappro" onclick="setStockTab('reappro')">📥 Réapprovisionner</button>
+      <button class="adm-add-s" id="stkt-stats"  onclick="setStockTab('stats')">📊 Statistiques</button>
+      <button class="adm-add-s" id="stkt-couts"  onclick="setStockTab('couts')">💰 Coûts</button>
+      <button class="adm-add-s" id="stkt-conf"   onclick="setStockTab('conf')">⚙️ Logements &amp; règles</button>
+    </div>
+    <div id="stock-content"><div class="loading">Chargement…</div></div>
+  </div>
 </div>
 
 <!-- CATALOGUE SERVICES -->
@@ -964,6 +1003,39 @@ body{top:0!important}
         <div class="sc-title">Poubelles (jours de collecte)</div>
         <p style="font-size:12px;color:var(--muted2);margin-bottom:12px;line-height:1.6">Les 3 bacs (jaune / noir / vert) s'affichent toujours sur la fiche. Précisez ici les jours ou consignes propres au logement.</p>
         <textarea class="fi" id="f-poubelles" placeholder="Ex: À mettre dans les conteneurs à l'entrée vers le portail. Collecte le mardi (jaune) et vendredi (noir)." style="min-height:90px"></textarea>
+      </div>
+
+      <div class="sc">
+        <div class="sc-title">📦 Consommables</div>
+        <p style="font-size:12px;color:var(--muted2);margin-bottom:16px;line-height:1.6">Ces réglages servent au calcul automatique des stocks du local : à chaque séjour terminé, la consommation est déduite selon le nombre de voyageurs et l'équipement du logement.<br>💡 Décochez « Stock géré » si le propriétaire fournit lui-même ses consommables.</p>
+        <label class="fg" style="display:flex;align-items:center;gap:9px;cursor:pointer;margin-bottom:14px">
+          <input type="checkbox" id="f-conso-geree" checked>
+          <span class="fl2" style="margin:0">Stock géré par Be Nomads</span>
+        </label>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px">
+          <div class="fg">
+            <label class="fl2">☕ Machine à café</label>
+            <select class="fi" id="f-machine-cafe">
+              <option value="">— aucune —</option>
+              <option value="senseo">Senseo</option>
+              <option value="tassimo">Tassimo</option>
+              <option value="dolce_gusto">Dolce Gusto</option>
+              <option value="nespresso">Nespresso</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label class="fl2">🚿 Nombre de salles de bain</label>
+            <input class="fi" type="number" min="0" max="9" id="f-nb-sdb" value="1">
+          </div>
+        </div>
+        <label class="fg" style="display:flex;align-items:center;gap:9px;cursor:pointer;margin-top:6px">
+          <input type="checkbox" id="f-lave-vaisselle" checked>
+          <span class="fl2" style="margin:0">🍽 Lave-vaisselle (pastille + sel + rinçage par rotation)</span>
+        </label>
+        <label class="fg" style="display:flex;align-items:center;gap:9px;cursor:pointer">
+          <input type="checkbox" id="f-petit-dej-offert">
+          <span class="fl2" style="margin:0">🥐 Petit-déjeuner offert à chaque rotation</span>
+        </label>
       </div>
     </div>
 
@@ -1609,6 +1681,744 @@ function prepBlockHtml(items,opts){
   return h+'</div>';
 }
 // ===== LISTE DE COURSES DU JOUR =====
+/* ============================================================
+   STOCKS DE CONSOMMABLES
+   Conso déduite automatiquement des réservations SuperHote.
+   1 réservation terminée = 1 rotation. Règles : par personne,
+   par rotation, par salle de bain (+ conditions machine à café,
+   lave-vaisselle, petit-déj offert).
+   ============================================================ */
+let consoData=[],regleData=[],mvtData=[],stockTab='etat',stockResa=[];
+const CAFE_LABELS={senseo:'Senseo',tassimo:'Tassimo',dolce_gusto:'Dolce Gusto',nespresso:'Nespresso'};
+
+async function openStock(){
+  show('stock-screen');
+  document.getElementById('stock-content').innerHTML='<div class="loading">Chargement…</div>';
+  await Promise.all([loadStockData(),getConsoStart()]);
+  renderStock();
+}
+async function loadStockData(){
+  try{
+    const [c,r,m,lv,fo]=await Promise.all([
+      axios.get(`${API}/consommables?select=*&order=ordre.asc`,{headers:hd()}),
+      axios.get(`${API}/conso_regles?select=*`,{headers:hd()}),
+      axios.get(`${API}/stock_mouvements?select=*&order=date_mouvement.desc&limit=4000`,{headers:hd()}),
+      axios.get(`${API}/livrets?select=id,nom,actif,conso_geree,machine_cafe,nb_sdb,a_lave_vaisselle,a_lave_linge,petit_dej_offert,superhote_rental_id&deleted_at=is.null&order=nom.asc`,{headers:hd()}),
+      axios.get(`${API}/conso_formats?select=*&order=nom.asc`,{headers:hd()}).catch(()=>({data:[]}))
+    ]);
+    consoData=c.data||[];regleData=r.data||[];mvtData=m.data||[];window.stockLivrets=lv.data||[];window.formatData=fo.data||[];
+  }catch(e){logAndShowErr&&logAndShowErr(e);}
+}
+function setStockTab(t){stockTab=t;renderStock();}
+
+/* Consommation moyenne par jour d'un consommable, sur les 90 derniers jours réels */
+function consoParJour(cid){
+  const now=Date.now(),d90=now-90*864e5;
+  let tot=0,minT=now;
+  (mvtData||[]).forEach(m=>{
+    if(m.consommable_id!==cid||m.type!=='sortie')return;
+    const t=new Date(m.date_mouvement).getTime();
+    if(t<d90)return;
+    tot+=parseFloat(m.quantite)||0;
+    if(t<minT)minT=t;
+  });
+  if(!tot)return 0;
+  const jours=Math.max(14,Math.round((now-minT)/864e5));
+  return tot/jours;
+}
+/* Sorties du mois en cours (quantité + coût) */
+function consoMois(cid,ym){
+  let q=0,cout=0;
+  (mvtData||[]).forEach(m=>{
+    if(m.consommable_id!==cid||m.type!=='sortie')return;
+    if(ym&&String(m.date_mouvement).slice(0,7)!==ym)return;
+    q+=parseFloat(m.quantite)||0;cout+=parseFloat(m.cout)||0;
+  });
+  return{q,cout};
+}
+function stockKPIs(){
+  const ym=new Date().toISOString().slice(0,7);
+  let nbAlert=0,valeur=0,coutMois=0;
+  consoData.forEach(c=>{
+    if(c.actif===false)return;
+    const st=parseFloat(c.stock_actuel)||0;
+    valeur+=st*(parseFloat(c.cout_unitaire)||0);
+    if(st<=(parseFloat(c.seuil_alerte)||0))nbAlert++;
+    coutMois+=consoMois(c.id,ym).cout;
+  });
+  return{nbAlert,valeur,coutMois};
+}
+function eur(n){return (Math.round(n*100)/100).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';}
+function qfmt(n){const v=Math.round(n*100)/100;return (v%1===0?v:v.toFixed(2).replace('.',',')) ;}
+
+function renderStock(){
+  ['etat','reappro','stats','couts','conf'].forEach(t=>{
+    const b=document.getElementById('stkt-'+t);
+    if(b){b.style.background=(t===stockTab)?'var(--gold2)':'';b.style.color=(t===stockTab)?'#0a0a0a':'';b.style.fontWeight=(t===stockTab)?'700':'';}
+  });
+  const k=stockKPIs();
+  const sa=document.getElementById('stk-alert');if(sa){sa.textContent=k.nbAlert;sa.style.color=k.nbAlert?'#ff6b6b':'';}
+  const sv=document.getElementById('stk-valeur');if(sv)sv.textContent=eur(k.valeur);
+  const sm=document.getElementById('stk-mois');if(sm)sm.textContent=eur(k.coutMois);
+  const bd=document.getElementById('stk-badge');
+  if(bd){bd.textContent=k.nbAlert;bd.style.display=k.nbAlert?'inline-flex':'none';}
+  const box=document.getElementById('stock-content');if(!box)return;
+  if(stockTab==='etat')box.innerHTML=stockEtatHtml();
+  else if(stockTab==='reappro')box.innerHTML=stockReapproHtml();
+  else if(stockTab==='stats')box.innerHTML=stockStatsHtml();
+  else if(stockTab==='couts')box.innerHTML=stockCoutsHtml();
+  else box.innerHTML=stockConfHtml();
+}
+const esch=s=>(''+(s==null?'':s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+
+/* ---------- Onglet 1 : état des stocks ---------- */
+function stockEtatHtml(){
+  if(!consoData.length)return '<div class="sc" style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucun consommable. Cliquez sur « + Consommable ».</div>';
+  const cats={};
+  consoData.forEach(c=>{if(c.actif===false)return;(cats[c.categorie||'Autres']=cats[c.categorie||'Autres']||[]).push(c);});
+  const lastSync=(mvtData||[]).filter(m=>m.type==='sortie').length;
+  let h='<div class="sc" style="margin-bottom:16px;padding:14px 16px;font-size:13px;color:var(--muted2)">'+
+    '💡 Le stock baisse tout seul dès qu’un séjour est terminé. Cliquez sur <b>🔄 Calculer la conso</b> après chaque synchro des réservations. '+
+    '<b>'+lastSync+'</b> sortie'+(lastSync>1?'s':'')+' enregistrée'+(lastSync>1?'s':'')+' à ce jour.'+
+    '<div style="margin-top:11px;display:flex;flex-wrap:wrap;gap:12px;align-items:center">'+
+      '<label style="display:flex;align-items:center;gap:7px">Suivi depuis le <input type="date" id="stk-start" value="'+(_consoStart||'')+'" onchange="setConsoStart(this.value)" style="padding:6px 9px;border-radius:8px;border:1px solid var(--border-gold);background:var(--card);color:var(--gold3);font-size:13px;color-scheme:dark"></label>'+
+      '<button onclick="loadHistoCouts()" style="background:none;border:1px solid var(--border-gold);color:var(--gold3);border-radius:8px;padding:6px 11px;font-size:12px;cursor:pointer">📈 Charger l’historique des coûts</button>'+
+    '</div></div>';
+  // Alertes en tête
+  const alertes=consoData.filter(c=>c.actif!==false&&(parseFloat(c.stock_actuel)||0)<=(parseFloat(c.seuil_alerte)||0));
+  if(alertes.length){
+    h+='<div class="sc" style="margin-bottom:18px;border-color:#ff6b6b"><div style="font-weight:700;color:#ff6b6b;margin-bottom:10px">🚨 À commander maintenant ('+alertes.length+')</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:8px">'+alertes.map(c=>{
+        const cpj=consoParJour(c.id),j=cpj>0?Math.floor((parseFloat(c.stock_actuel)||0)/cpj):null;
+        return '<span style="background:rgba(255,107,107,.12);border:1px solid rgba(255,107,107,.4);border-radius:9px;padding:6px 11px;font-size:12.5px">'+esch(c.nom)+' — <b>'+qfmt(c.stock_actuel||0)+'</b> '+esch(c.unite)+(j!==null?' · '+(j<=0?'rupture':j+' j'):'')+'</span>';
+      }).join('')+'</div></div>';
+  }
+  Object.keys(cats).forEach(cat=>{
+    h+='<div style="margin:22px 0 10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold2);font-weight:700">'+esch(cat)+'</div>';
+    h+='<div class="sc" style="padding:0;overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:660px">'+
+      '<tr style="color:var(--muted2);font-size:11px;text-transform:uppercase;letter-spacing:.06em">'+
+      '<th style="text-align:left;padding:10px 12px">Consommable</th>'+
+      '<th style="text-align:right;padding:10px 8px">Stock</th>'+
+      '<th style="text-align:right;padding:10px 8px">Conso/mois</th>'+
+      '<th style="text-align:right;padding:10px 8px">Autonomie</th>'+
+      '<th style="text-align:right;padding:10px 8px">Seuil</th>'+
+      '<th style="text-align:right;padding:10px 8px">P.U.</th>'+
+      '<th style="padding:10px 12px"></th></tr>';
+    cats[cat].forEach(c=>{
+      const st=parseFloat(c.stock_actuel)||0,seuil=parseFloat(c.seuil_alerte)||0;
+      const cpj=consoParJour(c.id),cpm=cpj*30.4;
+      const jours=cpj>0?Math.floor(st/cpj):null;
+      const alerte=st<=seuil;
+      let jTxt='<span style="color:var(--muted2)">—</span>';
+      if(jours!==null){
+        const col=jours<=7?'#ff6b6b':(jours<=21?'#f0b429':'#5ec07a');
+        jTxt='<span style="color:'+col+';font-weight:600">'+(jours<=0?'rupture':(jours>365?'> 1 an':jours+' j'))+'</span>';
+      }
+      h+='<tr style="border-top:1px solid var(--border)">'+
+        '<td style="padding:11px 12px">'+(alerte?'🚨 ':'')+esch(c.nom)+(c.fournisseur?'<div style="font-size:11px;color:var(--muted2)">'+esch(c.fournisseur)+(c.conditionnement?' · '+esch(c.conditionnement):'')+'</div>':'')+'</td>'+
+        '<td style="padding:11px 8px;text-align:right;font-weight:700;'+(alerte?'color:#ff6b6b':'')+'">'+qfmt(st)+' <span style="font-weight:400;font-size:11px;color:var(--muted2)">'+esch(c.unite)+'</span></td>'+
+        '<td style="padding:11px 8px;text-align:right">'+(cpm>0?qfmt(cpm):'<span style="color:var(--muted2)">—</span>')+'</td>'+
+        '<td style="padding:11px 8px;text-align:right">'+jTxt+'</td>'+
+        '<td style="padding:11px 8px;text-align:right;color:var(--muted2)">'+qfmt(seuil)+'</td>'+
+        '<td style="padding:11px 8px;text-align:right;color:var(--muted2)">'+eur(parseFloat(c.cout_unitaire)||0)+'</td>'+
+        '<td style="padding:11px 12px;text-align:right;white-space:nowrap"><button onclick="editConso(\''+c.id+'\')" style="background:none;border:1px solid var(--border-gold);color:var(--gold3);border-radius:8px;padding:4px 9px;font-size:11.5px;cursor:pointer">✏️</button></td>'+
+        '</tr>';
+    });
+    h+='</table></div>';
+  });
+  return h;
+}
+
+/* ---------- Onglet 2 : réapprovisionnement + inventaire ---------- */
+function fmtsOf(cid){return (window.formatData||[]).filter(f=>f.consommable_id===cid&&f.actif!==false);}
+function stockReapproHtml(){
+  const act=consoData.filter(c=>c.actif!==false);
+  let h='<div class="sc" style="margin-bottom:16px;padding:14px 16px;font-size:13px;color:var(--muted2);line-height:1.65">'+
+    '📥 <b>Deux choses par produit :</b><br>'+
+    '① <b>« Il en reste »</b> — comptez ce qu’il y a vraiment dans le local. Si le chiffre ne colle pas avec le stock théorique, l’écart est enregistré : c’est votre perte ou votre vol.<br>'+
+    '② <b>« J’ajoute »</b> — choisissez le paquet acheté et le nombre de paquets. Le nombre d’unités se calcule tout seul.</div>';
+  act.forEach(c=>{
+    const st=parseFloat(c.stock_actuel)||0,fs=fmtsOf(c.id);
+    const dft=fs.find(f=>f.defaut)||fs[0];
+    h+='<div class="sc" style="margin-bottom:11px;padding:15px 16px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px">'+
+        '<div><div style="font-weight:700;font-size:14.5px">'+esch(c.nom)+'</div>'+
+        '<div style="font-size:11.5px;color:var(--muted2);margin-top:2px">'+esch(c.fournisseur||'')+' · '+eur(parseFloat(c.cout_unitaire)||0)+' / '+esch(c.unite)+'</div></div>'+
+        '<div style="text-align:right"><div style="font-size:11px;color:var(--muted2)">stock théorique</div>'+
+        '<div style="font-weight:700;font-size:17px;color:var(--gold2)">'+qfmt(st)+' <span style="font-size:12px;font-weight:400;color:var(--muted2)">'+esch(c.unite)+'</span></div></div>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:11px;align-items:end">'+
+        '<div><label style="font-size:11px;color:var(--muted2);display:block;margin-bottom:4px">① Il en reste (compté)</label>'+
+          '<input id="inv-'+c.id+'" type="number" step="any" min="0" placeholder="'+qfmt(st)+'" oninput="majReaLigne(\''+c.id+'\')" style="width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--border-gold);background:var(--card);color:var(--gold3);font-size:16px;box-sizing:border-box"></div>';
+    if(fs.length){
+      h+='<div><label style="font-size:11px;color:var(--muted2);display:block;margin-bottom:4px">② Paquet acheté</label>'+
+        '<select id="fmt-'+c.id+'" onchange="majReaLigne(\''+c.id+'\')" style="width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--border-gold);background:var(--card);color:var(--gold3);font-size:14px;box-sizing:border-box">'+
+        fs.map(f=>'<option value="'+f.id+'" '+(dft&&f.id===dft.id?'selected':'')+'>'+esch(f.nom)+' — '+qfmt(f.qte)+' '+esch(c.unite)+(f.cout_lot?' · '+eur(f.cout_lot):'')+'</option>').join('')+
+        '<option value="_unit">À l’unité ('+esch(c.unite)+')</option></select></div>';
+    }
+    h+='<div><label style="font-size:11px;color:var(--muted2);display:block;margin-bottom:4px">'+(fs.length?'Nombre de paquets':'② Quantité ajoutée')+'</label>'+
+        '<input id="rea-'+c.id+'" type="number" step="any" min="0" placeholder="0" oninput="majReaLigne(\''+c.id+'\')" style="width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--border-gold);background:var(--card);color:var(--gold3);font-size:16px;box-sizing:border-box"></div>'+
+        '<div><button onclick="doReappro(\''+c.id+'\')" style="width:100%;background:var(--gold2);border:none;color:#0a0a0a;border-radius:9px;padding:11px 12px;font-size:13.5px;font-weight:700;cursor:pointer">Valider</button></div>'+
+      '</div>'+
+      '<div id="calc-'+c.id+'" style="margin-top:10px;font-size:12.5px;color:var(--muted2);min-height:18px"></div>'+
+      '</div>';
+  });
+  h+='<div style="text-align:center;margin:20px 0"><button onclick="doReapproAll()" class="adm-add">✓ Tout valider d’un coup</button></div>';
+  // Journal
+  h+=journalHtml(30);
+  return h;
+}
+/* Aperçu live d'une ligne : total ajouté + écart d'inventaire */
+function majReaLigne(cid){
+  const c=consoData.find(x=>x.id===cid);if(!c)return;
+  const box=document.getElementById('calc-'+cid);if(!box)return;
+  const st=parseFloat(c.stock_actuel)||0;
+  const inv=parseFloat(String((document.getElementById('inv-'+cid)||{}).value||'').replace(',','.'));
+  const nb=parseFloat(String((document.getElementById('rea-'+cid)||{}).value||'').replace(',','.'))||0;
+  const fs=fmtsOf(cid),sel=(document.getElementById('fmt-'+cid)||{}).value;
+  const f=(sel&&sel!=='_unit')?fs.find(x=>x.id===sel):null;
+  const parLot=f?(parseFloat(f.qte)||1):1;
+  const ajout=nb*parLot;
+  const cout=f&&f.cout_lot?nb*parseFloat(f.cout_lot):ajout*(parseFloat(c.cout_unitaire)||0);
+  const parts=[];
+  if(!isNaN(inv)){
+    const ec=inv-st;
+    if(Math.abs(ec)>=0.01)parts.push('<span style="color:'+(ec<0?'#ff6b6b':'#5ec07a')+';font-weight:600">'+(ec<0?'⚠️ manque ':'✚ surplus ')+qfmt(Math.abs(ec))+' '+esch(c.unite)+'</span> (théorique '+qfmt(st)+', compté '+qfmt(inv)+')');
+    else parts.push('<span style="color:#5ec07a">✓ le compte est bon</span>');
+  }
+  if(ajout>0){
+    const base=isNaN(inv)?st:inv;
+    parts.push('+ '+qfmt(ajout)+' '+esch(c.unite)+(f?' ('+qfmt(nb)+' × '+qfmt(parLot)+')':'')+' · '+eur(cout)+' → <b style="color:var(--gold2)">'+qfmt(base+ajout)+' '+esch(c.unite)+'</b>');
+  }
+  box.innerHTML=parts.join(' &nbsp;·&nbsp; ');
+}
+async function doReappro(cid,silent){
+  const c=consoData.find(x=>x.id===cid);if(!c)return false;
+  const st=parseFloat(c.stock_actuel)||0;
+  const inv=parseFloat(String((document.getElementById('inv-'+cid)||{}).value||'').replace(',','.'));
+  const nb=parseFloat(String((document.getElementById('rea-'+cid)||{}).value||'').replace(',','.'))||0;
+  const fs=fmtsOf(cid),sel=(document.getElementById('fmt-'+cid)||{}).value;
+  const f=(sel&&sel!=='_unit')?fs.find(x=>x.id===sel):null;
+  const parLot=f?(parseFloat(f.qte)||1):1;
+  const ajout=nb*parLot;
+  const aInv=!isNaN(inv)&&Math.abs(inv-st)>=0.01;
+  if(!ajout&&!aInv){if(!silent)toast('Rien à enregistrer sur cette ligne');return false;}
+  let nv=isNaN(inv)?st:inv;
+  try{
+    // ① Écart d'inventaire (perte, vol, casse, ou oubli de saisie)
+    if(aInv){
+      const ec=inv-st;
+      await axios.post(`${API}/stock_mouvements`,{consommable_id:cid,type:'ajustement',quantite:ec,
+        cout:ec*(parseFloat(c.cout_unitaire)||0),note:'Inventaire : théorique '+qfmt(st)+', compté '+qfmt(inv)},{headers:hd()});
+    }
+    // ② Entrée en stock
+    if(ajout>0){
+      const cout=f&&f.cout_lot?nb*parseFloat(f.cout_lot):ajout*(parseFloat(c.cout_unitaire)||0);
+      await axios.post(`${API}/stock_mouvements`,{consommable_id:cid,type:'entree',quantite:ajout,cout:cout,
+        format_id:f?f.id:null,format_nom:f?f.nom:null,nb_lots:f?nb:null,
+        note:f?(qfmt(nb)+' × '+f.nom):'Ajout à l’unité'},{headers:hd()});
+      nv+=ajout;
+      // Le prix réel payé recale le coût unitaire (les moyennes du tableau étaient approximatives)
+      if(f&&f.cout_lot&&parLot>0){
+        const pu=Math.round(parseFloat(f.cout_lot)/parLot*1000)/1000;
+        if(Math.abs(pu-(parseFloat(c.cout_unitaire)||0))>0.001){
+          await axios.patch(`${API}/consommables?id=eq.${cid}`,{cout_unitaire:pu},{headers:hd()});
+          c.cout_unitaire=pu;
+        }
+      }
+    }
+    await axios.patch(`${API}/consommables?id=eq.${cid}`,{stock_actuel:Math.round(nv*1000)/1000},{headers:hd()});
+    c.stock_actuel=nv;
+    ['inv-','rea-'].forEach(p=>{const el=document.getElementById(p+cid);if(el)el.value='';});
+    if(!silent){
+      await loadStockData();renderStock();
+      toast('✓ '+c.nom+' : '+qfmt(nv)+' '+c.unite+(aInv?' (écart '+(inv-st>0?'+':'')+qfmt(inv-st)+' noté)':''));
+    }
+    return true;
+  }catch(e){logAndShowErr&&logAndShowErr(e);return false;}
+}
+async function doReapproAll(){
+  let n=0;
+  for(const c of consoData.filter(x=>x.actif!==false)){
+    const a=parseFloat(String((document.getElementById('rea-'+c.id)||{}).value||'').replace(',','.'))||0;
+    const i=(document.getElementById('inv-'+c.id)||{}).value;
+    if(a>0||String(i).trim()!==''){if(await doReappro(c.id,true))n++;}
+  }
+  await loadStockData();renderStock();
+  toast(n?('✓ '+n+' produit'+(n>1?'s':'')+' mis à jour'):'Rien à enregistrer');
+}
+/* Journal des ajouts et des écarts */
+function journalHtml(lim){
+  const rec=(mvtData||[]).filter(m=>m.type!=='sortie').slice(0,lim||30);
+  if(!rec.length)return '';
+  let h='<div style="margin:26px 0 10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold2);font-weight:700">📒 Journal des ajouts et des écarts</div>';
+  h+='<div class="sc" style="padding:0;overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:620px">'+
+    '<tr style="color:var(--muted2);font-size:11px;text-transform:uppercase;letter-spacing:.06em">'+
+    '<th style="text-align:left;padding:10px 12px">Date</th><th style="text-align:left;padding:10px 8px">Produit</th>'+
+    '<th style="text-align:left;padding:10px 8px">Ce qui a été saisi</th>'+
+    '<th style="text-align:right;padding:10px 8px">Quantité</th><th style="text-align:right;padding:10px 12px">Coût</th></tr>';
+  rec.forEach(m=>{
+    const c=consoData.find(x=>x.id===m.consommable_id)||{};
+    const aj=m.type==='ajustement',q=parseFloat(m.quantite)||0;
+    h+='<tr style="border-top:1px solid var(--border)">'+
+      '<td style="padding:9px 12px;white-space:nowrap;color:var(--muted2)">'+new Date(m.date_mouvement).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'})+'</td>'+
+      '<td style="padding:9px 8px">'+(aj?'⚖️ ':'📥 ')+esch(c.nom||'?')+'</td>'+
+      '<td style="padding:9px 8px;color:var(--muted2);font-size:11.5px">'+esch(m.note||(m.format_nom||''))+'</td>'+
+      '<td style="padding:9px 8px;text-align:right;font-weight:700;'+(aj&&q<0?'color:#ff6b6b':(aj?'color:#5ec07a':''))+'">'+(q>0?'+':'')+qfmt(q)+' <span style="font-weight:400;font-size:11px;color:var(--muted2)">'+esch(c.unite||'')+'</span></td>'+
+      '<td style="padding:9px 12px;text-align:right;color:var(--muted2)">'+(m.cout?eur(Math.abs(m.cout)):'—')+'</td></tr>';
+  });
+  h+='</table></div>';
+  return h;
+}
+
+/* ---------- Onglet 3 : statistiques de consommation ---------- */
+function statsMois(){
+  // Regroupe les sorties par mois : rotations, voyageurs, nuitées, coût
+  const M={};
+  (mvtData||[]).filter(m=>m.type==='sortie').forEach(m=>{
+    const ym=String(m.date_mouvement).slice(0,7);
+    if(!M[ym])M[ym]={cout:0,book:{},lv:{}};
+    M[ym].cout+=parseFloat(m.cout)||0;
+    if(m.booking_id&&!M[ym].book[m.booking_id])M[ym].book[m.booking_id]={p:parseInt(m.nb_personnes)||0,n:parseInt(m.nb_nuits)||0};
+    if(m.livret_nom)M[ym].lv[m.livret_nom]=1;
+  });
+  Object.keys(M).forEach(ym=>{
+    const bs=Object.values(M[ym].book);
+    M[ym].rot=bs.length;
+    M[ym].pers=bs.reduce((s,b)=>s+b.p,0);
+    M[ym].nuitees=bs.reduce((s,b)=>s+b.p*b.n,0);
+    M[ym].nblv=Object.keys(M[ym].lv).length;
+  });
+  return M;
+}
+function stockStatsHtml(){
+  const M=statsMois(),yms=Object.keys(M).sort();
+  if(!yms.length)return '<div class="sc" style="text-align:center;padding:40px;color:var(--muted);font-style:italic">Aucune consommation calculée pour l’instant.<br>Cliquez sur <b>🔄 Calculer la conso</b> en haut de l’écran.</div>';
+  const der=yms[yms.length-1],d=M[der];
+  const lbl=y=>new Date(y+'-01T12:00:00').toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+  let h='<div style="margin:0 0 10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold2);font-weight:700">'+lbl(der)+'</div>';
+  // Grands chiffres du dernier mois
+  const K=[['🔁',d.rot,'rotations'],['👥',d.pers,'voyageurs'],['🌙',d.nuitees,'nuitées'],
+           ['🏠',d.nblv,'logements'],['💰',eur(d.cout),'de consommables'],
+           ['📊',eur(d.rot?d.cout/d.rot:0),'par rotation'],['🧍',eur(d.pers?d.cout/d.pers:0),'par voyageur']];
+  h+='<div class="sc" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:2px;padding:0;overflow:hidden">';
+  K.forEach(k=>{h+='<div style="padding:16px 12px;text-align:center;border:1px solid var(--border)">'+
+    '<div style="font-size:19px;margin-bottom:3px">'+k[0]+'</div>'+
+    '<div class="serif gold-text" style="font-size:23px;font-weight:700;line-height:1.1">'+k[1]+'</div>'+
+    '<div style="font-size:10.5px;color:var(--muted2);margin-top:3px;text-transform:uppercase;letter-spacing:.05em">'+k[2]+'</div></div>';});
+  h+='</div>';
+  // Tableau mois par mois
+  h+='<div style="margin:26px 0 10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold2);font-weight:700">Mois par mois</div>';
+  h+='<div class="sc" style="padding:0;overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:600px">'+
+    '<tr style="color:var(--muted2);font-size:11px;text-transform:uppercase;letter-spacing:.06em">'+
+    '<th style="text-align:left;padding:10px 12px">Mois</th><th style="text-align:right;padding:10px 8px">Rotations</th>'+
+    '<th style="text-align:right;padding:10px 8px">Voyageurs</th><th style="text-align:right;padding:10px 8px">Nuitées</th>'+
+    '<th style="text-align:right;padding:10px 8px">Coût</th><th style="text-align:right;padding:10px 12px">€ / rotation</th></tr>';
+  yms.slice().reverse().forEach(y=>{const m=M[y];
+    h+='<tr style="border-top:1px solid var(--border)"><td style="padding:10px 12px;text-transform:capitalize">'+lbl(y)+'</td>'+
+      '<td style="padding:10px 8px;text-align:right">'+m.rot+'</td>'+
+      '<td style="padding:10px 8px;text-align:right">'+m.pers+'</td>'+
+      '<td style="padding:10px 8px;text-align:right;color:var(--muted2)">'+m.nuitees+'</td>'+
+      '<td style="padding:10px 8px;text-align:right;font-weight:600">'+eur(m.cout)+'</td>'+
+      '<td style="padding:10px 12px;text-align:right;color:var(--gold3);font-weight:700">'+eur(m.rot?m.cout/m.rot:0)+'</td></tr>';
+  });
+  h+='</table></div>';
+  // Quantités consommées sur le dernier mois
+  const qm={};
+  (mvtData||[]).filter(m=>m.type==='sortie'&&String(m.date_mouvement).slice(0,7)===der).forEach(m=>{
+    if(!qm[m.consommable_id])qm[m.consommable_id]={q:0,c:0};
+    qm[m.consommable_id].q+=parseFloat(m.quantite)||0;qm[m.consommable_id].c+=parseFloat(m.cout)||0;
+  });
+  const lignes=Object.keys(qm).map(id=>({c:consoData.find(x=>x.id===id)||{},...qm[id]}))
+    .filter(x=>x.c.nom).sort((a,b)=>b.c-a.c);
+  if(lignes.length){
+    h+='<div style="margin:26px 0 10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold2);font-weight:700">Ce qui a été consommé en '+lbl(der)+'</div>';
+    h+='<div class="sc" style="padding:0;overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:520px">'+
+      '<tr style="color:var(--muted2);font-size:11px;text-transform:uppercase;letter-spacing:.06em"><th style="text-align:left;padding:10px 12px">Produit</th>'+
+      '<th style="text-align:right;padding:10px 8px">Quantité</th><th style="text-align:right;padding:10px 8px">Coût</th>'+
+      '<th style="text-align:right;padding:10px 12px">Par voyageur</th></tr>';
+    const mx=lignes[0].c;
+    lignes.forEach(x=>{
+      h+='<tr style="border-top:1px solid var(--border)"><td style="padding:9px 12px">'+esch(x.c.nom)+
+        '<div style="height:4px;background:var(--border);border-radius:2px;margin-top:5px;max-width:200px"><div style="height:100%;width:'+Math.round(x.c/mx*100)+'%;background:var(--gold2);border-radius:2px"></div></div></td>'+
+        '<td style="padding:9px 8px;text-align:right;font-weight:600">'+qfmt(x.q)+' <span style="font-weight:400;font-size:11px;color:var(--muted2)">'+esch(x.c.unite)+'</span></td>'+
+        '<td style="padding:9px 8px;text-align:right">'+eur(x.c)+'</td>'+
+        '<td style="padding:9px 12px;text-align:right;color:var(--muted2)">'+(d.pers?qfmt(x.q/d.pers):'—')+'</td></tr>';
+    });
+    h+='</table></div>';
+  }
+  // Pertes constatées lors des inventaires
+  const aj=(mvtData||[]).filter(m=>m.type==='ajustement');
+  if(aj.length){
+    const perte=aj.filter(m=>(parseFloat(m.quantite)||0)<0).reduce((s,m)=>s+Math.abs(parseFloat(m.cout)||0),0);
+    const surp=aj.filter(m=>(parseFloat(m.quantite)||0)>0).reduce((s,m)=>s+(parseFloat(m.cout)||0),0);
+    h+='<div style="margin:26px 0 10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold2);font-weight:700">⚖️ Écarts d’inventaire</div>';
+    h+='<div class="sc" style="margin-bottom:12px;padding:15px 16px;font-size:13px;line-height:1.7">'+
+      'Différence entre ce que l’appli calcule et ce que vous comptez dans le local.<br>'+
+      '<span style="color:#ff6b6b;font-weight:700">Manquant : '+eur(perte)+'</span> &nbsp;·&nbsp; '+
+      '<span style="color:#5ec07a;font-weight:700">Surplus : '+eur(surp)+'</span>'+
+      '<div style="font-size:11.5px;color:var(--muted2);margin-top:7px">Un manquant régulier = perte, casse, vol, ou un achat que vous avez oublié de saisir.</div></div>';
+    // Détail par produit
+    const pp={};
+    aj.forEach(m=>{pp[m.consommable_id]=(pp[m.consommable_id]||0)+(parseFloat(m.quantite)||0);});
+    const ls=Object.keys(pp).map(id=>({c:consoData.find(x=>x.id===id)||{},q:pp[id]})).filter(x=>x.c.nom&&Math.abs(x.q)>=0.01)
+      .sort((a,b)=>a.q-b.q);
+    if(ls.length){
+      h+='<div class="sc" style="padding:0">';
+      ls.forEach(x=>{h+='<div style="padding:10px 14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:12.5px">'+
+        '<span>'+esch(x.c.nom)+'</span><b style="color:'+(x.q<0?'#ff6b6b':'#5ec07a')+'">'+(x.q>0?'+':'')+qfmt(x.q)+' '+esch(x.c.unite)+'</b></div>';});
+      h+='</div>';
+    }
+  }
+  return h;
+}
+
+/* ---------- Onglet 3 : coûts & consommation ---------- */
+function stockCoutsHtml(){
+  // Par mois (12 derniers)
+  const mois={};
+  (mvtData||[]).filter(m=>m.type==='sortie').forEach(m=>{
+    const ym=String(m.date_mouvement).slice(0,7);
+    mois[ym]=(mois[ym]||0)+(parseFloat(m.cout)||0);
+  });
+  const yms=Object.keys(mois).sort().slice(-12);
+  const maxM=Math.max(1,...yms.map(y=>mois[y]));
+  let h='<div style="margin:0 0 10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold2);font-weight:700">Coût des consommables par mois</div>';
+  if(!yms.length)h+='<div class="sc" style="text-align:center;padding:34px;color:var(--muted);font-style:italic">Aucune consommation calculée. Cliquez sur <b>🔄 Calculer la conso</b>.</div>';
+  else{
+    h+='<div class="sc"><div style="display:flex;align-items:flex-end;gap:8px;height:150px">';
+    yms.forEach(y=>{
+      const pc=Math.round(mois[y]/maxM*100);
+      h+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%;justify-content:flex-end">'+
+        '<div style="font-size:10.5px;color:var(--gold3);font-weight:600">'+Math.round(mois[y])+'€</div>'+
+        '<div style="width:100%;max-width:44px;background:linear-gradient(180deg,var(--gold2),rgba(204,181,145,.25));border-radius:6px 6px 0 0;height:'+Math.max(3,pc)+'%"></div>'+
+        '<div style="font-size:10px;color:var(--muted2)">'+y.slice(5)+'/'+y.slice(2,4)+'</div></div>';
+    });
+    h+='</div></div>';
+  }
+  // Coût par logement
+  const parLv={};
+  (mvtData||[]).filter(m=>m.type==='sortie').forEach(m=>{
+    const k=m.livret_nom||'(inconnu)';
+    if(!parLv[k])parLv[k]={cout:0,rot:new Set(),pers:0};
+    parLv[k].cout+=parseFloat(m.cout)||0;
+    if(m.booking_id)parLv[k].rot.add(m.booking_id);
+    });
+  const lvs=Object.keys(parLv).sort((a,b)=>parLv[b].cout-parLv[a].cout);
+  if(lvs.length){
+    h+='<div style="margin:26px 0 10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold2);font-weight:700">Coût par logement</div>';
+    h+='<div class="sc" style="padding:0;overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:480px">'+
+      '<tr style="color:var(--muted2);font-size:11px;text-transform:uppercase;letter-spacing:.06em"><th style="text-align:left;padding:10px 12px">Logement</th>'+
+      '<th style="text-align:right;padding:10px 8px">Rotations</th><th style="text-align:right;padding:10px 8px">Coût total</th>'+
+      '<th style="text-align:right;padding:10px 12px">€ / rotation</th></tr>';
+    lvs.forEach(n=>{
+      const d=parLv[n],nr=d.rot.size||1;
+      h+='<tr style="border-top:1px solid var(--border)"><td style="padding:10px 12px">'+esch(n)+'</td>'+
+        '<td style="padding:10px 8px;text-align:right">'+d.rot.size+'</td>'+
+        '<td style="padding:10px 8px;text-align:right;font-weight:600">'+eur(d.cout)+'</td>'+
+        '<td style="padding:10px 12px;text-align:right;color:var(--gold3);font-weight:700">'+eur(d.cout/nr)+'</td></tr>';
+    });
+    h+='</table></div>';
+  }
+  // Top consommables en coût
+  const parC=consoData.map(c=>({c,cout:(mvtData||[]).filter(m=>m.consommable_id===c.id&&m.type==='sortie').reduce((s,m)=>s+(parseFloat(m.cout)||0),0)}))
+    .filter(x=>x.cout>0).sort((a,b)=>b.cout-a.cout).slice(0,15);
+  if(parC.length){
+    h+='<div style="margin:26px 0 10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold2);font-weight:700">Ce qui coûte le plus cher</div><div class="sc" style="padding:0">';
+    const mx=parC[0].cout;
+    parC.forEach(x=>{
+      h+='<div style="padding:10px 14px;border-top:1px solid var(--border)"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px"><span>'+esch(x.c.nom)+'</span><b>'+eur(x.cout)+'</b></div>'+
+        '<div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+Math.round(x.cout/mx*100)+'%;background:var(--gold2)"></div></div></div>';
+    });
+    h+='</div>';
+  }
+  return h;
+}
+
+/* ---------- Onglet 4 : config logements + règles ---------- */
+function stockConfHtml(){
+  const lv=(window.stockLivrets||[]);
+  let h='<div class="sc" style="margin-bottom:16px;padding:14px 16px;font-size:13px;color:var(--muted2)">⚙️ Pour chaque logement : la machine à café, le nombre de salles de bain, la présence d’un lave-vaisselle et le petit-déjeuner offert. Décochez « Stock géré » pour les logements qui fournissent eux-mêmes leurs consommables.</div>';
+  h+='<div class="sc" style="padding:0;overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:760px">'+
+    '<tr style="color:var(--muted2);font-size:11px;text-transform:uppercase;letter-spacing:.06em">'+
+    '<th style="text-align:left;padding:10px 12px">Logement</th><th style="padding:10px 8px">Stock géré</th>'+
+    '<th style="padding:10px 8px">Machine à café</th><th style="padding:10px 8px">Salles de bain</th>'+
+    '<th style="padding:10px 8px">Lave-vaisselle</th><th style="padding:10px 8px">Lave-linge</th><th style="padding:10px 12px">Petit-déj offert</th></tr>';
+  lv.forEach(l=>{
+    const g=l.conso_geree!==false;
+    h+='<tr style="border-top:1px solid var(--border);'+(g?'':'opacity:.5')+'">'+
+      '<td style="padding:9px 12px">'+esch(l.nom)+(l.actif===false?' <span style="font-size:10px;color:var(--muted2)">(pause)</span>':'')+(!l.superhote_rental_id?'<div style="font-size:10.5px;color:#f0b429">⚠️ pas lié à SuperHote</div>':'')+'</td>'+
+      '<td style="padding:9px 8px;text-align:center"><input type="checkbox" '+(g?'checked':'')+' onchange="saveConsoConf(\''+l.id+'\',\'conso_geree\',this.checked)"></td>'+
+      '<td style="padding:9px 8px;text-align:center"><select onchange="saveConsoConf(\''+l.id+'\',\'machine_cafe\',this.value||null)" style="padding:5px 7px;border-radius:8px;border:1px solid var(--border-gold);background:var(--card);color:var(--gold3);font-size:12.5px">'+
+        '<option value="">— aucune / règles dédiées —</option>'+Object.keys(CAFE_LABELS).map(k=>'<option value="'+k+'" '+(l.machine_cafe===k?'selected':'')+'>'+CAFE_LABELS[k]+'</option>').join('')+'</select></td>'+
+      '<td style="padding:9px 8px;text-align:center"><input type="number" min="0" max="9" value="'+(l.nb_sdb==null?1:l.nb_sdb)+'" onchange="saveConsoConf(\''+l.id+'\',\'nb_sdb\',parseInt(this.value)||0)" style="width:54px;padding:5px;border-radius:8px;border:1px solid var(--border-gold);background:var(--card);color:var(--gold3);font-size:13px;text-align:center"></td>'+
+      '<td style="padding:9px 8px;text-align:center"><input type="checkbox" '+(l.a_lave_vaisselle!==false?'checked':'')+' onchange="saveConsoConf(\''+l.id+'\',\'a_lave_vaisselle\',this.checked)"></td>'+
+      '<td style="padding:9px 8px;text-align:center"><input type="checkbox" '+(l.a_lave_linge!==false?'checked':'')+' onchange="saveConsoConf(\''+l.id+'\',\'a_lave_linge\',this.checked)"></td>'+
+      '<td style="padding:9px 12px;text-align:center"><input type="checkbox" '+(l.petit_dej_offert?'checked':'')+' onchange="saveConsoConf(\''+l.id+'\',\'petit_dej_offert\',this.checked)"></td>'+
+      '</tr>';
+  });
+  h+='</table></div>';
+  // Règles de consommation
+  h+='<div style="margin:26px 0 10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold2);font-weight:700">Règles de consommation</div>';
+  h+='<div class="sc" style="margin-bottom:12px;padding:13px 16px;font-size:12.5px;color:var(--muted2)">Quantité consommée à chaque séjour. <b>par personne</b> = × nombre de voyageurs · <b>par rotation</b> = 1 fois par séjour · <b>par salle de bain</b> = × nombre de SdB · <b>par personne et par nuit</b> = × voyageurs × nuits (papier toilette, Sopalin…).</div>';
+  const BASE={personne:'par personne',rotation:'par rotation',sdb:'par salle de bain',nuit:'par nuit',personne_nuit:'par personne et par nuit'};
+  h+='<div class="sc" style="padding:0;overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:640px">'+
+    '<tr style="color:var(--muted2);font-size:11px;text-transform:uppercase;letter-spacing:.06em"><th style="text-align:left;padding:10px 12px">Consommable</th>'+
+    '<th style="text-align:center;padding:10px 8px">Quantité</th><th style="text-align:left;padding:10px 8px">Base</th>'+
+    '<th style="text-align:left;padding:10px 8px">Condition</th><th style="padding:10px 12px"></th></tr>';
+  regleData.slice().sort((a,b)=>{
+    const ca=consoData.find(x=>x.id===a.consommable_id)||{},cb=consoData.find(x=>x.id===b.consommable_id)||{};
+    return (ca.ordre||0)-(cb.ordre||0);
+  }).forEach(r=>{
+    const c=consoData.find(x=>x.id===r.consommable_id)||{};
+    let cond='<span style="color:var(--muted2)">toujours</span>';
+    if(r.condition_type==='machine_cafe')cond='☕ machine '+(CAFE_LABELS[r.condition_valeur]||r.condition_valeur);
+    else if(r.condition_type==='lave_vaisselle')cond='🍽 si lave-vaisselle';
+    else if(r.condition_type==='lave_linge')cond='🧺 si lave-linge';
+    else if(r.condition_type==='petit_dej')cond='🥐 si petit-déj offert';
+    if(r.livret_id){const lg=(window.stockLivrets||[]).find(x=>x.id===r.livret_id);cond='🏠 uniquement '+esch(lg?lg.nom:'ce logement');}
+    h+='<tr style="border-top:1px solid var(--border)"><td style="padding:9px 12px">'+esch(c.nom||'?')+'</td>'+
+      '<td style="padding:9px 8px;text-align:center"><input type="number" step="any" min="0" value="'+r.quantite+'" onchange="saveRegle(\''+r.id+'\',this.value)" style="width:76px;padding:5px;border-radius:8px;border:1px solid var(--border-gold);background:var(--card);color:var(--gold3);font-size:13px;text-align:center"> <span style="font-size:11px;color:var(--muted2)">'+esch(c.unite||'')+'</span></td>'+
+      '<td style="padding:9px 8px;color:var(--gold3)">'+(BASE[r.base]||r.base)+'</td>'+
+      '<td style="padding:9px 8px;font-size:12px">'+cond+'</td>'+
+      '<td style="padding:9px 12px;text-align:right"><button onclick="delRegle(\''+r.id+'\')" style="background:none;border:1px solid rgba(255,107,107,.4);color:#ff6b6b;border-radius:8px;padding:4px 9px;font-size:11px;cursor:pointer">✕</button></td></tr>';
+  });
+  h+='</table></div>';
+  h+='<div style="text-align:center;margin:16px 0"><button class="adm-add-s" onclick="addRegle()">+ Nouvelle règle</button></div>';
+  return h;
+}
+async function saveConsoConf(id,champ,val){
+  try{
+    await axios.patch(`${API}/livrets?id=eq.${id}`,{[champ]:val},{headers:hd()});
+    const l=(window.stockLivrets||[]).find(x=>x.id===id);if(l)l[champ]=val;
+    toast('✓ Enregistré');
+  }catch(e){logAndShowErr&&logAndShowErr(e);}
+}
+async function saveRegle(id,val){
+  const q=parseFloat(String(val).replace(',','.'));if(isNaN(q)||q<0)return;
+  try{await axios.patch(`${API}/conso_regles?id=eq.${id}`,{quantite:q},{headers:hd()});
+    const r=regleData.find(x=>x.id===id);if(r)r.quantite=q;toast('✓ Règle mise à jour');
+  }catch(e){logAndShowErr&&logAndShowErr(e);}
+}
+async function delRegle(id){
+  if(!confirm('Supprimer cette règle de consommation ?'))return;
+  try{await axios.delete(`${API}/conso_regles?id=eq.${id}`,{headers:hd()});await loadStockData();renderStock();toast('✓ Supprimée');}
+  catch(e){logAndShowErr&&logAndShowErr(e);}
+}
+async function addRegle(){
+  const noms=consoData.filter(c=>c.actif!==false).map((c,i)=>(i+1)+'. '+c.nom).join('\n');
+  const pick=prompt('Pour quel consommable ?\n\n'+noms+'\n\nTapez le numéro :');
+  if(!pick)return;
+  const c=consoData.filter(x=>x.actif!==false)[parseInt(pick)-1];if(!c)return toast('Numéro invalide');
+  const b=prompt('Base de calcul :\n1. par personne\n2. par rotation (séjour)\n3. par salle de bain\n4. par personne et par nuit\n\nTapez le numéro :','2');
+  const base=({'1':'personne','2':'rotation','3':'sdb','4':'personne_nuit'})[String(b||'').trim()];if(!base)return;
+  const LBL={personne:'par personne',rotation:'par rotation',sdb:'par salle de bain',personne_nuit:'par personne et par nuit'};
+  const q=parseFloat(String(prompt('Quantité de « '+c.nom+' » '+LBL[base]+' :','1')||'').replace(',','.'));
+  if(!q||q<=0)return;
+  try{await axios.post(`${API}/conso_regles`,{consommable_id:c.id,base:base,quantite:q},{headers:hd()});
+    await loadStockData();renderStock();toast('✓ Règle ajoutée');}
+  catch(e){logAndShowErr&&logAndShowErr(e);}
+}
+
+/* ---------- Créer / éditer un consommable ---------- */
+/* Paquets d'achat d'un consommable */
+async function addFormat(cid){
+  const c=consoData.find(x=>x.id===cid);if(!c)return;
+  const nom=prompt('Nom du paquet\n(ex : « Boîte de 54 dosettes », « Lot de 24 rouleaux »)');
+  if(!nom||!nom.trim())return;
+  const q=parseFloat(String(prompt('Combien de '+c.unite+' dans ce paquet ?','1')||'').replace(',','.'));
+  if(!q||q<=0)return toast('Quantité invalide');
+  const px=parseFloat(String(prompt('Prix payé pour le paquet entier (€) — laissez vide si vous ne savez pas','')||'').replace(',','.'));
+  const four=prompt('Fournisseur (optionnel)',c.fournisseur||'')||null;
+  try{
+    await axios.post(`${API}/conso_formats`,{consommable_id:cid,nom:nom.trim(),qte:q,
+      cout_lot:isNaN(px)?null:px,fournisseur:four,defaut:fmtsOf(cid).length===0},{headers:hd()});
+    await loadStockData();
+    const ov=document.querySelector('[data-conso-ov]');if(ov)ov.remove();
+    editConso(cid);toast('✓ Paquet ajouté');
+  }catch(e){logAndShowErr&&logAndShowErr(e);}
+}
+async function delFormat(fid,cid){
+  if(!confirm('Supprimer ce paquet d’achat ?'))return;
+  try{
+    await axios.delete(`${API}/conso_formats?id=eq.${fid}`,{headers:hd()});
+    await loadStockData();
+    const ov=document.querySelector('[data-conso-ov]');if(ov)ov.remove();
+    editConso(cid);toast('✓ Supprimé');
+  }catch(e){logAndShowErr&&logAndShowErr(e);}
+}
+function addConso(){editConso(null);}
+async function editConso(id){
+  const c=id?consoData.find(x=>x.id===id):null;
+  const cats=['Boissons chaudes','Boissons froides','Entretien','Hygiène','Sacs poubelle','Petit-déj offert','Autres'];
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;overflow:auto';
+  ov.setAttribute('data-conso-ov','1');
+  const st='width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border-gold);background:var(--card);color:var(--gold3);font-size:16px;box-sizing:border-box';
+  ov.innerHTML='<div class="sc" style="max-width:460px;width:100%;padding:22px">'+
+    '<div class="serif gold-text" style="font-size:20px;margin-bottom:16px">'+(c?'Modifier':'Nouveau')+' consommable</div>'+
+    '<div style="display:grid;gap:12px">'+
+    '<div><label style="font-size:11.5px;color:var(--muted2);display:block;margin-bottom:4px">Nom</label><input id="cf-nom" value="'+esch(c?c.nom:'')+'" style="'+st+'"></div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+      '<div><label style="font-size:11.5px;color:var(--muted2);display:block;margin-bottom:4px">Catégorie</label><select id="cf-cat" style="'+st+'">'+cats.map(x=>'<option '+(c&&c.categorie===x?'selected':'')+'>'+x+'</option>').join('')+'</select></div>'+
+      '<div><label style="font-size:11.5px;color:var(--muted2);display:block;margin-bottom:4px">Unité</label><input id="cf-unite" value="'+esch(c?c.unite:'unité')+'" style="'+st+'"></div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+      '<div><label style="font-size:11.5px;color:var(--muted2);display:block;margin-bottom:4px">Prix unitaire (€)</label><input id="cf-pu" type="number" step="any" value="'+(c?c.cout_unitaire:'')+'" style="'+st+'"></div>'+
+      '<div><label style="font-size:11.5px;color:var(--muted2);display:block;margin-bottom:4px">Stock actuel</label><input id="cf-stock" type="number" step="any" value="'+(c?c.stock_actuel:0)+'" style="'+st+'"></div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+      '<div><label style="font-size:11.5px;color:var(--muted2);display:block;margin-bottom:4px">Seuil d’alerte</label><input id="cf-seuil" type="number" step="any" value="'+(c?c.seuil_alerte:10)+'" style="'+st+'"></div>'+
+      '<div><label style="font-size:11.5px;color:var(--muted2);display:block;margin-bottom:4px">Fournisseur</label><input id="cf-four" value="'+esch(c?c.fournisseur:'')+'" style="'+st+'"></div>'+
+    '</div>'+
+    '<div><label style="font-size:11.5px;color:var(--muted2);display:block;margin-bottom:4px">Conditionnement (ex : boîte de 100)</label><input id="cf-cond" value="'+esch(c?c.conditionnement:'')+'" style="'+st+'"></div>'+
+    '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="cf-actif" '+(!c||c.actif!==false?'checked':'')+'> Actif</label>'+
+    (c?('<div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px">'+
+      '<div style="font-size:11.5px;color:var(--gold2);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">📦 Paquets d’achat</div>'+
+      '<div style="font-size:11.5px;color:var(--muted2);margin-bottom:9px">Comment vous l’achetez. Au réappro vous choisirez le paquet et le nombre, les unités se calculent seules.</div>'+
+      '<div id="cf-fmts">'+(fmtsOf(c.id).length?fmtsOf(c.id).map(f=>
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:9px;margin-bottom:6px;font-size:12.5px">'+
+        '<span>'+(f.defaut?'⭐ ':'')+esch(f.nom)+' <span style="color:var(--muted2)">— '+qfmt(f.qte)+' '+esch(c.unite)+(f.cout_lot?' · '+eur(f.cout_lot)+' ('+eur(f.cout_lot/f.qte)+'/'+esch(c.unite)+')':'')+'</span></span>'+
+        '<button onclick="delFormat(\''+f.id+'\',\''+c.id+'\')" style="background:none;border:1px solid rgba(255,107,107,.4);color:#ff6b6b;border-radius:7px;padding:3px 8px;font-size:11px;cursor:pointer;flex-shrink:0">✕</button></div>').join('')
+        :'<div style="font-size:12px;color:var(--muted2);font-style:italic;margin-bottom:6px">Aucun paquet : le réappro se fera à l’unité.</div>')+'</div>'+
+      '<button onclick="addFormat(\''+c.id+'\')" style="background:none;border:1px solid var(--border-gold);color:var(--gold3);border-radius:9px;padding:7px 12px;font-size:12px;cursor:pointer">+ Ajouter un paquet</button>'+
+      '</div>'):'')+
+    '</div>'+
+    '<div style="display:flex;gap:10px;margin-top:20px">'+
+      (c?'<button id="cf-del" style="background:none;border:1px solid rgba(255,107,107,.4);color:#ff6b6b;border-radius:10px;padding:10px 14px;font-size:13px;cursor:pointer">Supprimer</button>':'')+
+      '<div style="flex:1"></div>'+
+      '<button id="cf-can" style="background:none;border:1px solid var(--border-gold);color:var(--gold3);border-radius:10px;padding:10px 16px;font-size:13px;cursor:pointer">Annuler</button>'+
+      '<button id="cf-ok" class="adm-add">Enregistrer</button>'+
+    '</div></div>';
+  document.body.appendChild(ov);
+  ov.querySelector('#cf-can').onclick=()=>ov.remove();
+  ov.onclick=e=>{if(e.target===ov)ov.remove();};
+  const del=ov.querySelector('#cf-del');
+  if(del)del.onclick=async()=>{
+    if(!confirm('Supprimer « '+c.nom+' » et toutes ses règles ?'))return;
+    try{await axios.delete(`${API}/conso_regles?consommable_id=eq.${c.id}`,{headers:hd()});
+      await axios.delete(`${API}/consommables?id=eq.${c.id}`,{headers:hd()});
+      ov.remove();await loadStockData();renderStock();toast('✓ Supprimé');}
+    catch(e){logAndShowErr&&logAndShowErr(e);}
+  };
+  ov.querySelector('#cf-ok').onclick=async()=>{
+    const g=i=>(ov.querySelector('#cf-'+i)||{}).value;
+    const nom=(g('nom')||'').trim();if(!nom)return toast('Le nom est obligatoire');
+    const p={nom:nom,categorie:g('cat'),unite:(g('unite')||'unité').trim(),
+      cout_unitaire:parseFloat(String(g('pu')||'0').replace(',','.'))||0,
+      stock_actuel:parseFloat(String(g('stock')||'0').replace(',','.'))||0,
+      seuil_alerte:parseFloat(String(g('seuil')||'0').replace(',','.'))||0,
+      fournisseur:(g('four')||'').trim()||null,conditionnement:(g('cond')||'').trim()||null,
+      actif:ov.querySelector('#cf-actif').checked};
+    try{
+      if(c)await axios.patch(`${API}/consommables?id=eq.${c.id}`,p,{headers:hd()});
+      else{p.ordre=(consoData.length?Math.max(...consoData.map(x=>x.ordre||0)):0)+1;await axios.post(`${API}/consommables`,p,{headers:hd()});}
+      ov.remove();await loadStockData();renderStock();toast('✓ Enregistré');
+    }catch(e){logAndShowErr&&logAndShowErr(e);}
+  };
+}
+
+/* ---------- Calcul automatique de la consommation ---------- */
+/* Pour chaque séjour terminé (checkout <= aujourd'hui) d'un logement dont le
+   stock est géré, applique les règles et crée les sorties. L'index unique
+   (booking_id, consommable_id) en base empêche tout double décompte. */
+async function syncConso(opts){
+  opts=opts||{};
+  if(!consoData.length)await loadStockData();
+  if(!regleData.length){toast('Aucune règle de consommation');return;}
+  const depuis=await getConsoStart();
+  toast('⏳ Calcul en cours…');
+  const today=new Date().toISOString().slice(0,10);
+  let resas=[];
+  try{
+    const r=await axios.get(`${API}/sh_reservations?select=booking_id,rental_id,checkin,checkout,adults,children&checkout=lte.${today}&checkout=gte.${depuis}&order=checkout.desc&limit=4000`,{headers:hd()});
+    resas=r.data||[];
+  }catch(e){logAndShowErr&&logAndShowErr(e);return;}
+  // Séjours déjà comptabilisés
+  const deja=new Set((mvtData||[]).filter(m=>m.type==='sortie'&&m.booking_id).map(m=>String(m.booking_id)));
+  const byRental={};(window.stockLivrets||[]).forEach(l=>{if(l.superhote_rental_id)byRental[String(l.superhote_rental_id)]=l;});
+  const rows=[];const majStock={};
+  let nbRot=0,ignores=0;
+  resas.forEach(rs=>{
+    if(deja.has(String(rs.booking_id)))return;
+    const l=byRental[String(rs.rental_id)];
+    if(!l){ignores++;return;}
+    if(l.conso_geree===false)return;
+    const pers=Math.max(1,(parseInt(rs.adults)||0)+(parseInt(rs.children)||0));
+    const sdb=Math.max(1,parseInt(l.nb_sdb)||1);
+    const nuits=Math.max(1,Math.round((new Date(rs.checkout)-new Date(rs.checkin))/864e5));
+    let compte=false;
+    regleData.forEach(rg=>{
+      // Règle propre à un logement (ex : Domaine du Bois Bézard) : ignorée ailleurs
+      if(rg.livret_id&&rg.livret_id!==l.id)return;
+      // Une règle dédiée remplace la règle générale du même produit pour ce logement
+      if(!rg.livret_id&&regleData.some(x=>x.livret_id===l.id&&x.consommable_id===rg.consommable_id))return;
+      // Conditions
+      if(rg.condition_type==='machine_cafe'&&(l.machine_cafe||'')!==rg.condition_valeur)return;
+      if(rg.condition_type==='lave_vaisselle'&&l.a_lave_vaisselle===false)return;
+      if(rg.condition_type==='lave_linge'&&l.a_lave_linge===false)return;
+      if(rg.condition_type==='petit_dej'&&!l.petit_dej_offert)return;
+      const mult=rg.base==='personne'?pers:(rg.base==='sdb'?sdb:(rg.base==='nuit'?nuits:(rg.base==='personne_nuit'?pers*nuits:1)));
+      const q=(parseFloat(rg.quantite)||0)*mult;
+      if(q<=0)return;
+      const c=consoData.find(x=>x.id===rg.consommable_id);if(!c||c.actif===false)return;
+      rows.push({consommable_id:c.id,type:'sortie',quantite:q,livret_id:l.id,livret_nom:l.nom,
+        booking_id:rs.booking_id,nb_personnes:pers,nb_nuits:nuits,
+        cout:q*(parseFloat(c.cout_unitaire)||0),note:null,date_mouvement:rs.checkout+'T12:00:00Z'});
+      majStock[c.id]=(majStock[c.id]||0)+q;
+      compte=true;
+    });
+    if(compte)nbRot++;
+  });
+  if(!rows.length){toast(ignores?('Rien de nouveau ('+ignores+' séjour(s) sans logement lié)'):'✓ Déjà à jour');return;}
+  // Agrège les lignes d'un même (booking, consommable) — l'index unique l'exige
+  const agg={};
+  rows.forEach(r=>{const k=r.booking_id+'|'+r.consommable_id;
+    if(!agg[k])agg[k]=r;else{agg[k].quantite+=r.quantite;agg[k].cout+=r.cout;}});
+  const finals=Object.values(agg);
+  try{
+    for(let i=0;i<finals.length;i+=200){
+      await axios.post(`${API}/stock_mouvements`,finals.slice(i,i+200),
+        {headers:Object.assign({},hd(),{Prefer:'resolution=ignore-duplicates,return=minimal'})});
+    }
+    // Décrémente les stocks (sauf en mode « historique des coûts »)
+    if(!opts.histoOnly)for(const cid of Object.keys(majStock)){
+      const c=consoData.find(x=>x.id===cid);if(!c)continue;
+      const nv=Math.round(((parseFloat(c.stock_actuel)||0)-majStock[cid])*1000)/1000;
+      await axios.patch(`${API}/consommables?id=eq.${cid}`,{stock_actuel:nv},{headers:hd()});
+    }
+    await loadStockData();renderStock();
+    toast('✓ '+nbRot+' rotation'+(nbRot>1?'s':'')+' comptabilisée'+(nbRot>1?'s':'')+(opts.histoOnly?' (stock inchangé)':'')+(ignores?' · '+ignores+' séjour(s) sans logement lié':''));
+  }catch(e){logAndShowErr&&logAndShowErr(e);}
+}
+
+/* Date de départ du suivi des stocks (table `parametres`, clé conso_start).
+   Par défaut le 1er du mois en cours : évite d'avaler tout l'historique au 1er calcul. */
+let _consoStart=null;
+async function getConsoStart(){
+  if(_consoStart)return _consoStart;
+  try{
+    const r=await axios.get(`${API}/parametres?cle=eq.conso_start&select=valeur`,{headers:hd()});
+    if(r.data&&r.data[0]&&r.data[0].valeur){_consoStart=r.data[0].valeur;return _consoStart;}
+  }catch(_e){}
+  const d=new Date();_consoStart=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01';
+  try{await axios.post(`${API}/parametres`,{cle:'conso_start',valeur:_consoStart},{headers:Object.assign({},hd(),{Prefer:'resolution=merge-duplicates'})});}catch(_e){}
+  return _consoStart;
+}
+async function setConsoStart(v){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(v||''))return;
+  _consoStart=v;
+  try{await axios.post(`${API}/parametres`,{cle:'conso_start',valeur:v},{headers:Object.assign({},hd(),{Prefer:'resolution=merge-duplicates'})});toast('✓ Suivi depuis le '+new Date(v+'T12:00:00').toLocaleDateString('fr-FR'));}
+  catch(e){logAndShowErr&&logAndShowErr(e);}
+}
+async function loadHistoCouts(){
+  const v=prompt('Charger l\u2019historique de consommation pour connaitre vos couts reels.\n\nA partir de quelle date ? (AAAA-MM-JJ)\n\u26a0\ufe0f Le stock actuel ne sera PAS modifie, uniquement les couts et statistiques.','2026-05-01');
+  if(!v||!/^\d{4}-\d{2}-\d{2}$/.test(v))return;
+  const avant=_consoStart;_consoStart=v;
+  await syncConso({histoOnly:true});
+  _consoStart=avant;
+}
+
 async function openCourses(){
   show('courses-screen');
   const di=document.getElementById('courses-date');
@@ -2491,6 +3301,7 @@ async function refreshApp(){
     if(document.getElementById('demandes-screen').style.display!=='none')openDemandes();
     else if(document.getElementById('requests-screen').style.display!=='none')openRequests();
     else if(document.getElementById('reservations-screen').style.display!=='none')openReservations();
+    else if(document.getElementById('stock-screen').style.display!=='none')openStock();
     toast('✓ Mis à jour');
   }catch(_e){}
   if(btn){setTimeout(()=>{btn.style.opacity='';btn.style.transform='';},600);}
@@ -2511,6 +3322,13 @@ async function refreshBadges(){
     ]);
     setDemBadge((c.data||[]).length);
     setReqBadge((d.data||[]).length);
+    // Pastille stocks : consommables sous le seuil d'alerte
+    try{
+      const st=await axios.get(`${API}/consommables?select=stock_actuel,seuil_alerte&actif=eq.true`,{headers:hd()});
+      const n=(st.data||[]).filter(x=>(parseFloat(x.stock_actuel)||0)<=(parseFloat(x.seuil_alerte)||0)).length;
+      const bd=document.getElementById('stk-badge');
+      if(bd){bd.textContent=n;bd.style.display=n?'inline-flex':'none';}
+    }catch(_e){}
   }catch(_){}
 }
 // Rafraîchit les pastilles toutes les 60s tant que l'admin est affiché
@@ -3303,6 +4121,12 @@ async function toggleEditorService(i,on){
 async function openEditor(id){
   clid=id;adr=[];equip=[];serv=[];btnv=[];procEtapes=[];imgFond='';logoUrl='';vimeoPosterUrl='';resetLogoPreview();resetVimeoPosterPreview();
   ['f-nom','f-slug','f-bienvenue','f-vimeo','f-procedure','f-adresse','f-hote','f-lat','f-lng','f-wifi-nom','f-wifi-mdp','f-checkin','f-checkout','f-parking','f-regles','f-poubelles','f-contact-nom','f-contact-tel','f-contact-email','f-cta1-texte','f-cta2-texte','f-cta3-texte','f-lien-avis-google','f-lien-reservation','f-lien-autres'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
+  // Consommables : valeurs par défaut d'un nouveau logement (espace stock créé d'office)
+  {const e1=document.getElementById('f-conso-geree');if(e1)e1.checked=true;
+   const e2=document.getElementById('f-machine-cafe');if(e2)e2.value='';
+   const e3=document.getElementById('f-nb-sdb');if(e3)e3.value=1;
+   const e4=document.getElementById('f-lave-vaisselle');if(e4)e4.checked=true;
+   const e5=document.getElementById('f-petit-dej-offert');if(e5)e5.checked=false;}
   switchTab(document.querySelector('.tab'),'tg');
   resetFondPreview();
   if(id){
@@ -3341,6 +4165,12 @@ async function openEditor(id){
     document.getElementById('f-checkout').value=l.checkout||'';
     document.getElementById('f-parking').value=l.parking||'';
     document.getElementById('f-poubelles').value=l.poubelles||'';
+    // Consommables (calcul auto des stocks)
+    {const e1=document.getElementById('f-conso-geree');if(e1)e1.checked=l.conso_geree!==false;
+     const e2=document.getElementById('f-machine-cafe');if(e2)e2.value=l.machine_cafe||'';
+     const e3=document.getElementById('f-nb-sdb');if(e3)e3.value=(l.nb_sdb==null?1:l.nb_sdb);
+     const e4=document.getElementById('f-lave-vaisselle');if(e4)e4.checked=l.a_lave_vaisselle!==false;
+     const e5=document.getElementById('f-petit-dej-offert');if(e5)e5.checked=!!l.petit_dej_offert;}
     document.getElementById('f-regles').value=(l.regles||[]).join('\n');
     document.getElementById('f-contact-nom').value=l.contact_nom||'';
     document.getElementById('f-contact-tel').value=l.contact_tel||'';
@@ -4722,6 +5552,11 @@ async function saveLivret(){
     checkout:document.getElementById('f-checkout').value,
     parking:document.getElementById('f-parking').value,
     poubelles:document.getElementById('f-poubelles').value||null,
+    conso_geree:document.getElementById('f-conso-geree').checked,
+    machine_cafe:document.getElementById('f-machine-cafe').value||null,
+    nb_sdb:parseInt(document.getElementById('f-nb-sdb').value)||0,
+    a_lave_vaisselle:document.getElementById('f-lave-vaisselle').checked,
+    petit_dej_offert:document.getElementById('f-petit-dej-offert').checked,
     regles:document.getElementById('f-regles').value.split('\n').filter(r=>r.trim()),
     contact_nom:document.getElementById('f-contact-nom').value,
     contact_tel:document.getElementById('f-contact-tel').value,
