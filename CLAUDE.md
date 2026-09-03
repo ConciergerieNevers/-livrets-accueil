@@ -300,14 +300,15 @@ Conso déduite **automatiquement** des réservations SuperHote : **1 séjour ter
 `openStock` · `loadStockData` (charge consommables + règles + mouvements + livrets + **formats**) · `setStockTab` · `renderStock` · `consoParJour` (moyenne 90j, plancher 14j) · `stockKPIs` · `stockEtatHtml` / `stockReapproHtml` / `stockStatsHtml` / `stockCoutsHtml` / `stockConfHtml` · `majReaLigne` · `doReappro` / `doReapproAll` · `journalHtml` · `syncConso(opts)` · `getConsoStart` / `setConsoStart` · `editConso` / `addFormat` / `delFormat` · `addRegle` / `saveRegle` / `delRegle` · `saveConsoConf` · `statsMois`
 
 ## Paramétrage réel (validé par Mathieu)
-- **Hors stock (7)** : Villa Bali, La Chapelle, Montagnon, Vivier, Saint-Cyr, Le Nacha, Loft Manhattan. **24 gérés.**
+- **Hors stock (8)** : Villa Bali, La Chapelle, Montagnon, Vivier, Saint-Cyr, Le Nacha, Loft Manhattan, Villa du Circuit. **23 gérés.**
 - **Machines** : Senseo 15 · Nespresso 4 · Tassimo 2 · Dolce Gusto 2 · aucune 5 (dont Bois Bézard).
 - **Petit-déj offert** : LE NOEUD VERT + Studio Majorelle uniquement (7 produits conditionnés `petit_dej`).
 - **Domaine du Bois Bézard** : plusieurs machines → `machine_cafe = NULL` + 3 **règles dédiées** (30 caps Dolce Gusto, 18 caps Nespresso, **2 bouteilles de vin** / rotation).
 - **Ratios** : eau 1/pers · **thé 1/pers** · sucre 4/pers · capsules 2/pers · PQ 0,333/pers/nuit · Sopalin 0,0154/pers/nuit · éponge, sacs noir+tri, chocolat 1/rotation · pastille LV 1/rotation si LV · pastille LL 1/rotation si LL · sac SdB 1/SdB · gel douche 0,048 L/SdB.
 - **Gel douche** : compté en **litres** (recharges 2 L), pas en flacons. ⚠️ coût 9,25 €/L dérivé du flacon 400 ml — **prix de la recharge à corriger** (décision Mathieu : plus tard).
 - **Seuils d'alerte** = 2 semaines de conso réelle (calculée sur juin-août 2026).
-- Conso ≈ **1 565 €/mois**, ≈ **6,8 € / rotation**. Stock de départ saisi le 03/09/2026 = 1 326 €.
+- Conso ≈ **1 497 €/mois** sur 23 logements. Stock de départ saisi le 03/09/2026 = 1 326 €.
+- Seuils recalés par SQL à chaque changement de périmètre (requête de recalage dans l'historique de session).
 
 ## Écarts de prix relevés dans le tableau de Mathieu (non tranchés)
 Son onglet « coût moyen » contredit ses lignes d'achat : Sopalin 0,40 vs **2,34 €** · pastille LV 0,12 vs **0,456 €** · PQ 0,47 vs **0,33 €**. Se corrigera tout seul au 1er réappro via `cout_lot`.
