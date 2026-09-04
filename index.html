@@ -1699,33 +1699,104 @@ async function openStock(){
 }
 async function loadStockData(){
   try{
-    const [c,r,m,lv,fo]=await Promise.all([
+    const [c,r,m,lv,fo,rs]=await Promise.all([
       axios.get(`${API}/consommables?select=*&order=ordre.asc`,{headers:hd()}),
       axios.get(`${API}/conso_regles?select=*`,{headers:hd()}),
       axios.get(`${API}/stock_mouvements?select=*&order=date_mouvement.desc&limit=4000`,{headers:hd()}),
       axios.get(`${API}/livrets?select=id,nom,actif,conso_geree,machine_cafe,nb_sdb,a_lave_vaisselle,a_lave_linge,petit_dej_offert,superhote_rental_id&deleted_at=is.null&order=nom.asc`,{headers:hd()}),
-      axios.get(`${API}/conso_formats?select=*&order=nom.asc`,{headers:hd()}).catch(()=>({data:[]}))
+      axios.get(`${API}/conso_formats?select=*&order=nom.asc`,{headers:hd()}).catch(()=>({data:[]})),
+      axios.get(`${API}/sh_reservations?select=booking_id,rental_id,checkin,checkout,adults,children&checkout=gte.${new Date(Date.now()-400*864e5).toISOString().slice(0,10)}&order=checkout.asc&limit=6000`,{headers:hd()}).catch(()=>({data:[]}))
     ]);
-    consoData=c.data||[];regleData=r.data||[];mvtData=m.data||[];window.stockLivrets=lv.data||[];window.formatData=fo.data||[];
+    consoData=c.data||[];regleData=r.data||[];mvtData=m.data||[];window.stockLivrets=lv.data||[];window.formatData=fo.data||[];window.stockResas=rs.data||[];_refCache=null;
   }catch(e){logAndShowErr&&logAndShowErr(e);}
 }
 function setStockTab(t){stockTab=t;renderStock();}
 
-/* Consommation moyenne par jour d'un consommable, sur les 90 derniers jours réels */
-function consoParJour(cid){
-  const now=Date.now(),d90=now-90*864e5;
-  let tot=0,minT=now;
-  (mvtData||[]).forEach(m=>{
-    if(m.consommable_id!==cid||m.type!=='sortie')return;
-    const t=new Date(m.date_mouvement).getTime();
-    if(t<d90)return;
-    tot+=parseFloat(m.quantite)||0;
-    if(t<minT)minT=t;
+/* ============================================================
+   CONSOMMATION DE RÉFÉRENCE
+   Calculée à partir des VRAIES réservations (SuperHote) et des
+   règles actuelles — pas de l'historique des mouvements, qui est
+   trop court au démarrage et fausse l'autonomie.
+   Période de référence réglable : 6 ou 12 derniers mois.
+   ============================================================ */
+let REF_MOIS = parseInt(localStorage.getItem('stk_ref_mois')||'12')||12;
+function setRefMois(n){REF_MOIS=parseInt(n)||12;localStorage.setItem('stk_ref_mois',REF_MOIS);_refCache=null;renderStock();}
+
+/* Quantités consommées par un séjour, selon les règles en vigueur.
+   Renvoie { consommable_id: quantité } */
+function consoDunSejour(l,pers,nuits){
+  const out={};
+  (regleData||[]).forEach(rg=>{
+    if(rg.livret_id&&rg.livret_id!==l.id)return;
+    if(!rg.livret_id&&regleData.some(x=>x.livret_id===l.id&&x.consommable_id===rg.consommable_id))return;
+    if(rg.condition_type==='machine_cafe'&&(l.machine_cafe||'')!==rg.condition_valeur)return;
+    if(rg.condition_type==='lave_vaisselle'&&l.a_lave_vaisselle===false)return;
+    if(rg.condition_type==='lave_linge'&&l.a_lave_linge===false)return;
+    if(rg.condition_type==='petit_dej'&&!l.petit_dej_offert)return;
+    const sdb=Math.max(1,parseInt(l.nb_sdb)||1);
+    let mult=1;
+    if(rg.base==='personne')mult=pers;
+    else if(rg.base==='sdb')mult=sdb;
+    else if(rg.base==='nuit')mult=nuits;
+    else if(rg.base==='personne_nuit')mult=pers*nuits;   // par personne ET par jour de location
+    const q=(parseFloat(rg.quantite)||0)*mult;
+    if(q>0)out[rg.consommable_id]=(out[rg.consommable_id]||0)+q;
   });
-  if(!tot)return 0;
-  const jours=Math.max(14,Math.round((now-minT)/864e5));
-  return tot/jours;
+  return out;
 }
+/* Consommation totale sur une plage de dates (sur les séjours réellement loués) */
+function consoSurPeriode(d1,d2){
+  const out={};let rot=0,pers=0,nuitees=0;
+  const byR={};(window.stockLivrets||[]).forEach(l=>{if(l.superhote_rental_id)byR[String(l.superhote_rental_id)]=l;});
+  (window.stockResas||[]).forEach(r=>{
+    const co=String(r.checkout||'');
+    if(co<d1||co>d2)return;
+    const l=byR[String(r.rental_id)];
+    if(!l||l.conso_geree===false)return;
+    const p=Math.max(1,(parseInt(r.adults)||0)+(parseInt(r.children)||0));
+    const n=Math.max(1,Math.round((new Date(r.checkout)-new Date(r.checkin))/864e5));
+    const c=consoDunSejour(l,p,n);
+    Object.keys(c).forEach(k=>out[k]=(out[k]||0)+c[k]);
+    rot++;pers+=p;nuitees+=p*n;
+  });
+  return{qty:out,rot:rot,pers:pers,nuitees:nuitees};
+}
+let _refCache=null;
+function refConso(){
+  if(_refCache)return _refCache;
+  const fin=new Date(),deb=new Date();deb.setMonth(deb.getMonth()-REF_MOIS);
+  const iso=d=>d.toISOString().slice(0,10);
+  const r=consoSurPeriode(iso(deb),iso(fin));
+  const jours=Math.max(30,Math.round((fin-deb)/864e5));
+  _refCache={parJour:{},...r,jours:jours};
+  Object.keys(r.qty).forEach(k=>_refCache.parJour[k]=r.qty[k]/jours);
+  return _refCache;
+}
+/* Conso moyenne par jour d'un produit, sur la période de référence */
+function consoParJour(cid){const r=refConso();return r.parJour[cid]||0;}
+
+/* Date de rupture PRÉVISIONNELLE : on déroule les réservations déjà
+   prises et on cherche le jour où le stock passe sous zéro. */
+function dateRupture(cid){
+  const c=consoData.find(x=>x.id===cid);if(!c)return null;
+  let reste=parseFloat(c.stock_actuel)||0;
+  if(reste<=0)return 'now';
+  const today=new Date().toISOString().slice(0,10);
+  const byR={};(window.stockLivrets||[]).forEach(l=>{if(l.superhote_rental_id)byR[String(l.superhote_rental_id)]=l;});
+  const fut=(window.stockResas||[]).filter(r=>String(r.checkout||'')>=today)
+    .sort((a,b)=>String(a.checkout).localeCompare(String(b.checkout)));
+  for(const r of fut){
+    const l=byR[String(r.rental_id)];if(!l||l.conso_geree===false)continue;
+    const p=Math.max(1,(parseInt(r.adults)||0)+(parseInt(r.children)||0));
+    const n=Math.max(1,Math.round((new Date(r.checkout)-new Date(r.checkin))/864e5));
+    const q=consoDunSejour(l,p,n)[cid]||0;
+    if(q<=0)continue;
+    reste-=q;
+    if(reste<0)return r.checkout;
+  }
+  return null; // tient au-delà des réservations connues
+}
+
 /* Sorties du mois en cours (quantité + coût) */
 function consoMois(cid,ym){
   let q=0,cout=0;
@@ -1777,11 +1848,17 @@ function stockEtatHtml(){
   const cats={};
   consoData.forEach(c=>{if(c.actif===false)return;(cats[c.categorie||'Autres']=cats[c.categorie||'Autres']||[]).push(c);});
   const lastSync=(mvtData||[]).filter(m=>m.type==='sortie').length;
+  const _R=refConso();
   let h='<div class="sc" style="margin-bottom:16px;padding:14px 16px;font-size:13px;color:var(--muted2)">'+
     '💡 Le stock baisse tout seul dès qu’un séjour est terminé. Cliquez sur <b>🔄 Calculer la conso</b> après chaque synchro des réservations. '+
     '<b>'+lastSync+'</b> sortie'+(lastSync>1?'s':'')+' enregistrée'+(lastSync>1?'s':'')+' à ce jour.'+
+    '<div style="margin-top:6px">📐 L’autonomie se base sur <b>'+_R.rot+' séjours réels</b> ('+_R.pers+' voyageurs) des '+REF_MOIS+' derniers mois, avec vos règles actuelles.</div>'+
     '<div style="margin-top:11px;display:flex;flex-wrap:wrap;gap:12px;align-items:center">'+
       '<label style="display:flex;align-items:center;gap:7px">Suivi depuis le <input type="date" id="stk-start" value="'+(_consoStart||'')+'" onchange="setConsoStart(this.value)" style="padding:6px 9px;border-radius:8px;border:1px solid var(--border-gold);background:var(--card);color:var(--gold3);font-size:13px;color-scheme:dark"></label>'+
+      '<label style="display:flex;align-items:center;gap:7px">Moyenne calculée sur <select onchange="setRefMois(this.value)" style="padding:6px 9px;border-radius:8px;border:1px solid var(--border-gold);background:var(--card);color:var(--gold3);font-size:13px">'+
+        '<option value="6" '+(REF_MOIS===6?'selected':'')+'>les 6 derniers mois</option>'+
+        '<option value="12" '+(REF_MOIS===12?'selected':'')+'>les 12 derniers mois</option>'+
+      '</select></label>'+
       '<button onclick="loadHistoCouts()" style="background:none;border:1px solid var(--border-gold);color:var(--gold3);border-radius:8px;padding:6px 11px;font-size:12px;cursor:pointer">📈 Charger l’historique des coûts</button>'+
     '</div></div>';
   // Alertes en tête
@@ -1813,6 +1890,10 @@ function stockEtatHtml(){
       if(jours!==null){
         const col=jours<=7?'#ff6b6b':(jours<=21?'#f0b429':'#5ec07a');
         jTxt='<span style="color:'+col+';font-weight:600">'+(jours<=0?'rupture':(jours>365?'> 1 an':jours+' j'))+'</span>';
+        // Date de rupture d'après les réservations DÉJÀ prises
+        const dr=dateRupture(c.id);
+        if(dr&&dr!=='now')jTxt+='<div style="font-size:10px;color:var(--muted2);white-space:nowrap">vers le '+new Date(dr+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})+'</div>';
+        else if(dr==='now')jTxt='<span style="color:#ff6b6b;font-weight:600">rupture</span>';
       }
       h+='<tr style="border-top:1px solid var(--border)">'+
         '<td style="padding:11px 12px">'+(alerte?'🚨 ':'')+esch(c.nom)+(c.fournisseur?'<div style="font-size:11px;color:var(--muted2)">'+esch(c.fournisseur)+(c.conditionnement?' · '+esch(c.conditionnement):'')+'</div>':'')+'</td>'+
@@ -2160,8 +2241,14 @@ function stockConfHtml(){
   h+='</table></div>';
   // Règles de consommation
   h+='<div style="margin:26px 0 10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold2);font-weight:700">Règles de consommation</div>';
-  h+='<div class="sc" style="margin-bottom:12px;padding:13px 16px;font-size:12.5px;color:var(--muted2)">Quantité consommée à chaque séjour. <b>par personne</b> = × nombre de voyageurs · <b>par rotation</b> = 1 fois par séjour · <b>par salle de bain</b> = × nombre de SdB · <b>par personne et par nuit</b> = × voyageurs × nuits (papier toilette, Sopalin…).</div>';
-  const BASE={personne:'par personne',rotation:'par rotation',sdb:'par salle de bain',nuit:'par nuit',personne_nuit:'par personne et par nuit'};
+  h+='<div class="sc" style="margin-bottom:12px;padding:13px 16px;font-size:12.5px;color:var(--muted2);line-height:1.75">'+
+    '<b style="color:var(--gold3)">Rien n’est décompté sans séjour</b> : un logement vide ne consomme pas.<br>'+
+    '<b>par personne et par séjour</b> = × voyageurs, une seule fois · '+
+    '<b>par personne et par jour</b> = × voyageurs × nuits · '+
+    '<b>1 fois par séjour</b> = quel que soit le monde (petit-déj, éponge, sacs…) · '+
+    '<b>par jour de location</b> = × nuits · <b>par salle de bain</b> = × SdB.'+
+    '<div style="margin-top:8px;color:var(--gold3)">✏️ Une modification vaut <b>à partir d’aujourd’hui</b>. Les séjours déjà comptabilisés ne sont jamais recalculés.</div></div>';
+  const BASE={personne:'par personne et par séjour',personne_nuit:'par personne et par jour',rotation:'1 fois par séjour',nuit:'par jour de location',sdb:'par salle de bain'};
   h+='<div class="sc" style="padding:0;overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:640px">'+
     '<tr style="color:var(--muted2);font-size:11px;text-transform:uppercase;letter-spacing:.06em"><th style="text-align:left;padding:10px 12px">Consommable</th>'+
     '<th style="text-align:center;padding:10px 8px">Quantité</th><th style="text-align:left;padding:10px 8px">Base</th>'+
@@ -2179,7 +2266,9 @@ function stockConfHtml(){
     if(r.livret_id){const lg=(window.stockLivrets||[]).find(x=>x.id===r.livret_id);cond='🏠 uniquement '+esch(lg?lg.nom:'ce logement');}
     h+='<tr style="border-top:1px solid var(--border)"><td style="padding:9px 12px">'+esch(c.nom||'?')+'</td>'+
       '<td style="padding:9px 8px;text-align:center"><input type="number" step="any" min="0" value="'+r.quantite+'" onchange="saveRegle(\''+r.id+'\',this.value)" style="width:76px;padding:5px;border-radius:8px;border:1px solid var(--border-gold);background:var(--card);color:var(--gold3);font-size:13px;text-align:center"> <span style="font-size:11px;color:var(--muted2)">'+esch(c.unite||'')+'</span></td>'+
-      '<td style="padding:9px 8px;color:var(--gold3)">'+(BASE[r.base]||r.base)+'</td>'+
+      '<td style="padding:9px 8px"><select onchange="saveRegleBase(\''+r.id+'\',this.value)" style="padding:5px 7px;border-radius:8px;border:1px solid var(--border-gold);background:var(--card);color:var(--gold3);font-size:12px">'+
+        Object.keys(BASE).map(k=>'<option value="'+k+'" '+(r.base===k?'selected':'')+'>'+BASE[k]+'</option>').join('')+'</select>'+
+        (r.updated_at?'<div style="font-size:10px;color:var(--muted2);margin-top:3px">modifiée le '+new Date(r.updated_at).toLocaleDateString('fr-FR')+'</div>':'')+'</td>'+
       '<td style="padding:9px 8px;font-size:12px">'+cond+'</td>'+
       '<td style="padding:9px 12px;text-align:right"><button onclick="delRegle(\''+r.id+'\')" style="background:none;border:1px solid rgba(255,107,107,.4);color:#ff6b6b;border-radius:8px;padding:4px 9px;font-size:11px;cursor:pointer">✕</button></td></tr>';
   });
@@ -2197,7 +2286,14 @@ async function saveConsoConf(id,champ,val){
 async function saveRegle(id,val){
   const q=parseFloat(String(val).replace(',','.'));if(isNaN(q)||q<0)return;
   try{await axios.patch(`${API}/conso_regles?id=eq.${id}`,{quantite:q},{headers:hd()});
-    const r=regleData.find(x=>x.id===id);if(r)r.quantite=q;toast('✓ Règle mise à jour');
+    const r=regleData.find(x=>x.id===id);if(r){r.quantite=q;r.updated_at=new Date().toISOString();}
+    _refCache=null;toast('✓ Règle mise à jour — vaut à partir d’aujourd’hui');
+  }catch(e){logAndShowErr&&logAndShowErr(e);}
+}
+async function saveRegleBase(id,base){
+  try{await axios.patch(`${API}/conso_regles?id=eq.${id}`,{base:base},{headers:hd()});
+    const r=regleData.find(x=>x.id===id);if(r){r.base=base;r.updated_at=new Date().toISOString();}
+    _refCache=null;renderStock();toast('✓ Base modifiée — vaut à partir d’aujourd’hui');
   }catch(e){logAndShowErr&&logAndShowErr(e);}
 }
 async function delRegle(id){
@@ -2210,9 +2306,9 @@ async function addRegle(){
   const pick=prompt('Pour quel consommable ?\n\n'+noms+'\n\nTapez le numéro :');
   if(!pick)return;
   const c=consoData.filter(x=>x.actif!==false)[parseInt(pick)-1];if(!c)return toast('Numéro invalide');
-  const b=prompt('Base de calcul :\n1. par personne\n2. par rotation (séjour)\n3. par salle de bain\n4. par personne et par nuit\n\nTapez le numéro :','2');
-  const base=({'1':'personne','2':'rotation','3':'sdb','4':'personne_nuit'})[String(b||'').trim()];if(!base)return;
-  const LBL={personne:'par personne',rotation:'par rotation',sdb:'par salle de bain',personne_nuit:'par personne et par nuit'};
+  const b=prompt('Base de calcul :\n1. par personne et par séjour\n2. 1 fois par séjour\n3. par salle de bain\n4. par personne et par jour\n5. par jour de location\n\nTapez le numéro :','2');
+  const base=({'1':'personne','2':'rotation','3':'sdb','4':'personne_nuit','5':'nuit'})[String(b||'').trim()];if(!base)return;
+  const LBL={personne:'par personne et par séjour',rotation:'1 fois par séjour',sdb:'par salle de bain',personne_nuit:'par personne et par jour',nuit:'par jour de location'};
   const q=parseFloat(String(prompt('Quantité de « '+c.nom+' » '+LBL[base]+' :','1')||'').replace(',','.'));
   if(!q||q<=0)return;
   try{await axios.post(`${API}/conso_regles`,{consommable_id:c.id,base:base,quantite:q},{headers:hd()});
