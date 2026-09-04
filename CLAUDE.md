@@ -284,20 +284,20 @@ Conso déduite **automatiquement** des réservations SuperHote : **1 séjour ter
 ## Tables
 - **`consommables`** : nom, categorie, unite, cout_unitaire, fournisseur, stock_actuel, seuil_alerte, conditionnement, actif, ordre. (30 lignes)
 - **`conso_formats`** : paquets d'achat — consommable_id, nom ("Boîte de 54 dosettes"), qte (54), cout_lot (8,45), fournisseur, defaut. Un produit peut avoir plusieurs formats. (28 lignes)
-- **`conso_regles`** : consommable_id, `base` (personne | rotation | sdb | nuit | personne_nuit), quantite, `condition_type` (machine_cafe | lave_vaisselle | lave_linge | petit_dej), condition_valeur, **`livret_id`** (NULL = règle générale ; renseigné = règle propre à un logement, qui **remplace** la règle générale du même produit pour ce logement).
+- **`conso_regles`** : consommable_id, `base` (**personne** = ×voyageurs 1 fois · **personne_nuit** = ×voyageurs×nuits · **rotation** = 1 fois par séjour · **nuit** = ×nuits · **sdb** = ×salles de bain), quantite, `updated_at` (trigger `touch_conso_regle` — une modif vaut à partir de sa date, jamais rétroactivement), `condition_type` (machine_cafe | lave_vaisselle | lave_linge | petit_dej), condition_valeur, **`livret_id`** (NULL = règle générale ; renseigné = règle propre à un logement, qui **remplace** la règle générale du même produit pour ce logement).
 - **`stock_mouvements`** : consommable_id, `type` (sortie | entree | ajustement), quantite, livret_id/nom, booking_id, nb_personnes, nb_nuits, cout, note, format_id, format_nom, nb_lots, date_mouvement.
   ⚠️ Index unique `uniq_sortie_booking (booking_id, consommable_id) WHERE type='sortie'` → **empêche tout double décompte**.
 - **`livrets`** nouvelles colonnes : `conso_geree bool`, `machine_cafe text`, `nb_sdb int`, `a_lave_vaisselle bool`, `a_lave_linge bool`, `petit_dej_offert bool`.
 - **`parametres`** clé `conso_start` : date de départ du suivi (défaut = 1er du mois courant). Sans ça le 1er calcul avalerait ~900 rotations d'historique.
 
 ## 4 onglets
-1. **📦 État** — alertes en tête, puis par catégorie : stock, conso/mois, **autonomie en jours** (rouge ≤7j, orange ≤21j, vert), seuil, P.U. Champ « Suivi depuis le » + bouton « 📈 Charger l'historique des coûts » (`loadHistoCouts` → `syncConso({histoOnly:true})`, n'écrit PAS le stock).
+1. **📦 État** — alertes en tête, puis par catégorie : stock, conso/mois, **autonomie en jours** (rouge ≤7j, orange ≤21j, vert) + **date de rupture prévisionnelle** d'après les réservations déjà prises, seuil, P.U. Sélecteur « Moyenne calculée sur 6 / 12 derniers mois » (localStorage `stk_ref_mois`). Champ « Suivi depuis le » + bouton « 📈 Charger l'historique des coûts » (`loadHistoCouts` → `syncConso({histoOnly:true})`, n'écrit PAS le stock).
 2. **📥 Réapprovisionner** — 1 carte par produit, 2 saisies : ① « Il en reste (compté) » → **écart d'inventaire** enregistré en `type:'ajustement'` (= perte/vol) ; ② paquet + nb de paquets → unités calculées. Aperçu live (`majReaLigne`). Le prix du lot **recale `cout_unitaire`** automatiquement. `journalHtml()` en bas.
 3. **📊 Statistiques** — rotations, voyageurs, nuitées, logements, coût, €/rotation, €/voyageur (dernier mois) + tableau mois par mois + quantités consommées avec **ratio par voyageur** + total **manquant vs surplus** en €.
 4. **⚙️ Logements & règles** — par logement : stock géré, machine à café, nb SdB, LV, LL, petit-déj. Puis toutes les règles éditables inline.
 
 ## Fonctions clés
-`openStock` · `loadStockData` (charge consommables + règles + mouvements + livrets + **formats**) · `setStockTab` · `renderStock` · `consoParJour` (moyenne 90j, plancher 14j) · `stockKPIs` · `stockEtatHtml` / `stockReapproHtml` / `stockStatsHtml` / `stockCoutsHtml` / `stockConfHtml` · `majReaLigne` · `doReappro` / `doReapproAll` · `journalHtml` · `syncConso(opts)` · `getConsoStart` / `setConsoStart` · `editConso` / `addFormat` / `delFormat` · `addRegle` / `saveRegle` / `delRegle` · `saveConsoConf` · `statsMois`
+`openStock` · `loadStockData` (charge consommables + règles + mouvements + livrets + **formats**) · `setStockTab` · `renderStock` · `consoParJour` / `refConso` / `consoDunSejour` / `consoSurPeriode` / `dateRupture` / `setRefMois` · `stockKPIs` · `stockEtatHtml` / `stockReapproHtml` / `stockStatsHtml` / `stockCoutsHtml` / `stockConfHtml` · `majReaLigne` · `doReappro` / `doReapproAll` · `journalHtml` · `syncConso(opts)` · `getConsoStart` / `setConsoStart` · `editConso` / `addFormat` / `delFormat` · `addRegle` / `saveRegle` / `delRegle` · `saveConsoConf` · `statsMois`
 
 ## Paramétrage réel (validé par Mathieu)
 - **Hors stock (8)** : Villa Bali, La Chapelle, Montagnon, Vivier, Saint-Cyr, Le Nacha, Loft Manhattan, Villa du Circuit. **23 gérés.**
@@ -309,6 +309,9 @@ Conso déduite **automatiquement** des réservations SuperHote : **1 séjour ter
 - **Seuils d'alerte** = 2 semaines de conso réelle (calculée sur juin-août 2026).
 - Conso ≈ **1 497 €/mois** sur 23 logements. Stock de départ saisi le 03/09/2026 = 1 326 €.
 - Seuils recalés par SQL à chaque changement de périmètre (requête de recalage dans l'historique de session).
+
+## ⚠️ Calcul de l'autonomie — NE PAS revenir en arrière
+L'autonomie **ne se calcule PAS** sur l'historique de `stock_mouvements` (trop court au démarrage → chiffres absurdes). Elle se calcule sur les **vraies réservations SuperHote** (`window.stockResas`, 400 jours chargés) auxquelles on applique les **règles actuelles** : `consoDunSejour(livret, pers, nuits)` → `consoSurPeriode(d1,d2)` → `refConso()` (cache `_refCache`, invalidé à chaque modif de règle). `dateRupture(cid)` déroule les réservations **futures** jour par jour jusqu'à épuisement → date réelle, pas une extrapolation.
 
 ## Écarts de prix relevés dans le tableau de Mathieu (non tranchés)
 Son onglet « coût moyen » contredit ses lignes d'achat : Sopalin 0,40 vs **2,34 €** · pastille LV 0,12 vs **0,456 €** · PQ 0,47 vs **0,33 €**. Se corrigera tout seul au 1er réappro via `cout_lot`.
