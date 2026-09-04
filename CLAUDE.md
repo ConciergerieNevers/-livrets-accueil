@@ -282,7 +282,7 @@ Le bouton **"✨ Charger l'exemple Cosy Green"** dans l'éditeur reflète cet é
 Conso déduite **automatiquement** des réservations SuperHote : **1 séjour terminé = 1 rotation**.
 
 ## Tables
-- **`consommables`** : nom, categorie, unite, cout_unitaire, fournisseur, stock_actuel, seuil_alerte, conditionnement, actif, ordre. (30 lignes)
+- **`consommables`** : nom, categorie, unite, cout_unitaire, fournisseur, stock_actuel, seuil_alerte, conditionnement, actif, ordre. (26 lignes — Café en grain, Chocolat en poudre, Lait et Miel supprimés volontairement par Mathieu le 03/09/2026 : non utilisés)
 - **`conso_formats`** : paquets d'achat — consommable_id, nom ("Boîte de 54 dosettes"), qte (54), cout_lot (8,45), fournisseur, defaut. Un produit peut avoir plusieurs formats. (28 lignes)
 - **`conso_regles`** : consommable_id, `base` (**personne** = ×voyageurs 1 fois · **personne_nuit** = ×voyageurs×nuits · **rotation** = 1 fois par séjour · **nuit** = ×nuits · **sdb** = ×salles de bain), quantite, `updated_at` (trigger `touch_conso_regle` — une modif vaut à partir de sa date, jamais rétroactivement), `condition_type` (machine_cafe | lave_vaisselle | lave_linge | petit_dej), condition_valeur, **`livret_id`** (NULL = règle générale ; renseigné = règle propre à un logement, qui **remplace** la règle générale du même produit pour ce logement).
 - **`stock_mouvements`** : consommable_id, `type` (sortie | entree | ajustement), quantite, livret_id/nom, booking_id, nb_personnes, nb_nuits, cout, note, format_id, format_nom, nb_lots, date_mouvement.
@@ -302,9 +302,9 @@ Conso déduite **automatiquement** des réservations SuperHote : **1 séjour ter
 ## Paramétrage réel (validé par Mathieu)
 - **Hors stock (8)** : Villa Bali, La Chapelle, Montagnon, Vivier, Saint-Cyr, Le Nacha, Loft Manhattan, Villa du Circuit. **23 gérés.**
 - **Machines** : Senseo 15 · Nespresso 4 · Tassimo 2 · Dolce Gusto 2 · aucune 5 (dont Bois Bézard).
-- **Petit-déj offert** : LE NOEUD VERT + Studio Majorelle uniquement (7 produits conditionnés `petit_dej`).
+- **Petit-déj offert** : LE NOEUD VERT + Studio Majorelle uniquement — 6 produits conditionnés `petit_dej`, tous en base **rotation** (1 fois par séjour, PAS par jour) : 2 croissants, 2 pains au chocolat, 1 jus, 1 confiture, 2 Nutella, 5 fruits.
 - **Domaine du Bois Bézard** : plusieurs machines → `machine_cafe = NULL` + 3 **règles dédiées** (30 caps Dolce Gusto, 18 caps Nespresso, **2 bouteilles de vin** / rotation).
-- **Ratios** : eau 1/pers · **thé 1/pers** · sucre 4/pers · capsules 2/pers · PQ 0,333/pers/nuit · Sopalin 0,0154/pers/nuit · éponge, sacs noir+tri, chocolat 1/rotation · pastille LV 1/rotation si LV · pastille LL 1/rotation si LL · sac SdB 1/SdB · gel douche 0,048 L/SdB.
+- **Ratios** : eau 1/pers · **thé 1/pers** · sucre 4/pers · capsules 2/pers · PQ 0,333/pers/nuit · Sopalin 0,0154/pers/nuit · éponge, sacs noir+tri 1/rotation · pastille LV 1/rotation si LV · pastille LL 1/rotation si LL · sac SdB 1/SdB · gel douche 0,048 L/SdB.
 - **Gel douche** : compté en **litres** (recharges 2 L), pas en flacons. ⚠️ coût 9,25 €/L dérivé du flacon 400 ml — **prix de la recharge à corriger** (décision Mathieu : plus tard).
 - **Seuils d'alerte** = 2 semaines de conso réelle (calculée sur juin-août 2026).
 - Conso ≈ **1 497 €/mois** sur 23 logements. Stock de départ saisi le 03/09/2026 = 1 326 €.
