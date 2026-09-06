@@ -114,7 +114,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-sans);min-hei
 .adm-hero-text p{font-size:14px;color:var(--muted2);font-weight:400;}
 .adm-hero-stats{display:flex;gap:32px;}
 .adm-stat{text-align:center;}
-.adm-stat-num{font-family:var(--font-serif);font-size:32px;font-weight:700;}
+.adm-stat-num{font-family:var(--font-serif);font-size:32px;font-weight:700;white-space:nowrap;}
+/* Montants longs (valeur de stock, coût mensuel) : on réduit plutôt que de couper l'euro à la ligne */
+.adm-stat-num.money{font-size:clamp(19px,2.1vw,28px);}
 .adm-stat-lbl{font-size:11px;color:var(--muted2);letter-spacing:1px;text-transform:uppercase;margin-top:2px;}
 .adm-section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
 .adm-section-title{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted2);}
@@ -174,6 +176,22 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-sans);min-hei
   input[type="email"],input[type="tel"],input[type="search"],input[type="url"]{
     font-size:16px !important;
   }
+}
+/* Barre du haut sur téléphone : elle débordait à droite (boutons coupés).
+   Elle passe sur deux lignes, les boutons restent entiers et cliquables. */
+@media (max-width:640px){
+  .adm-nav{height:auto;min-height:56px;flex-wrap:wrap;padding:9px 12px;gap:8px 10px;row-gap:8px;}
+  .adm-nav-left{flex:1 1 100%;gap:10px;min-width:0;}
+  .adm-nav-title{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .adm-nav-right{flex:1 1 100%;flex-wrap:wrap;gap:8px;justify-content:flex-start;}
+  .adm-nav-right .adm-add,.adm-nav-right .adm-add-s,.adm-nav-right .adm-logout{
+    padding:8px 12px;font-size:12.5px;white-space:nowrap;flex:0 0 auto;}
+  .adm-nav-user{display:none;}
+  .adm-body{padding-left:14px;padding-right:14px;}
+  .adm-hero{padding:20px 16px;}
+  .adm-hero-stats{gap:14px;flex-wrap:wrap;justify-content:center;}
+  .adm-stat-num{font-size:26px;}
+  .adm-stat-num.money{font-size:19px;}
 }
 /* Supprime le zoom au double-tap et le délai de 300 ms sur tout l'écran */
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
@@ -702,8 +720,8 @@ body{top:0!important}
       </div>
       <div class="adm-hero-stats">
         <div class="adm-stat"><div class="adm-stat-num gold-text serif" id="stk-alert">—</div><div class="adm-stat-lbl">À commander</div></div>
-        <div class="adm-stat"><div class="adm-stat-num gold-text serif" id="stk-valeur">—</div><div class="adm-stat-lbl">Valeur stock</div></div>
-        <div class="adm-stat"><div class="adm-stat-num gold-text serif" id="stk-mois">—</div><div class="adm-stat-lbl">Coût / mois</div></div>
+        <div class="adm-stat"><div class="adm-stat-num money gold-text serif" id="stk-valeur">—</div><div class="adm-stat-lbl">Valeur stock</div></div>
+        <div class="adm-stat"><div class="adm-stat-num money gold-text serif" id="stk-mois">—</div><div class="adm-stat-lbl">Coût / mois</div></div>
       </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">
@@ -1699,15 +1717,18 @@ async function openStock(){
 }
 async function loadStockData(){
   try{
-    const [c,r,m,lv,fo,rs]=await Promise.all([
+    const [c,r,m,lv,fo,rs,vm,vmp,vl]=await Promise.all([
       axios.get(`${API}/consommables?select=*&order=ordre.asc`,{headers:hd()}),
       axios.get(`${API}/conso_regles?select=*`,{headers:hd()}),
       axios.get(`${API}/stock_mouvements?select=*&order=date_mouvement.desc&limit=4000`,{headers:hd()}),
       axios.get(`${API}/livrets?select=id,nom,actif,conso_geree,machine_cafe,nb_sdb,a_lave_vaisselle,a_lave_linge,petit_dej_offert,superhote_rental_id&deleted_at=is.null&order=nom.asc`,{headers:hd()}),
       axios.get(`${API}/conso_formats?select=*&order=nom.asc`,{headers:hd()}).catch(()=>({data:[]})),
-      axios.get(`${API}/sh_reservations?select=booking_id,rental_id,checkin,checkout,adults,children&checkout=gte.${new Date(Date.now()-400*864e5).toISOString().slice(0,10)}&order=checkout.asc&limit=6000`,{headers:hd()}).catch(()=>({data:[]}))
+      axios.get(`${API}/sh_reservations?select=booking_id,rental_id,checkin,checkout,adults,children&checkout=gte.${new Date(Date.now()-400*864e5).toISOString().slice(0,10)}&order=checkout.asc&limit=6000`,{headers:hd()}).catch(()=>({data:[]})),
+      axios.get(`${API}/v_stock_mois?select=*&order=ym.asc`,{headers:hd()}).catch(()=>({data:[]})),
+      axios.get(`${API}/v_stock_mois_produit?select=*`,{headers:hd()}).catch(()=>({data:[]})),
+      axios.get(`${API}/v_stock_logement?select=*&order=cout.desc`,{headers:hd()}).catch(()=>({data:[]}))
     ]);
-    consoData=c.data||[];regleData=r.data||[];mvtData=m.data||[];window.stockLivrets=lv.data||[];window.formatData=fo.data||[];window.stockResas=rs.data||[];_refCache=null;
+    consoData=c.data||[];regleData=r.data||[];mvtData=m.data||[];window.stockLivrets=lv.data||[];window.formatData=fo.data||[];window.stockResas=rs.data||[];window.vMois=vm.data||[];window.vMoisProd=vmp.data||[];window.vLogement=vl.data||[];_refCache=null;
   }catch(e){logAndShowErr&&logAndShowErr(e);}
 }
 function setStockTab(t){stockTab=t;renderStock();}
@@ -1799,6 +1820,11 @@ function dateRupture(cid){
 
 /* Sorties du mois en cours (quantité + coût) */
 function consoMois(cid,ym){
+  if((window.vMoisProd||[]).length){
+    const x=window.vMoisProd.find(v=>v.consommable_id===cid&&(!ym||v.ym===ym));
+    if(x)return{q:parseFloat(x.quantite)||0,cout:parseFloat(x.cout)||0};
+    if(ym)return{q:0,cout:0};
+  }
   let q=0,cout=0;
   (mvtData||[]).forEach(m=>{
     if(m.consommable_id!==cid||m.type!=='sortie')return;
@@ -1821,6 +1847,13 @@ function stockKPIs(){
 }
 function eur(n){return (Math.round(n*100)/100).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';}
 function qfmt(n){const v=Math.round(n*100)/100;return (v%1===0?v:v.toFixed(2).replace('.',',')) ;}
+/* Accord de l'unité : « 1 rouleau » mais « 18,70 rouleaux ». kg et litre invariables au singulier. */
+function un(u,n){
+  u=String(u||'');
+  if(Math.abs(n)<2||!u)return u;
+  if(/s$|^kg$/.test(u))return u;
+  return u+'s';
+}
 
 function renderStock(){
   ['etat','reappro','stats','couts','conf'].forEach(t=>{
@@ -1867,7 +1900,7 @@ function stockEtatHtml(){
     h+='<div class="sc" style="margin-bottom:18px;border-color:#ff6b6b"><div style="font-weight:700;color:#ff6b6b;margin-bottom:10px">🚨 À commander maintenant ('+alertes.length+')</div>'+
       '<div style="display:flex;flex-wrap:wrap;gap:8px">'+alertes.map(c=>{
         const cpj=consoParJour(c.id),j=cpj>0?Math.floor((parseFloat(c.stock_actuel)||0)/cpj):null;
-        return '<span style="background:rgba(255,107,107,.12);border:1px solid rgba(255,107,107,.4);border-radius:9px;padding:6px 11px;font-size:12.5px">'+esch(c.nom)+' — <b>'+qfmt(c.stock_actuel||0)+'</b> '+esch(c.unite)+(j!==null?' · '+(j<=0?'rupture':j+' j'):'')+'</span>';
+        return '<span style="background:rgba(255,107,107,.12);border:1px solid rgba(255,107,107,.4);border-radius:9px;padding:6px 11px;font-size:12.5px">'+esch(c.nom)+' — <b>'+qfmt(c.stock_actuel||0)+'</b> '+esch(un(c.unite,parseFloat(c.stock_actuel)||0))+(j!==null?' · '+(j<=0?'rupture':j+' j'):'')+'</span>';
       }).join('')+'</div></div>';
   }
   Object.keys(cats).forEach(cat=>{
@@ -1964,12 +1997,12 @@ function majReaLigne(cid){
   const parts=[];
   if(!isNaN(inv)){
     const ec=inv-st;
-    if(Math.abs(ec)>=0.01)parts.push('<span style="color:'+(ec<0?'#ff6b6b':'#5ec07a')+';font-weight:600">'+(ec<0?'⚠️ manque ':'✚ surplus ')+qfmt(Math.abs(ec))+' '+esch(c.unite)+'</span> (théorique '+qfmt(st)+', compté '+qfmt(inv)+')');
+    if(Math.abs(ec)>=0.01)parts.push('<span style="color:'+(ec<0?'#ff6b6b':'#5ec07a')+';font-weight:600">'+(ec<0?'⚠️ manque ':'✚ surplus ')+qfmt(Math.abs(ec))+' '+esch(un(c.unite,Math.abs(ec)))+'</span> (théorique '+qfmt(st)+', compté '+qfmt(inv)+')');
     else parts.push('<span style="color:#5ec07a">✓ le compte est bon</span>');
   }
   if(ajout>0){
     const base=isNaN(inv)?st:inv;
-    parts.push('+ '+qfmt(ajout)+' '+esch(c.unite)+(f?' ('+qfmt(nb)+' × '+qfmt(parLot)+')':'')+' · '+eur(cout)+' → <b style="color:var(--gold2)">'+qfmt(base+ajout)+' '+esch(c.unite)+'</b>');
+    parts.push('+ '+qfmt(ajout)+' '+esch(un(c.unite,ajout))+(f?' ('+qfmt(nb)+' × '+qfmt(parLot)+')':'')+' · '+eur(cout)+' → <b style="color:var(--gold2)">'+qfmt(base+ajout)+' '+esch(c.unite)+'</b>');
   }
   box.innerHTML=parts.join(' &nbsp;·&nbsp; ');
 }
@@ -2013,7 +2046,7 @@ async function doReappro(cid,silent){
     ['inv-','rea-'].forEach(p=>{const el=document.getElementById(p+cid);if(el)el.value='';});
     if(!silent){
       await loadStockData();renderStock();
-      toast('✓ '+c.nom+' : '+qfmt(nv)+' '+c.unite+(aInv?' (écart '+(inv-st>0?'+':'')+qfmt(inv-st)+' noté)':''));
+      toast('✓ '+c.nom+' : '+qfmt(nv)+' '+un(c.unite,nv)+(aInv?' (écart '+(inv-st>0?'+':'')+qfmt(inv-st)+' noté)':''));
     }
     return true;
   }catch(e){logAndShowErr&&logAndShowErr(e);return false;}
@@ -2054,7 +2087,14 @@ function journalHtml(lim){
 
 /* ---------- Onglet 3 : statistiques de consommation ---------- */
 function statsMois(){
-  // Regroupe les sorties par mois : rotations, voyageurs, nuitées, coût
+  // Vue agrégée côté base : historique complet, quel que soit le volume de mouvements
+  if((window.vMois||[]).length){
+    const M={};
+    window.vMois.forEach(x=>{M[x.ym]={cout:parseFloat(x.cout)||0,rot:parseInt(x.rotations)||0,
+      pers:parseInt(x.voyageurs)||0,nuitees:parseInt(x.nuitees)||0,nblv:parseInt(x.logements)||0};});
+    return M;
+  }
+  // Repli : calcul depuis les mouvements chargés
   const M={};
   (mvtData||[]).filter(m=>m.type==='sortie').forEach(m=>{
     const ym=String(m.date_mouvement).slice(0,7);
@@ -2106,10 +2146,15 @@ function stockStatsHtml(){
   h+='</table></div>';
   // Quantités consommées sur le dernier mois
   const qm={};
-  (mvtData||[]).filter(m=>m.type==='sortie'&&String(m.date_mouvement).slice(0,7)===der).forEach(m=>{
-    if(!qm[m.consommable_id])qm[m.consommable_id]={q:0,c:0};
-    qm[m.consommable_id].q+=parseFloat(m.quantite)||0;qm[m.consommable_id].c+=parseFloat(m.cout)||0;
-  });
+  if((window.vMoisProd||[]).length){
+    window.vMoisProd.filter(x=>x.ym===der).forEach(x=>{
+      qm[x.consommable_id]={q:parseFloat(x.quantite)||0,c:parseFloat(x.cout)||0};});
+  }else{
+    (mvtData||[]).filter(m=>m.type==='sortie'&&String(m.date_mouvement).slice(0,7)===der).forEach(m=>{
+      if(!qm[m.consommable_id])qm[m.consommable_id]={q:0,c:0};
+      qm[m.consommable_id].q+=parseFloat(m.quantite)||0;qm[m.consommable_id].c+=parseFloat(m.cout)||0;
+    });
+  }
   const lignes=Object.keys(qm).map(id=>({c:consoData.find(x=>x.id===id)||{},...qm[id]}))
     .filter(x=>x.c.nom).sort((a,b)=>b.c-a.c);
   if(lignes.length){
@@ -2158,10 +2203,10 @@ function stockStatsHtml(){
 function stockCoutsHtml(){
   // Par mois (12 derniers)
   const mois={};
-  (mvtData||[]).filter(m=>m.type==='sortie').forEach(m=>{
+  if((window.vMois||[]).length){window.vMois.forEach(x=>{mois[x.ym]=parseFloat(x.cout)||0;});}
+  else{(mvtData||[]).filter(m=>m.type==='sortie').forEach(m=>{
     const ym=String(m.date_mouvement).slice(0,7);
-    mois[ym]=(mois[ym]||0)+(parseFloat(m.cout)||0);
-  });
+    mois[ym]=(mois[ym]||0)+(parseFloat(m.cout)||0);});}
   const yms=Object.keys(mois).sort().slice(-12);
   const maxM=Math.max(1,...yms.map(y=>mois[y]));
   let h='<div style="margin:0 0 10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold2);font-weight:700">Coût des consommables par mois</div>';
@@ -2179,12 +2224,16 @@ function stockCoutsHtml(){
   }
   // Coût par logement
   const parLv={};
-  (mvtData||[]).filter(m=>m.type==='sortie').forEach(m=>{
-    const k=m.livret_nom||'(inconnu)';
-    if(!parLv[k])parLv[k]={cout:0,rot:new Set(),pers:0};
-    parLv[k].cout+=parseFloat(m.cout)||0;
-    if(m.booking_id)parLv[k].rot.add(m.booking_id);
-    });
+  if((window.vLogement||[]).length){
+    window.vLogement.forEach(x=>{parLv[x.livret_nom]={cout:parseFloat(x.cout)||0,
+      rot:{size:parseInt(x.rotations)||0},pers:0};});
+  }else{
+    (mvtData||[]).filter(m=>m.type==='sortie').forEach(m=>{
+      const k=m.livret_nom||'(inconnu)';
+      if(!parLv[k])parLv[k]={cout:0,rot:new Set(),pers:0};
+      parLv[k].cout+=parseFloat(m.cout)||0;
+      if(m.booking_id)parLv[k].rot.add(m.booking_id);});
+  }
   const lvs=Object.keys(parLv).sort((a,b)=>parLv[b].cout-parLv[a].cout);
   if(lvs.length){
     h+='<div style="margin:26px 0 10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold2);font-weight:700">Coût par logement</div>';
@@ -2202,7 +2251,10 @@ function stockCoutsHtml(){
     h+='</table></div>';
   }
   // Top consommables en coût
-  const parC=consoData.map(c=>({c,cout:(mvtData||[]).filter(m=>m.consommable_id===c.id&&m.type==='sortie').reduce((s,m)=>s+(parseFloat(m.cout)||0),0)}))
+  const cumC={};
+  if((window.vMoisProd||[]).length)window.vMoisProd.forEach(x=>{cumC[x.consommable_id]=(cumC[x.consommable_id]||0)+(parseFloat(x.cout)||0);});
+  else (mvtData||[]).filter(m=>m.type==='sortie').forEach(m=>{cumC[m.consommable_id]=(cumC[m.consommable_id]||0)+(parseFloat(m.cout)||0);});
+  const parC=consoData.map(c=>({c,cout:cumC[c.id]||0}))
     .filter(x=>x.cout>0).sort((a,b)=>b.cout-a.cout).slice(0,15);
   if(parC.length){
     h+='<div style="margin:26px 0 10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold2);font-weight:700">Ce qui coûte le plus cher</div><div class="sc" style="padding:0">';
