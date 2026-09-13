@@ -1851,7 +1851,8 @@ function qfmt(n){const v=Math.round(n*100)/100;return (v%1===0?v:v.toFixed(2).re
 function un(u,n){
   u=String(u||'');
   if(Math.abs(n)<2||!u)return u;
-  if(/s$|^kg$/.test(u))return u;
+  if(/s$|x$|^kg$|^litre$/.test(u))return u==='litre'?'litres':u;
+  if(/(eau|eu|au)$/.test(u))return u+'x';   // rouleau → rouleaux
   return u+'s';
 }
 
@@ -1930,7 +1931,7 @@ function stockEtatHtml(){
       }
       h+='<tr style="border-top:1px solid var(--border)">'+
         '<td style="padding:11px 12px">'+(alerte?'🚨 ':'')+esch(c.nom)+(c.fournisseur?'<div style="font-size:11px;color:var(--muted2)">'+esch(c.fournisseur)+(c.conditionnement?' · '+esch(c.conditionnement):'')+'</div>':'')+'</td>'+
-        '<td style="padding:11px 8px;text-align:right;font-weight:700;'+(alerte?'color:#ff6b6b':'')+'">'+qfmt(st)+' <span style="font-weight:400;font-size:11px;color:var(--muted2)">'+esch(c.unite)+'</span></td>'+
+        '<td style="padding:11px 8px;text-align:right;font-weight:700;'+(alerte?'color:#ff6b6b':'')+'">'+qfmt(st)+' <span style="font-weight:400;font-size:11px;color:var(--muted2)">'+esch(un(c.unite,st))+'</span></td>'+
         '<td style="padding:11px 8px;text-align:right">'+(cpm>0?qfmt(cpm):'<span style="color:var(--muted2)">—</span>')+'</td>'+
         '<td style="padding:11px 8px;text-align:right">'+jTxt+'</td>'+
         '<td style="padding:11px 8px;text-align:right;color:var(--muted2)">'+qfmt(seuil)+'</td>'+
@@ -1959,7 +1960,7 @@ function stockReapproHtml(){
         '<div><div style="font-weight:700;font-size:14.5px">'+esch(c.nom)+'</div>'+
         '<div style="font-size:11.5px;color:var(--muted2);margin-top:2px">'+esch(c.fournisseur||'')+' · '+eur(parseFloat(c.cout_unitaire)||0)+' / '+esch(c.unite)+'</div></div>'+
         '<div style="text-align:right"><div style="font-size:11px;color:var(--muted2)">stock théorique</div>'+
-        '<div style="font-weight:700;font-size:17px;color:var(--gold2)">'+qfmt(st)+' <span style="font-size:12px;font-weight:400;color:var(--muted2)">'+esch(c.unite)+'</span></div></div>'+
+        '<div style="font-weight:700;font-size:17px;color:var(--gold2)">'+qfmt(st)+' <span style="font-size:12px;font-weight:400;color:var(--muted2)">'+esch(un(c.unite,st))+'</span></div></div>'+
       '</div>'+
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:11px;align-items:end">'+
         '<div><label style="font-size:11px;color:var(--muted2);display:block;margin-bottom:4px">① Il en reste (compté)</label>'+
@@ -1967,7 +1968,7 @@ function stockReapproHtml(){
     if(fs.length){
       h+='<div><label style="font-size:11px;color:var(--muted2);display:block;margin-bottom:4px">② Paquet acheté</label>'+
         '<select id="fmt-'+c.id+'" onchange="majReaLigne(\''+c.id+'\')" style="width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--border-gold);background:var(--card);color:var(--gold3);font-size:14px;box-sizing:border-box">'+
-        fs.map(f=>'<option value="'+f.id+'" '+(dft&&f.id===dft.id?'selected':'')+'>'+esch(f.nom)+' — '+qfmt(f.qte)+' '+esch(c.unite)+(f.cout_lot?' · '+eur(f.cout_lot):'')+'</option>').join('')+
+        fs.map(f=>'<option value="'+f.id+'" '+(dft&&f.id===dft.id?'selected':'')+'>'+esch(f.nom)+' — '+qfmt(f.qte)+' '+esch(un(c.unite,f.qte))+(f.cout_lot?' · '+eur(f.cout_lot):'')+'</option>').join('')+
         '<option value="_unit">À l’unité ('+esch(c.unite)+')</option></select></div>';
     }
     h+='<div><label style="font-size:11px;color:var(--muted2);display:block;margin-bottom:4px">'+(fs.length?'Nombre de paquets':'② Quantité ajoutée')+'</label>'+
@@ -2002,7 +2003,7 @@ function majReaLigne(cid){
   }
   if(ajout>0){
     const base=isNaN(inv)?st:inv;
-    parts.push('+ '+qfmt(ajout)+' '+esch(un(c.unite,ajout))+(f?' ('+qfmt(nb)+' × '+qfmt(parLot)+')':'')+' · '+eur(cout)+' → <b style="color:var(--gold2)">'+qfmt(base+ajout)+' '+esch(c.unite)+'</b>');
+    parts.push('+ '+qfmt(ajout)+' '+esch(un(c.unite,ajout))+(f?' ('+qfmt(nb)+' × '+qfmt(parLot)+')':'')+' · '+eur(cout)+' → <b style="color:var(--gold2)">'+qfmt(base+ajout)+' '+esch(un(c.unite,base+ajout))+'</b>');
   }
   box.innerHTML=parts.join(' &nbsp;·&nbsp; ');
 }
