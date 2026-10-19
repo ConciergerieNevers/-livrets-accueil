@@ -178,6 +178,74 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-sans);min-hei
   }
 }
 /* ============================================================
+   LISTES DENSES (octobre 2026)
+   Une ligne = un enregistrement. Les cartes d'autrefois tenaient
+   200 px pour deux informations ; on voit désormais quinze lignes
+   d'un seul écran au lieu de quatre.
+   ============================================================ */
+/* Le titre est déjà dans la barre du haut : le bandeau doré faisait doublon.
+   On le garde pour le tableau de bord, qui y affiche ses indicateurs. */
+body.bo #demandes-screen .adm-hero,
+body.bo #reservations-screen .adm-hero,
+body.bo #requests-screen .adm-hero,
+body.bo #courses-screen .adm-hero,
+body.bo #corbeille-screen .adm-hero,
+body.bo #prestataires-screen .adm-hero{display:none}
+body.bo #demandes-screen .adm-body,
+body.bo #reservations-screen .adm-body{padding-top:22px}
+.lst{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.lst-t{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);
+  font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted2);font-weight:600}
+.lgn{display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid rgba(255,255,255,.045);
+  font-size:13px;transition:background .13s;cursor:pointer}
+.lgn:last-child{border-bottom:0}
+.lgn:hover{background:rgba(255,255,255,.03)}
+.lgn .pt{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.lgn .pr{flex:1;min-width:0}
+.lgn .t1{font-weight:500;color:var(--gold3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lgn .t2{font-size:11.5px;color:var(--muted2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lgn .dt{font-size:12px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.lgn .mt{font-weight:600;color:var(--gold2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.lgn .ac{display:flex;gap:5px;flex-shrink:0;opacity:.45;transition:opacity .13s}
+.lgn:hover .ac{opacity:1}
+.lgn .ac button{background:transparent;border:1px solid var(--border);color:var(--gold3);
+  width:29px;height:29px;border-radius:8px;cursor:pointer;font-size:12.5px;display:flex;
+  align-items:center;justify-content:center;padding:0;transition:.13s}
+.lgn .ac button:hover{background:var(--gold-dim);border-color:var(--border-gold)}
+.et{font-size:10px;padding:3px 9px;border-radius:20px;white-space:nowrap;font-weight:600;flex-shrink:0}
+.et.v{background:rgba(95,190,133,.15);color:#5FBE85}
+.et.o{background:rgba(224,168,60,.15);color:#E0A83C}
+.et.r{background:rgba(232,86,78,.15);color:#E8564E}
+.et.g{background:rgba(255,255,255,.07);color:var(--muted)}
+/* Barre d'outils : recherche et filtres sur une seule ligne */
+.bo-outils{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.bo-outils input[type=search],.bo-outils input.rech{flex:1;min-width:210px;padding:9px 13px;border-radius:10px;
+  border:1px solid var(--border);background:var(--card);color:var(--gold3);font-size:13.5px}
+.bo-outils select{padding:9px 12px;border-radius:10px;border:1px solid var(--border);
+  background:var(--card);color:var(--gold3);font-size:13px;max-width:230px}
+.fltr{display:flex;gap:6px;flex-wrap:wrap}
+.fltr button{padding:7px 13px;border-radius:19px;border:1px solid var(--border);background:transparent;
+  color:var(--muted);font-size:12.5px;cursor:pointer;transition:.13s;font-family:inherit;white-space:nowrap}
+.fltr button:hover{color:var(--gold3);border-color:var(--border-gold)}
+.fltr button.on{border-color:var(--gold2);background:rgba(201,169,97,.13);color:var(--gold3);font-weight:600}
+.grp-lv{font-size:11px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--gold2);
+  padding:13px 16px 8px;background:rgba(255,255,255,.018);border-bottom:1px solid rgba(255,255,255,.045);
+  display:flex;align-items:center;gap:8px}
+.grp-lv span{margin-left:auto;font-weight:400;color:var(--muted2);font-size:10.5px}
+@media (max-width:760px){
+  /* Sur téléphone la ligne se replie : le nom occupe toute la largeur,
+     puis les dates, le statut et les actions passent en dessous. */
+  .lgn{flex-wrap:wrap;gap:7px 9px;padding:12px 13px}
+  .lgn .pr{flex:1 1 100%;min-width:100%}
+  .lgn .t1{white-space:normal}
+  .lgn .dt{font-size:11.5px;width:auto !important;order:2}
+  .lgn .mt{width:auto !important;order:3;margin-left:auto}
+  .lgn .et{order:4}
+  .lgn .ac{opacity:1;order:5;margin-left:auto}
+  .lst-t{display:none}
+}
+
+/* ============================================================
    OSSATURE DU BACK-OFFICE (octobre 2026)
    Barre latérale permanente + barre du bas sur téléphone.
    Les écrans existants ne bougent pas : ils se contentent de
@@ -2975,19 +3043,29 @@ function demBadge(st,c,big){
 }
 function demCardHtml(c){
   const st=demStatut(c);
-  const d=c.created_at?new Date(c.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+  const esc=x=>(''+(x==null?'':x)).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const d=c.created_at?new Date(c.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):'';
   const total=c.total_cents!=null?demEur(c.total_cents):'';
-  const contact=[c.guest_nom,c.guest_email].filter(Boolean).map(x=>(''+x).replace(/</g,'&lt;')).join(' · ')||'<span style="color:var(--muted)">infos après paiement</span>';
+  const nom=c.guest_nom||c.guest_email||'En attente de paiement';
   const nb=(c.items||[]).reduce((s,i)=>s+(parseInt(i.qty)||1),0);
-  const refN=demRefusedCount(c);
-  const refNote=refN>0?'<div style="font-size:11px;color:#8fc1f0;margin-top:3px">↩️ '+refN+' service'+(refN>1?'s':'')+' refusé'+(refN>1?'s':'')+' (remboursé)</div>':'';
-  const traiteNote=(st==='paye')?(c.traitee?'<div style="font-size:11px;color:#7fe0a0;margin-top:3px">✓ Traitée</div>':'<div style="font-size:11px;color:var(--gold2);font-weight:700;margin-top:3px">🆕 À traiter</div>'):'';
-  const del=(st==='attente')?'<button onclick="event.stopPropagation();deleteDemande(\''+c.id+'\')" style="background:none;border:none;color:#e0556b;font-size:12px;cursor:pointer;text-decoration:underline;padding:0">🗑 Supprimer</button>':'<span style="font-size:12px;color:var(--muted)">Voir le détail →</span>';
-  return '<div class="sc" onclick="openDemDetail(\''+c.id+'\')" style="margin-bottom:12px;cursor:pointer">'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px"><div style="font-size:12px;color:var(--muted2)">📅 '+d+'</div>'+demBadge(st,c)+'</div>'
-    +'<div style="font-weight:600;color:#fff">'+contact+'</div>'
-    +'<div style="font-size:12px;color:var(--muted2);margin-top:3px">'+((c.livret_nom||'').replace(/</g,'&lt;'))+' · '+nb+' service'+(nb>1?'s':'')+'</div>'+refNote+traiteNote
-    +'<div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:12px">'+del+'<span style="color:var(--gold2);font-weight:700">'+total+'</span></div>'
+  const serv=(c.items||[]).map(i=>i.titre).filter(Boolean).slice(0,2).join(', ')
+    +((c.items||[]).length>2?' +'+((c.items||[]).length-2):'');
+  const COUL={paye:'#5FBE85',rembourse:'#7FA8D4',attente:'#E0A83C'};
+  let e=['g','—'];
+  if(st==='paye')   e = c.traitee ? ['v','Traitée'] : ['o','À traiter'];
+  if(st==='rembourse') e=['g','Remboursée'];
+  if(st==='attente')   e=['r','Non aboutie'];
+  const sup=(st==='attente')
+    ? '<button onclick="event.stopPropagation();deleteDemande(\''+c.id+'\')" title="Supprimer">🗑</button>' : '';
+  return '<div class="lgn" onclick="openDemDetail(\''+c.id+'\')">'
+    +'<span class="pt" style="background:'+(COUL[st]||'rgba(255,255,255,.2)')+'"></span>'
+    +'<div class="dt" style="width:62px">'+d+'</div>'
+    +'<div class="pr"><div class="t1">'+esc(nom)+'</div>'
+    +'<div class="t2">'+esc(c.livret_nom||'')+(serv?' · '+esc(serv):' · '+nb+' service'+(nb>1?'s':''))+'</div></div>'
+    +'<span class="et '+e[0]+'">'+e[1]+'</span>'
+    +'<div class="mt" style="width:84px;text-align:right">'+total+'</div>'
+    +'<div class="ac" onclick="event.stopPropagation()">'+sup
+      +'<button onclick="openDemDetail(\''+c.id+'\')" title="Voir le détail">→</button></div>'
     +'</div>';
 }
 function setDemView(v){demView=v;renderDemandes();}
@@ -3015,13 +3093,14 @@ function renderDemandes(){
       +demRankHtml('Par logement','🏠',demByLivret());
     box.innerHTML=h;return;
   }
-  const newBtn='<button onclick="openNewOrder()" style="width:100%;padding:13px;margin-bottom:18px;border:1px dashed var(--border-gold);border-radius:12px;background:rgba(226,192,110,0.06);color:var(--gold2);font-size:14px;font-weight:700;cursor:pointer">➕ Nouvelle commande sur-mesure</button>';
-  const tab=(key,label)=>'<button onclick="setDemFilter(\''+key+'\')" style="padding:8px 14px;border-radius:20px;border:1px solid '+(demFilter===key?'var(--gold2)':'var(--border)')+';background:'+(demFilter===key?'rgba(226,192,110,0.15)':'transparent')+';color:'+(demFilter===key?'var(--gold2)':'var(--muted2)')+';font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">'+label+' ('+counts[key]+')</button>';
-  let html=viewSwitch+newBtn
-    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'+tab('all','Toutes')+tab('paye','✅ Payées')+tab('rembourse','↩️ Remboursées')+tab('attente','⚠️ Non abouties')+'</div>';
+  const newBtn='';
+  const tab=(key,label)=>'<button class="'+(demFilter===key?'on':'')+'" onclick="setDemFilter(\''+key+'\')">'+label+'</button>';
+  let html=viewSwitch
+    +'<div class="bo-outils"><div class="fltr">'+tab('all','Toutes ('+counts.all+')')+tab('paye','✅ Payées ('+counts.paye+')')+tab('rembourse','↩️ Remboursées ('+counts.rembourse+')')+tab('attente','⚠️ Non abouties ('+counts.attente+')')+'</div>'
+    +'<button class="adm-add-s" style="margin-left:auto" onclick="openNewOrder()">+ Commande sur-mesure</button></div>';
   const list=demData.filter(c=>demFilter==='all'||demStatut(c)===demFilter);
   if(!list.length){box.innerHTML=html+'<div style="text-align:center;padding:30px;color:var(--muted);font-style:italic">Aucune commande ici.</div>';return;}
-  html+=list.map(demCardHtml).join('');
+  html+='<div class="lst">'+list.map(demCardHtml).join('')+'</div>';
   box.innerHTML=html;
 }
 let demDetailId=null,demEditIdx=-1;
@@ -3238,32 +3317,69 @@ function resaCardHtml(r){
 function renderResaList(){
   const box=document.getElementById('resa-rows');if(!box)return;
   const q=resaNorm(resaSearch);
-  let list=resaData.filter(r=>{
+  const list=resaData.filter(r=>{
     if(resaStatus!=='all'&&resaStatusOf(r)!==resaStatus)return false;
     if(resaLivretFilter!=='all'){const lv=resaLivretFor(r.rental_id);if(!lv||String(lv.id)!==String(resaLivretFilter))return false;}
-    if(q){const lv=resaLivretFor(r.rental_id);const hay=resaNorm((r.first_name||'')+' '+(r.last_name||'')+' '+(r.checkin||'')+' '+(r.checkout||'')+' '+(lv?lv.nom:'')+' '+(r.booking_id||''));if(!hay.includes(q))return false;}
+    if(q){const lv=resaLivretFor(r.rental_id);
+      const hay=resaNorm((r.first_name||'')+' '+(r.last_name||'')+' '+(r.checkin||'')+' '+(r.checkout||'')+' '+(lv?lv.nom:'')+' '+(r.booking_id||''));
+      if(!hay.includes(q))return false;}
     return true;
   });
-  if(!list.length){box.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-style:italic">Aucune réservation trouvée.</div>';return;}
-  const groups={},order=[];
-  list.forEach(r=>{const lv=resaLivretFor(r.rental_id);const key=lv?lv.nom:('Logement #'+r.rental_id+' (non lié)');if(!groups[key]){groups[key]=[];order.push(key);}groups[key].push(r);});
-  order.sort((a,b)=>a.localeCompare(b,'fr'));
-  order.forEach(k=>groups[k].sort((a,b)=>(''+(a.checkin||'')).localeCompare(''+(b.checkin||''))));
-  let html='<div style="font-size:11px;color:var(--muted2);margin-bottom:12px">'+list.length+' réservation'+(list.length>1?'s':'')+' · '+order.length+' logement'+(order.length>1?'s':'')+'</div>';
-  html+=order.map(k=>'<div style="margin-bottom:20px"><div style="font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--gold2);margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--border-gold)">🏠 '+k.replace(/</g,'&lt;')+' · '+groups[k].length+'</div>'+groups[k].map(resaCardHtml).join('')+'</div>').join('');
-  box.innerHTML=html;
+  if(!list.length){box.innerHTML='<div class="lst"><div style="text-align:center;padding:34px;color:var(--muted);font-style:italic">Aucune réservation trouvée.</div></div>';return;}
+  const esc=x=>(''+(x==null?'':x)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const jj=d=>{if(!d)return '—';const x=new Date(d+'T12:00:00');
+    return x.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'});};
+  const COUL={encours:'#5FBE85',avenir:'var(--gold2)',passe:'rgba(255,255,255,.18)'};
+  const ETIQ={encours:['v','En cours'],avenir:['o','À venir'],passe:['g','Passée']};
+  // Regroupement par logement, le plus proche en premier
+  const grp={},ordre=[];
+  list.forEach(r=>{const lv=resaLivretFor(r.rental_id);
+    const k=lv?lv.nom:('Logement #'+r.rental_id+' — non relié');
+    if(!grp[k]){grp[k]=[];ordre.push(k);} grp[k].push(r);});
+  ordre.sort((a,b)=>a.localeCompare(b,'fr'));
+  ordre.forEach(k=>grp[k].sort((a,b)=>(''+(b.checkin||'')).localeCompare(''+(a.checkin||''))));
+
+  let h='<div style="font-size:11.5px;color:var(--muted2);margin-bottom:11px">'+
+    list.length+' réservation'+(list.length>1?'s':'')+' · '+ordre.length+' logement'+(ordre.length>1?'s':'')+'</div>';
+  h+='<div class="lst">';
+  ordre.forEach(k=>{
+    h+='<div class="grp-lv">🏠 '+esc(k)+'<span>'+grp[k].length+'</span></div>';
+    grp[k].forEach(r=>{
+      const st=resaStatusOf(r), e=ETIQ[st]||ETIQ.passe;
+      const n=Math.max(1,Math.round((new Date(r.checkout)-new Date(r.checkin))/864e5));
+      const pers=(parseInt(r.adults)||0)+(parseInt(r.children)||0);
+      const nom=((r.first_name||'')+' '+(r.last_name||'')).trim()||'(sans nom)';
+      h+='<div class="lgn" onclick="resaOpenLink(\''+r.booking_id+'\')">'+
+        '<span class="pt" style="background:'+(COUL[st]||COUL.passe)+'"></span>'+
+        '<div class="pr"><div class="t1">'+esc(nom)+'</div>'+
+        '<div class="t2">n° '+esc(r.booking_id)+' · '+pers+' voyageur'+(pers>1?'s':'')+' · '+n+' nuit'+(n>1?'s':'')+'</div></div>'+
+        '<div class="dt">'+jj(r.checkin)+' → '+jj(r.checkout)+'</div>'+
+        '<span class="et '+e[0]+'">'+e[1]+'</span>'+
+        '<div class="ac" onclick="event.stopPropagation()">'+
+          '<button onclick="resaOpenLink(\''+r.booking_id+'\')" title="Ouvrir le livret">👁</button>'+
+          '<button onclick="resaCopyLink(\''+r.booking_id+'\')" title="Copier le lien">🔗</button>'+
+          '<button onclick="resaNewOrder(\''+r.booking_id+'\')" title="Créer une commande">＋</button>'+
+        '</div></div>';
+    });
+  });
+  h+='</div>';
+  box.innerHTML=h;
 }
 function renderResa(){
   const box=document.getElementById('resa-list');if(!box)return;
-  if(!resaData.length){box.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-style:italic;line-height:1.7">Aucune réservation en mémoire.<br>Clique sur <b style="color:var(--gold2)">🔄 Synchroniser</b> (en haut) pour récupérer tes réservations SuperHote.</div>';return;}
-  const livOpts='<option value="all">Tous les logements</option>'+resaLivrets.filter(l=>l.superhote_rental_id).map(l=>'<option value="'+l.id+'"'+(String(resaLivretFilter)===String(l.id)?' selected':'')+'>'+((l.nom||'').replace(/</g,'&lt;'))+'</option>').join('');
-  const tab=(k,l)=>'<button onclick="setResaStatus(\''+k+'\')" style="padding:7px 12px;border-radius:18px;border:1px solid '+(resaStatus===k?'var(--gold2)':'var(--border)')+';background:'+(resaStatus===k?'rgba(226,192,110,0.15)':'transparent')+';color:'+(resaStatus===k?'var(--gold2)':'var(--muted2)')+';font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">'+l+'</button>';
-  let html='<div style="padding:10px 14px;margin-bottom:14px;border:1px solid var(--border-gold);border-radius:10px;background:rgba(226,192,110,0.06);font-size:11.5px;color:var(--muted2);line-height:1.5">✅ Liens <b style="color:var(--gold2)">compatibles Booking</b> (format <code style="background:#000;padding:1px 4px;border-radius:3px">/r/booking_id-nom</code>, sans <code>?</code>, sans URL imbriquée). Le voyageur voit son prénom + bloc réservation. Les liens <b style="color:var(--gold2)">complets</b> (avec facture séjour + Modifier mes horaires) restent ceux des <b style="color:var(--gold2)">mails SuperHote</b>.</div>';
-  html+='<input value="'+(resaSearch||'').replace(/"/g,'&quot;')+'" oninput="resaSearch=this.value;renderResaList()" placeholder="🔍 Rechercher (nom, date, logement, n° résa)…" style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--border-gold);background:var(--card);color:var(--gold3);font-size:14px;box-sizing:border-box;margin-bottom:12px">';
-  html+='<select onchange="resaLivretFilter=this.value;renderResa()" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--border-gold);background:#141414;color:#fff;font-size:13px;margin-bottom:12px">'+livOpts+'</select>';
-  html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'+tab('all','Toutes')+tab('encours','● En cours')+tab('avenir','À venir')+tab('passe','Passées')+'</div>';
-  html+='<div id="resa-rows"></div>';
-  box.innerHTML=html;renderResaList();
+  if(!resaData.length){box.innerHTML='<div class="lst"><div style="text-align:center;padding:34px;color:var(--muted);font-style:italic;line-height:1.7">Aucune réservation en mémoire.<br>Cliquez sur <b style="color:var(--gold2)">🔄 Synchroniser</b> pour les récupérer.</div></div>';return;}
+  const esc=x=>(''+(x==null?'':x)).replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  const opts='<option value="all">Tous les logements</option>'+
+    resaLivrets.filter(l=>l.superhote_rental_id)
+      .map(l=>'<option value="'+l.id+'"'+(String(resaLivretFilter)===String(l.id)?' selected':'')+'>'+esc(l.nom)+'</option>').join('');
+  const f=(k,l)=>'<button class="'+(resaStatus===k?'on':'')+'" onclick="setResaStatus(\''+k+'\')">'+l+'</button>';
+  let h='<div class="bo-outils">'+
+    '<input class="rech" value="'+esc(resaSearch||'')+'" oninput="resaSearch=this.value;renderResaList()" placeholder="🔍 Nom, date, logement, n° de réservation…">'+
+    '<select onchange="resaLivretFilter=this.value;renderResa()">'+opts+'</select>'+
+    '<div class="fltr">'+f('all','Toutes')+f('encours','● En cours')+f('avenir','À venir')+f('passe','Passées')+'</div>'+
+  '</div>';
+  h+='<div id="resa-rows"></div>';
+  box.innerHTML=h;renderResaList();
 }
 // Lien voyageur compatible Booking : aucun "?", aucun URL imbriquée → /r/<booking_id>-<nom>
 function resaLink(r){
