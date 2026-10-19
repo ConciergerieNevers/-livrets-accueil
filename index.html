@@ -675,6 +675,10 @@ body{top:0!important}
 .fa-alerte{background:rgba(224,169,58,.09);border:1px solid rgba(224,169,58,.3);color:#e0c187;
   border-radius:11px;padding:10px 13px;font-size:12.5px;margin-bottom:13px;line-height:1.5}
 .fa-note{font-size:11.5px;color:var(--muted2);line-height:1.55;margin:11px 0 0}
+.fa-info{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--muted);
+  border-radius:11px;padding:9px 13px;font-size:12px;margin-bottom:11px;line-height:1.5}
+.fa-etq{font-style:normal;font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--muted2);border:1px solid var(--border);border-radius:5px;padding:1px 4px;margin-left:5px}
 .fa-mini{background:rgba(255,255,255,.055);border:1px solid var(--border);color:var(--gold3);
   border-radius:7px;padding:3px 7px;font-size:12px;cursor:pointer;font-family:inherit;line-height:1.4}
 .fa-mini:hover{background:rgba(224,169,58,.14);border-color:var(--border-gold)}
@@ -7635,7 +7639,7 @@ async function loadFactu(){
   try{
     const [cf,rs,fa,lv]=await Promise.all([
       axios.get(`${API}/factu_config?select=*,livrets(id,nom,superhote_rental_id)`,{headers:hd()}),
-      axios.get(`${API}/sh_reservations?select=booking_id,rental_id,first_name,last_name,checkin,checkout,adults,children,total_price,platform,statut,nights&checkin=gte.${d1}&checkin=lt.${d2}&statut=neq.7&order=checkin.asc&limit=3000`,{headers:hd()}),
+      axios.get(`${API}/sh_reservations?select=booking_id,rental_id,first_name,last_name,checkin,checkout,adults,children,total_price,platform,platform_name,statut,status_label,nights&checkin=gte.${d1}&checkin=lt.${d2}&order=checkin.asc&limit=3000`,{headers:hd()}),
       axios.get(`${API}/factu_facture?select=*&mois=eq.${d1}`,{headers:hd()}).catch(()=>({data:[]})),
       axios.get(`${API}/livrets?select=id,nom,superhote_rental_id&deleted_at=is.null&order=nom.asc`,{headers:hd()}).catch(()=>({data:[]}))
     ]);
@@ -7651,6 +7655,14 @@ async function loadFactu(){
     }
   }catch(e){factuCfg=[];factuResas=[];logAndShowErr&&logAndShowErr(e);}
 }
+/* Statuts SuperHote : 1 = CONFIRMED, 0 = CANCELED, 5 = CANCELED_BY_TRAVELER,
+   7 = REQUEST_INFORMATION (simple demande, pas une réservation).
+   Seul un séjour confirmé se facture. Un statut vide vient d'une ligne jamais
+   resynchronisée : on la facture mais on la signale, une resynchro la tranchera. */
+const FACTU_ANNULE = {'0':1,'5':1,'7':1};
+function factuAnnulee(r){ return !!FACTU_ANNULE[String(r.statut)]; }
+function factuStatutInconnu(r){ return r.statut===null||r.statut===undefined||r.statut===''; }
+
 /* Regroupe les séjours du mois par logement configuré */
 function factuGroupes(){
   const parRental={};
@@ -7660,10 +7672,14 @@ function factuGroupes(){
     const c=parRental[r.rental_id]; if(!c||c.actif===false)return;
     const ov=factuOv[r.booking_id]||{};
     const g=grp[c.livret_id]||(grp[c.livret_id]={cfg:c,nom:(c.livrets||{}).nom||'—',lignes:[],
-                                                com:0,blanch:0,total:0,sansPrix:0});
+                                                com:0,blanch:0,total:0,sansPrix:0,
+                                                annulees:0,inconnus:0});
     const calc=factuCalc(r,c,ov);
-    g.lignes.push({r,ov,calc});
+    const annulee=factuAnnulee(r), inconnu=factuStatutInconnu(r);
+    g.lignes.push({r,ov,calc,annulee,inconnu});
+    if(annulee){g.annulees++;return;}
     if(ov.exclue)return;
+    if(inconnu)g.inconnus++;
     g.com+=calc.com||0; g.blanch+=calc.blanch; g.total+=calc.total;
     if(calc.sansPrix)g.sansPrix++;
   });
@@ -7689,9 +7705,10 @@ function renderFactu(){
 function factuMoisHtml(){
   const grp=factuGroupes();
   const cles=Object.keys(grp).sort((a,b)=>grp[a].nom.localeCompare(grp[b].nom,'fr'));
-  let tCom=0,tBl=0,tTot=0,tSej=0,tSans=0;
+  let tCom=0,tBl=0,tTot=0,tSej=0,tSans=0,tAnn=0,tInc=0;
   cles.forEach(k=>{const g=grp[k];tCom+=g.com;tBl+=g.blanch;tTot+=g.total;
-    tSej+=g.lignes.filter(l=>!l.ov.exclue).length;tSans+=g.sansPrix;});
+    tSej+=g.lignes.filter(l=>!l.ov.exclue&&!l.annulee).length;
+    tSans+=g.sansPrix;tAnn+=g.annulees;tInc+=g.inconnus;});
   const maj=document.getElementById('fa-total');
   if(maj){
     maj.textContent=eur(tTot);
@@ -7708,9 +7725,15 @@ function factuMoisHtml(){
   if(!cles.length)
     return h+`<div class="lst"><div class="lgn"><div class="pr"><div class="t1">Aucun séjour facturable sur ce mois</div>
       <div class="t2">Vérifie la synchronisation SuperHote, ou configure les logements dans l'onglet Paramètres.</div></div></div></div>`;
+  if(tAnn)
+    h+=`<div class="fa-info">${tAnn} séjour${tAnn>1?'s':''} annulé${tAnn>1?'s':''} sur le mois : écarté${tAnn>1?'s':''} de la facturation,
+        visible${tAnn>1?'s':''} barré${tAnn>1?'s':''} dans le détail.</div>`;
   if(tSans)
-    h+=`<div class="fa-alerte">⚠️ ${tSans} séjour${tSans>1?'s':''} sans prix voyageur : la commission n'est pas calculée dessus.
-        Ouvre le logement pour saisir le montant à la main.</div>`;
+    h+=`<div class="fa-alerte">⚠️ ${tSans} séjour${tSans>1?'s':''} confirmé${tSans>1?'s':''} sans prix voyageur : la commission n'est pas calculée dessus.
+        SuperHote ne transmet aucun prix Airbnb avant février 2026 — saisis le montant à la main dans le détail.</div>`;
+  if(tInc)
+    h+=`<div class="fa-alerte">⚠️ ${tInc} séjour${tInc>1?'s':''} au statut inconnu, facturé${tInc>1?'s':''} par défaut.
+        Relance « ⟳ Tout » dans Réservations pour savoir s'il s'agit d'annulations.</div>`;
   h+=`<div class="lst"><div class="lst-t"><span style="flex:1">Logement</span>
       <span style="width:58px;text-align:right">Séjours</span>
       <span style="width:92px;text-align:right">Commission</span>
@@ -7754,22 +7777,24 @@ function factuDetailHtml(g){
     <span style="width:82px;text-align:right">Total</span>
     <span style="width:30px"></span></div>`;
   g.lignes.forEach(l=>{
-    const {r,ov,calc}=l, id=r.booking_id, ex=!!ov.exclue;
-    h+=`<div class="fa-dl${ex?' ex':''}">
+    const {r,ov,calc}=l, id=r.booking_id, ex=!!ov.exclue, an=!!l.annulee;
+    const etiq = an ? (r.status_label==='REQUEST_INFORMATION'?'demande':'annulé')
+                    : (l.inconnu?'statut inconnu':'');
+    h+=`<div class="fa-dl${ex||an?' ex':''}">
       <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-        ${fesc(((r.first_name||'')+' '+(r.last_name||'')).trim()||'—')}</span>
+        ${fesc(((r.first_name||'')+' '+(r.last_name||'')).trim()||'—')}${etiq?` <i class="fa-etq">${etiq}</i>`:''}</span>
       <span style="width:76px;font-variant-numeric:tabular-nums">${new Date(r.checkin+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})}
         <span style="color:var(--muted2)">· ${r.nights||''}n</span></span>
       <span style="width:34px;text-align:center">${calc.pers}</span>
       <span style="width:62px;text-align:center" class="fa-lits">
         <button onclick="factuLitsDelta(${id},-1)">−</button><b${calc.corrige?' class="cor"':''}>${calc.lits}</b><button onclick="factuLitsDelta(${id},1)">+</button></span>
-      <span style="width:86px;text-align:right">${calc.sansPrix
+      <span style="width:86px;text-align:right">${an?'—':(calc.sansPrix
         ?`<input class="fa-px" type="number" step="0.01" placeholder="à saisir" onchange="factuPrix(${id},this.value)">`
-        :eur(calc.prix)}</span>
-      <span style="width:76px;text-align:right">${calc.com===null?'—':eur(calc.com)}</span>
-      <span style="width:76px;text-align:right">${eur(calc.blanch)}</span>
-      <span style="width:82px;text-align:right;font-weight:600;color:var(--gold2)">${eur(calc.total)}</span>
-      <span style="width:30px;text-align:right"><button class="fa-mini" title="${ex?'Remettre dans la facture':'Retirer de la facture'}" onclick="factuExclure(${id},${ex?'false':'true'})">${ex?'↩':'✕'}</button></span>
+        :eur(calc.prix))}</span>
+      <span style="width:76px;text-align:right">${an||calc.com===null?'—':eur(calc.com)}</span>
+      <span style="width:76px;text-align:right">${an?'—':eur(calc.blanch)}</span>
+      <span style="width:82px;text-align:right;font-weight:600;color:var(--gold2)">${an?'—':eur(calc.total)}</span>
+      <span style="width:30px;text-align:right">${an?'':`<button class="fa-mini" title="${ex?'Remettre dans la facture':'Retirer de la facture'}" onclick="factuExclure(${id},${ex?'false':'true'})">${ex?'↩':'✕'}</button>`}</span>
     </div>`;
   });
   h+=`</div>`;
@@ -7814,7 +7839,7 @@ async function factuValider(k){
     if(!await askConfirm(`Figer la facture de ${g.nom} pour ${factuMoisLabel(factuMois)} ?\n\nTotal TTC : ${eur(g.total)}\nCommission : ${eur(g.com)}\nBlanchisserie : ${eur(g.blanch)}${g.sansPrix?`\n\n⚠️ ${g.sansPrix} séjour(s) sans prix : leur commission vaut 0.`:''}`))return;
   }
   const [d1]=factuBornes(factuMois);
-  const lignes=g.lignes.filter(l=>!l.ov.exclue).map(l=>({
+  const lignes=g.lignes.filter(l=>!l.ov.exclue&&!l.annulee).map(l=>({
     booking_id:l.r.booking_id,
     nom:((l.r.first_name||'')+' '+(l.r.last_name||'')).trim(),
     checkin:l.r.checkin, checkout:l.r.checkout, nuits:l.r.nights,
@@ -7836,7 +7861,7 @@ async function factuValider(k){
 
 /* ---------- Facture PDF ---------- */
 function factuFactureHtml(g){
-  const lignes=g.lignes.filter(l=>!l.ov.exclue);
+  const lignes=g.lignes.filter(l=>!l.ov.exclue&&!l.annulee);
   const d=new Date();
   let rows='';
   lignes.forEach(l=>{
@@ -7977,14 +8002,16 @@ async function factuBilan(){
   const a=factuAnnee;
   let resas=[];
   try{
-    const r=await axios.get(`${API}/sh_reservations?select=rental_id,checkin,adults,children,total_price,nights&checkin=gte.${a}-01-01&checkin=lt.${a+1}-01-01&statut=neq.7&order=checkin.asc&limit=6000`,{headers:hd()});
+    const r=await axios.get(`${API}/sh_reservations?select=booking_id,rental_id,checkin,adults,children,total_price,statut,nights&checkin=gte.${a}-01-01&checkin=lt.${a+1}-01-01&order=checkin.asc&limit=6000`,{headers:hd()});
     resas=r.data||[];
   }catch(e){c.innerHTML='<div class="loading">Erreur de chargement.</div>';return;}
   const parRental={};
   factuCfg.forEach(x=>{const rid=(x.livrets||{}).superhote_rental_id;if(rid)parRental[rid]=x;});
   const par={}; const mois={};
+  let annulees=0;
   resas.forEach(r=>{
     const cf=parRental[r.rental_id]; if(!cf||cf.actif===false)return;
+    if(factuAnnulee(r)){annulees++;return;}
     const k=cf.livret_id, m=r.checkin.slice(0,7);
     const calc=factuCalc(r,cf,factuOv[r.booking_id]||{});
     const g=par[k]||(par[k]={nom:(cf.livrets||{}).nom||'—',mois:{},total:0,com:0,bl:0,n:0,sans:0});
@@ -8005,7 +8032,8 @@ async function factuBilan(){
     <button class="adm-logout" onclick="factuAnnee++;factuBilan()">→</button>
     <span class="fa-lab" style="margin-left:auto">${eur(grand)} facturés · ${eur(gcom)} de commission · ${eur(gbl)} de blanchisserie</span>
   </div>`;
-  if(gsans)h+=`<div class="fa-alerte">⚠️ ${gsans} séjour${gsans>1?'s':''} de ${a} sans prix voyageur.
+  if(annulees)h+=`<div class="fa-info">${annulees} séjour${annulees>1?'s':''} annulé${annulees>1?'s':''} en ${a}, écarté${annulees>1?'s':''} du bilan.</div>`;
+  if(gsans)h+=`<div class="fa-alerte">⚠️ ${gsans} séjour${gsans>1?'s':''} confirmé${gsans>1?'s':''} de ${a} sans prix voyageur.
     SuperHote ne transmet aucun prix Airbnb avant février 2026 — sur ces lignes la commission vaut 0.</div>`;
   h+=`<div class="fa-tbl-wrap"><table class="fa-tbl"><thead><tr><th style="text-align:left">Logement</th>
      ${lm.map(m=>`<th>${new Date(m+'-01T12:00:00').toLocaleDateString('fr-FR',{month:'short'})}</th>`).join('')}
