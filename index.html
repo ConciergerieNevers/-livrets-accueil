@@ -677,6 +677,21 @@ body{top:0!important}
 .fa-note{font-size:11.5px;color:var(--muted2);line-height:1.55;margin:11px 0 0}
 .fa-info{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--muted);
   border-radius:11px;padding:9px 13px;font-size:12px;margin-bottom:11px;line-height:1.5}
+.fa-prog{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:13px}
+.fa-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:15px 16px}
+.fa-card-t{font-size:14.5px;color:var(--gold2);font-weight:600;margin-bottom:11px;
+  padding-bottom:9px;border-bottom:1px solid var(--border)}
+.fa-ln{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:8px;
+  font-size:12.5px;color:var(--muted)}
+.fa-ln.hab{gap:4px;margin-top:11px}
+.fa-in.lg{width:58px;font-size:14px;font-weight:600;color:var(--gold2);padding:4px 5px}
+.fa-ex{background:rgba(0,0,0,.26);border-radius:10px;padding:10px 12px;margin:11px 0}
+.fa-ex-t{font-size:9.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted2);margin-bottom:7px}
+.fa-ex-l{display:flex;justify-content:space-between;gap:12px;font-size:12px;
+  color:var(--gold3);padding:2.5px 0;font-variant-numeric:tabular-nums}
+.fa-ex-l.som{border-top:1px solid rgba(255,255,255,.07);margin-top:5px;padding-top:6px;color:var(--muted)}
+.fa-ex-l.tot{border-top:1px solid var(--border);margin-top:5px;padding-top:7px}
+.fa-ex-l.tot b{color:var(--gold2);font-size:13.5px}
 .fa-etq{font-style:normal;font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;
   color:var(--muted2);border:1px solid var(--border);border-radius:5px;padding:1px 4px;margin-left:5px}
 .fa-mini{background:rgba(255,255,255,.055);border:1px solid var(--border);color:var(--gold3);
@@ -7563,6 +7578,10 @@ async function deleteAvis(id){
 }
 
 /* ===================== FACTURATION CONCIERGERIE =====================
+   Un séjour est facturé sur le mois de son DÉPART : à la sortie le linge est
+   lavé et le prix est définitif. Les classeurs Excel de Mathieu classaient par
+   arrivée ; 7 % des séjours, à cheval sur deux mois, changent donc de facture.
+
    Ce que Be Nomads facture au propriétaire pour un séjour :
      commission  = taux du logement × prix tout inclus payé par le voyageur
      blanchisserie = nb changements × (kits + lits + tapis + cuisine) × marge × 1,2
@@ -7639,7 +7658,7 @@ async function loadFactu(){
   try{
     const [cf,rs,fa,lv]=await Promise.all([
       axios.get(`${API}/factu_config?select=*,livrets(id,nom,superhote_rental_id)`,{headers:hd()}),
-      axios.get(`${API}/sh_reservations?select=booking_id,rental_id,first_name,last_name,checkin,checkout,adults,children,total_price,platform,platform_name,statut,status_label,nights&checkin=gte.${d1}&checkin=lt.${d2}&order=checkin.asc&limit=3000`,{headers:hd()}),
+      axios.get(`${API}/sh_reservations?select=booking_id,rental_id,first_name,last_name,checkin,checkout,adults,children,total_price,platform,platform_name,statut,status_label,nights&checkout=gte.${d1}&checkout=lt.${d2}&order=checkout.asc&limit=3000`,{headers:hd()}),
       axios.get(`${API}/factu_facture?select=*&mois=eq.${d1}`,{headers:hd()}).catch(()=>({data:[]})),
       axios.get(`${API}/livrets?select=id,nom,superhote_rental_id&deleted_at=is.null&order=nom.asc`,{headers:hd()}).catch(()=>({data:[]}))
     ]);
@@ -7701,6 +7720,14 @@ function renderFactu(){
   if(factuTab==='bilan'){c.innerHTML='<div class="loading">Calcul de l\'année…</div>';factuBilan();}
 }
 
+/* Dates courtes et nombre de nuits : SuperHote ne renseigne pas toujours nights. */
+function jjmm(d){ return d ? new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}) : '—'; }
+function nuits(r){
+  const n=parseInt(r.nights); if(n>0)return n;
+  if(!r.checkin||!r.checkout)return '—';
+  return Math.max(0,Math.round((new Date(r.checkout)-new Date(r.checkin))/86400000));
+}
+
 /* ---------- Onglet « Factures du mois » ---------- */
 function factuMoisHtml(){
   const grp=factuGroupes();
@@ -7721,6 +7748,7 @@ function factuMoisHtml(){
     <input type="month" id="fa-mois" value="${factuMois}" onchange="factuChoixMois(this.value)">
     <button class="adm-logout" onclick="factuAllerMois(1)">→</button>
     <span class="fa-lab">${factuMoisLabel(factuMois)}</span>
+    <span class="fa-lab" style="margin-left:auto">séjours <b style="color:var(--gold3)">terminés</b> dans le mois</span>
   </div>`;
   if(!cles.length)
     return h+`<div class="lst"><div class="lgn"><div class="pr"><div class="t1">Aucun séjour facturable sur ce mois</div>
@@ -7769,9 +7797,11 @@ function factuMoisHtml(){
 }
 function factuDetailHtml(g){
   let h=`<div class="fa-det"><div class="fa-det-t">
-    <span style="flex:1">Voyageur</span><span style="width:76px">Arrivée</span>
+    <span style="flex:1">Voyageur</span>
+    <span style="width:62px">Entrée</span><span style="width:62px">Sortie</span>
+    <span style="width:38px;text-align:center">Nuits</span>
     <span style="width:34px;text-align:center">Pers</span><span style="width:62px;text-align:center">Lits</span>
-    <span style="width:86px;text-align:right">Prix voyageur</span>
+    <span style="width:86px;text-align:right">Prix voyage</span>
     <span style="width:76px;text-align:right">Commission</span>
     <span style="width:76px;text-align:right">Blanchiss.</span>
     <span style="width:82px;text-align:right">Total</span>
@@ -7783,8 +7813,9 @@ function factuDetailHtml(g){
     h+=`<div class="fa-dl${ex||an?' ex':''}">
       <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
         ${fesc(((r.first_name||'')+' '+(r.last_name||'')).trim()||'—')}${etiq?` <i class="fa-etq">${etiq}</i>`:''}</span>
-      <span style="width:76px;font-variant-numeric:tabular-nums">${new Date(r.checkin+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})}
-        <span style="color:var(--muted2)">· ${r.nights||''}n</span></span>
+      <span style="width:62px;font-variant-numeric:tabular-nums">${jjmm(r.checkin)}</span>
+      <span style="width:62px;font-variant-numeric:tabular-nums">${jjmm(r.checkout)}</span>
+      <span style="width:38px;text-align:center">${nuits(r)}</span>
       <span style="width:34px;text-align:center">${calc.pers}</span>
       <span style="width:62px;text-align:center" class="fa-lits">
         <button onclick="factuLitsDelta(${id},-1)">−</button><b${calc.corrige?' class="cor"':''}>${calc.lits}</b><button onclick="factuLitsDelta(${id},1)">+</button></span>
@@ -7842,7 +7873,7 @@ async function factuValider(k){
   const lignes=g.lignes.filter(l=>!l.ov.exclue&&!l.annulee).map(l=>({
     booking_id:l.r.booking_id,
     nom:((l.r.first_name||'')+' '+(l.r.last_name||'')).trim(),
-    checkin:l.r.checkin, checkout:l.r.checkout, nuits:l.r.nights,
+    checkin:l.r.checkin, checkout:l.r.checkout, nuits:nuits(l.r),
     pers:l.calc.pers, lits:l.calc.lits, prix:l.calc.prix,
     com:+(l.calc.com||0).toFixed(2), blanch:+l.calc.blanch.toFixed(2), total:+l.calc.total.toFixed(2)}));
   const totaux={commission:+g.com.toFixed(2), blanchisserie:+g.blanch.toFixed(2),
@@ -7866,8 +7897,9 @@ function factuFactureHtml(g){
   let rows='';
   lignes.forEach(l=>{
     rows+=`<tr><td>${fesc(((l.r.first_name||'')+' '+(l.r.last_name||'')).trim()||'—')}</td>
-      <td class="c">${new Date(l.r.checkin+'T12:00:00').toLocaleDateString('fr-FR')}</td>
-      <td class="c">${l.r.nights||''}</td><td class="c">${l.calc.pers}</td>
+      <td class="c">${l.r.checkin?new Date(l.r.checkin+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
+      <td class="c">${l.r.checkout?new Date(l.r.checkout+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
+      <td class="c">${nuits(l.r)}</td><td class="c">${l.calc.pers}</td>
       <td class="r">${l.calc.prix===null?'—':eur(l.calc.prix)}</td>
       <td class="r">${l.calc.com===null?'—':eur(l.calc.com)}</td>
       <td class="r">${eur(l.calc.blanch)}</td>
@@ -7888,7 +7920,8 @@ function factuFactureHtml(g){
     <table style="width:100%;border-collapse:collapse;font-size:12px">
       <thead><tr style="background:#f4f2ed">
         <th style="text-align:left;padding:7px 8px">Voyageur</th>
-        <th style="padding:7px 8px">Arrivée</th><th style="padding:7px 8px">Nuits</th><th style="padding:7px 8px">Pers.</th>
+        <th style="padding:7px 8px">Entrée</th><th style="padding:7px 8px">Sortie</th>
+        <th style="padding:7px 8px">Nuits</th><th style="padding:7px 8px">Pers.</th>
         <th style="text-align:right;padding:7px 8px">Prix voyageur</th>
         <th style="text-align:right;padding:7px 8px">Commission</th>
         <th style="text-align:right;padding:7px 8px">Blanchisserie</th>
@@ -7937,42 +7970,56 @@ async function factuPdf(k){
 }
 
 /* ---------- Onglet « Paramètres » ---------- */
+/* ---------- Onglet « Paramètres » : la programmation d'un logement ----------
+   Objectif : voir en une phrase ce qu'on prend, et ce qu'un séjour consomme.
+   L'exemple chiffré est calculé en direct, donc il bouge avec les réglages. */
 function factuParamHtml(){
   const cfg=[...factuCfg].sort((a,b)=>((a.livrets||{}).nom||'').localeCompare(((b.livrets||{}).nom||''),'fr'));
-  let h=`<p class="fa-note" style="margin:0 0 14px">Ces valeurs viennent de tes classeurs Excel, relevées sur le dernier mois rempli.
-    Toute modification s'applique aux mois non encore figés.</p>
-    <div class="lst"><div class="lst-t"><span style="flex:1">Logement</span>
-      <span style="width:84px;text-align:center">Commission</span>
-      <span style="width:72px;text-align:center">Marge blanch.</span>
-      <span style="width:62px;text-align:center">Lits max</span>
-      <span style="width:58px;text-align:center">Tapis</span>
-      <span style="width:58px;text-align:center">Cuisine</span>
-      <span style="width:88px;text-align:right">Forfait TTC</span></div>`;
+  let h=`<p class="fa-note" style="margin:0 0 16px">Valeurs reprises de tes classeurs, sur le dernier mois rempli.
+    Une modification s'applique aux mois pas encore figés.</p><div class="fa-prog">`;
   cfg.forEach(c=>{
-    const P=factuPacks(c), m=parseFloat(c.marge_blanch)||1;
-    const base=(P.kit+P.lit+c.nb_tapis*P.tap+c.nb_cuisine*P.cui)*m*1.2;
-    h+=`<div class="lgn">
-      <div class="pt" style="background:${c.actif===false?'#555':'#8d7a4f'}"></div>
-      <div class="pr"><div class="t1">${fesc((c.livrets||{}).nom||'—')}</div>
-        <div class="t2">lit ${eur(P.lit)} HT · kit de bain ${eur(P.kit)} · tapis ${eur(P.tap)} · cuisine ${eur(P.cui)}</div></div>
-      <span style="width:84px;text-align:center"><input class="fa-in" type="number" step="1" min="0" max="100"
-        value="${Math.round(c.commission*1000)/10}" onchange="factuSetCfg('${c.livret_id}','commission',this.value/100)"> %</span>
-      <span style="width:72px;text-align:center"><input class="fa-in" type="number" step="0.05" min="1"
-        value="${m}" onchange="factuSetCfg('${c.livret_id}','marge_blanch',this.value)"></span>
-      <span style="width:62px;text-align:center"><input class="fa-in" type="number" step="1" min="1"
-        value="${c.lits_max}" onchange="factuSetCfg('${c.livret_id}','lits_max',this.value)"></span>
-      <span style="width:58px;text-align:center"><input class="fa-in" type="number" step="1" min="0"
-        value="${c.nb_tapis}" onchange="factuSetCfg('${c.livret_id}','nb_tapis',this.value)"></span>
-      <span style="width:58px;text-align:center"><input class="fa-in" type="number" step="1" min="0"
-        value="${c.nb_cuisine}" onchange="factuSetCfg('${c.livret_id}','nb_cuisine',this.value)"></span>
-      <span class="mt" style="width:88px;text-align:right">${eur(base)}</span></div>`;
+    const P=factuPacks(c), m=parseFloat(c.marge_blanch)||1, id=c.livret_id;
+    const pers=2, lits=factuLits(c,pers);
+    // « tapis » est invariable ; un() ne pluralise qu'un mot simple, pas ces libellés
+    const pl=(n,sing,plur)=>n>1?plur:sing;
+    const detail=[[lits,pl(lits,'lit complet','lits complets'),P.lit],
+                  [pers,pl(pers,'kit de bain','kits de bain'),P.kit],
+                  [c.nb_tapis,'tapis de bain',P.tap],
+                  [c.nb_cuisine,pl(c.nb_cuisine,'service cuisine','services cuisine'),P.cui]];
+    const htTot=detail.reduce((t,d)=>t+d[0]*d[2],0);
+    const hab=c.lits_habitude||{};
+    h+=`<div class="fa-card">
+      <div class="fa-card-t">${fesc((c.livrets||{}).nom||'—')}</div>
+      <div class="fa-ln"><input class="fa-in lg" type="number" step="0.5" min="0" max="100"
+        value="${Math.round(c.commission*1000)/10}"
+        onchange="factuSetCfg('${id}','commission',this.value/100)"><span>% du prix tout inclus payé par le voyageur</span></div>
+      <div class="fa-ln"><input class="fa-in lg" type="number" step="0.05" min="1" value="${m}"
+        onchange="factuSetCfg('${id}','marge_blanch',this.value)"><span>coefficient appliqué au linge</span></div>
+      <div class="fa-ex">
+        <div class="fa-ex-t">Ce que consomme un séjour de 2 personnes</div>
+        ${detail.map(d=>`<div class="fa-ex-l"><span>${d[0]} × ${d[1]}</span><b>${eur(d[0]*d[2])} HT</b></div>`).join('')}
+        <div class="fa-ex-l som"><span>linge</span><b>${eur(htTot)} HT</b></div>
+        <div class="fa-ex-l tot"><span>blanchisserie facturée · × ${m} puis TVA</span><b>${eur(htTot*m*1.2)}</b></div>
+      </div>
+      <div class="fa-ln hab"><span>Lits proposés</span>
+        ${Object.keys(hab).length
+          ? Object.keys(hab).sort((x,y)=>x-y).map(k=>`<i class="fa-etq">${k} pers → ${hab[k]}</i>`).join('')
+          : `<i class="fa-etq">${c.lits_max} au maximum</i>`}</div>
+      <div class="fa-ln">
+        <input class="fa-in" type="number" min="1" value="${c.lits_max}"
+          onchange="factuSetCfg('${id}','lits_max',this.value)"><span>lits dans le logement</span>
+        <input class="fa-in" type="number" min="0" value="${c.nb_tapis}"
+          onchange="factuSetCfg('${id}','nb_tapis',this.value)"><span>tapis</span>
+        <input class="fa-in" type="number" min="0" value="${c.nb_cuisine}"
+          onchange="factuSetCfg('${id}','nb_cuisine',this.value)"><span>${pl(c.nb_cuisine,'service cuisine','services cuisine')}</span>
+      </div></div>`;
   });
   h+=`</div>`;
   const manquants=factuLivrets.filter(l=>l.superhote_rental_id&&!factuCfg.some(c=>c.livret_id===l.id));
   if(manquants.length)
     h+=`<div class="fa-alerte" style="margin-top:14px">Sans facturation configurée :
         ${manquants.map(l=>fesc(l.nom)).join(', ')}.
-        <button class="fa-mini" style="margin-left:8px" onclick="factuCreerConf()">Les ajouter avec les valeurs par défaut</button></div>`;
+        <button class="fa-mini" style="margin-left:8px" onclick="factuCreerConf()">Les ajouter à 20 % et 1,5</button></div>`;
   return h;
 }
 async function factuSetCfg(id,champ,val){
@@ -8002,7 +8049,7 @@ async function factuBilan(){
   const a=factuAnnee;
   let resas=[];
   try{
-    const r=await axios.get(`${API}/sh_reservations?select=booking_id,rental_id,checkin,adults,children,total_price,statut,nights&checkin=gte.${a}-01-01&checkin=lt.${a+1}-01-01&order=checkin.asc&limit=6000`,{headers:hd()});
+    const r=await axios.get(`${API}/sh_reservations?select=booking_id,rental_id,checkin,checkout,adults,children,total_price,statut,nights&checkout=gte.${a}-01-01&checkout=lt.${a+1}-01-01&order=checkout.asc&limit=6000`,{headers:hd()});
     resas=r.data||[];
   }catch(e){c.innerHTML='<div class="loading">Erreur de chargement.</div>';return;}
   const parRental={};
@@ -8012,7 +8059,7 @@ async function factuBilan(){
   resas.forEach(r=>{
     const cf=parRental[r.rental_id]; if(!cf||cf.actif===false)return;
     if(factuAnnulee(r)){annulees++;return;}
-    const k=cf.livret_id, m=r.checkin.slice(0,7);
+    const k=cf.livret_id, m=(r.checkout||r.checkin).slice(0,7);
     const calc=factuCalc(r,cf,factuOv[r.booking_id]||{});
     const g=par[k]||(par[k]={nom:(cf.livrets||{}).nom||'—',mois:{},total:0,com:0,bl:0,n:0,sans:0});
     g.mois[m]=(g.mois[m]||0)+calc.total;
