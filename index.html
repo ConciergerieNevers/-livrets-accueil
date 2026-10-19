@@ -666,7 +666,61 @@ textarea.fi{resize:vertical;min-height:80px;}
 .goog-te-banner-frame,.skiptranslate{display:none!important}
 body{top:0!important}
 .goog-tooltip,.goog-tooltip:hover{display:none!important}
-.goog-text-highlight{background:none!important;box-shadow:none!important}
+.goog-text-highlight{background:none!important;box-shadow:none!important}/* --- Facturation conciergerie --- */
+.fa-bar{display:flex;align-items:center;gap:9px;margin-bottom:14px;flex-wrap:wrap}
+.fa-bar input[type=month]{background:#141414;border:1px solid var(--border-gold);color:var(--gold3);
+  border-radius:9px;padding:6px 9px;font-size:13px;font-family:inherit}
+.fa-lab{font-size:12.5px;color:var(--muted2);text-transform:capitalize}
+.fa-lgn{cursor:pointer}
+.fa-alerte{background:rgba(224,169,58,.09);border:1px solid rgba(224,169,58,.3);color:#e0c187;
+  border-radius:11px;padding:10px 13px;font-size:12.5px;margin-bottom:13px;line-height:1.5}
+.fa-note{font-size:11.5px;color:var(--muted2);line-height:1.55;margin:11px 0 0}
+.fa-mini{background:rgba(255,255,255,.055);border:1px solid var(--border);color:var(--gold3);
+  border-radius:7px;padding:3px 7px;font-size:12px;cursor:pointer;font-family:inherit;line-height:1.4}
+.fa-mini:hover{background:rgba(224,169,58,.14);border-color:var(--border-gold)}
+.fa-in{width:46px;background:#141414;border:1px solid var(--border);color:var(--gold3);border-radius:6px;
+  padding:3px 4px;font-size:12px;text-align:center;font-family:inherit}
+.fa-in:focus{border-color:var(--border-gold);outline:none}
+.fa-px{width:76px;background:#141414;border:1px solid rgba(224,169,58,.45);color:#e0c187;border-radius:6px;
+  padding:3px 5px;font-size:11.5px;text-align:right;font-family:inherit}
+/* détail d'un logement, déplié sous sa ligne */
+.fa-det{background:rgba(0,0,0,.26);border-top:1px solid var(--border);padding:4px 16px 10px}
+.fa-det-t,.fa-dl{display:flex;align-items:center;gap:9px;font-size:11.5px;
+  font-variant-numeric:tabular-nums;padding:5px 0}
+.fa-det-t{color:var(--muted2);text-transform:uppercase;letter-spacing:.6px;font-size:9.5px;
+  border-bottom:1px solid rgba(255,255,255,.06);padding-bottom:6px}
+.fa-dl{border-bottom:1px solid rgba(255,255,255,.035);color:var(--gold3)}
+.fa-dl:last-child{border-bottom:0}
+.fa-dl.ex{opacity:.38;text-decoration:line-through}
+.fa-lits{display:inline-flex;align-items:center;gap:3px;justify-content:center}
+.fa-lits button{background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--gold3);
+  width:17px;height:17px;border-radius:5px;font-size:11px;line-height:1;cursor:pointer;padding:0}
+.fa-lits button:hover{background:rgba(224,169,58,.17)}
+.fa-lits b{min-width:14px;text-align:center;font-weight:600}
+.fa-lits b.cor{color:#e0a93a}
+/* bandeau de totaux */
+.fa-pied{display:flex;gap:26px;flex-wrap:wrap;margin-top:15px;padding:13px 16px;background:var(--card);
+  border:1px solid var(--border);border-radius:13px}
+.fa-pied>div{display:flex;flex-direction:column;gap:2px}
+.fa-pied span{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted2)}
+.fa-pied b{font-size:15px;color:var(--gold2);font-variant-numeric:tabular-nums}
+/* tableau du bilan annuel */
+.fa-tbl-wrap{overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:13px}
+.fa-tbl{width:100%;border-collapse:collapse;font-size:11.5px;font-variant-numeric:tabular-nums}
+.fa-tbl th,.fa-tbl td{padding:7px 9px;text-align:right;white-space:nowrap}
+.fa-tbl thead th{color:var(--muted2);font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;
+  border-bottom:1px solid var(--border);font-weight:600}
+.fa-tbl tbody td{color:var(--gold3);border-bottom:1px solid rgba(255,255,255,.035)}
+.fa-tbl tbody td:first-child{color:var(--gold2);font-weight:500}
+.fa-tbl .tot{color:var(--gold2);font-weight:600}
+.fa-tbl tfoot td{border-top:1px solid var(--border);color:var(--gold2);font-weight:600;padding-top:9px}
+@media (max-width:760px){
+  .fa-det-t{display:none}
+  .fa-dl{flex-wrap:wrap;gap:6px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+  .fa-dl>span:first-child{flex:1 1 100%}
+  .fa-pied{gap:16px}
+}
+
 </style>
 </head>
 <body>
@@ -690,6 +744,7 @@ body{top:0!important}
     <a data-bo="reservations" data-su><span class="ri">📅</span>Réservations</a>
     <a data-bo="stock"><span class="ri">📦</span>Stocks<span class="rb" id="rb-stk">0</span></a>
     <a data-bo="courses"><span class="ri">🧺</span>Liste de courses</a>
+    <a data-bo="factu" data-su><span class="ri">🧾</span>Facturation</a>
     <div class="rl-g">Contenu</div>
     <a data-bo="admin"><span class="ri">📖</span>Mes livrets</a>
     <a data-bo="avis" data-su><span class="ri">★</span>Avis<span class="rb" id="rb-avis">0</span></a>
@@ -895,6 +950,40 @@ body{top:0!important}
       <button class="adm-add-s" id="stkt-conf"   onclick="setStockTab('conf')">⚙️ Logements &amp; règles</button>
     </div>
     <div id="stock-content"><div class="loading">Chargement…</div></div>
+  </div>
+</div>
+
+<!-- FACTURATION CONCIERGERIE -->
+<div id="factu-screen" style="display:none">
+  <nav class="adm-nav">
+    <div class="adm-nav-left">
+      <button class="bo-burger" onclick="boMenu(true)" style="background:none;border:0;color:var(--gold2);font-size:21px;cursor:pointer;padding:0 4px 0 0;display:none">☰</button>
+      <button class="adm-logout retour" onclick="showAdmin()">← Retour</button>
+      <div class="adm-nav-title serif">Facturation</div>
+    </div>
+    <div class="adm-nav-right">
+      <button class="adm-logout" onclick="openFactu()" title="Recharger depuis SuperHote">🔄 Recalculer</button>
+    </div>
+  </nav>
+  <div class="adm-body">
+    <div class="adm-hero">
+      <div class="adm-hero-text">
+        <h2 class="serif gold-text">Ce que tu factures aux propriétaires</h2>
+        <p>Commission sur le prix tout inclus payé par le voyageur, plus la blanchisserie refacturée. Le ménage n'est pas compté.</p>
+      </div>
+      <div class="adm-hero-stats">
+        <div class="adm-stat"><div class="adm-stat-num money gold-text serif" id="fa-total">—</div><div class="adm-stat-lbl">Total du mois</div></div>
+        <div class="adm-stat"><div class="adm-stat-num money gold-text serif" id="fa-com">—</div><div class="adm-stat-lbl">Commission</div></div>
+        <div class="adm-stat"><div class="adm-stat-num money gold-text serif" id="fa-bl">—</div><div class="adm-stat-lbl">Blanchisserie</div></div>
+        <div class="adm-stat"><div class="adm-stat-num gold-text serif" id="fa-sej">—</div><div class="adm-stat-lbl">Séjours</div></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">
+      <button class="adm-add-s on" id="fat-mois"  onclick="setFactuTab('mois')">📄 Factures du mois</button>
+      <button class="adm-add-s"    id="fat-param" onclick="setFactuTab('param')">⚙️ Paramètres par logement</button>
+      <button class="adm-add-s"    id="fat-bilan" onclick="setFactuTab('bilan')">📊 Bilan de l'année</button>
+    </div>
+    <div id="factu-content"><div class="loading">Chargement…</div></div>
   </div>
 </div>
 
@@ -1825,7 +1914,7 @@ async function doReset(token,ov){
   if(document.readyState==='complete')lire(); else addEventListener('load',lire);
 })();
 function logout(){cu=null;cs();document.body.classList.remove('bo');show('login-screen');}
-function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','prestataires-screen','courses-screen','demandes-screen','reservations-screen','corbeille-screen','requests-screen','stock-screen','dash-screen'].forEach(s=>{const el=document.getElementById(s);if(el)el.style.display=s===id?'block':'none';});if(id!=='voyageur-screen'){try{clearLivretColors();}catch(_e){}}}
+function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','prestataires-screen','courses-screen','demandes-screen','reservations-screen','corbeille-screen','requests-screen','stock-screen','dash-screen','factu-screen'].forEach(s=>{const el=document.getElementById(s);if(el)el.style.display=s===id?'block':'none';});if(id!=='voyageur-screen'){try{clearLivretColors();}catch(_e){}}}
 
 
 // ===== CARNET DE PRESTATAIRES =====
@@ -3854,6 +3943,7 @@ const BO_ECRANS = {
   reservations:{titre:'Réservations',    ouvre:()=>openReservations()},
   stock:       {titre:'Stocks',          ouvre:()=>openStock()},
   courses:     {titre:'Liste de courses',ouvre:()=>openCourses()},
+  factu:       {titre:'Facturation',     ouvre:()=>openFactu()},
   avis:        {titre:'Avis',            ouvre:()=>showAllAvis()},
   corbeille:   {titre:'Corbeille',       ouvre:()=>openCorbeille()}
 };
@@ -7466,6 +7556,478 @@ async function deleteAvis(id){
     await axios.delete(`${API}/avis_negatifs?id=eq.${id}`,{headers:{...hd(),'Prefer':'return=minimal'}});
     showAllAvis();loadAvisBadge();
   }catch(e){alert('Erreur.');}
+}
+
+/* ===================== FACTURATION CONCIERGERIE =====================
+   Ce que Be Nomads facture au propriétaire pour un séjour :
+     commission  = taux du logement × prix tout inclus payé par le voyageur
+     blanchisserie = nb changements × (kits + lits + tapis + cuisine) × marge × 1,2
+   Le total obtenu est un montant TTC. Le ménage est connu (factu_config.menage)
+   mais n'entre pas dans la facture pour l'instant.
+   Les taux viennent des classeurs Excel de Mathieu, repris au centime près. */
+const fesc=x=>(''+(x==null?'':x)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+let factuCfg=[], factuResas=[], factuOv={}, factuFact={}, factuLivrets=[],
+    factuMois=null, factuTab='mois', factuOuvert=null, factuAnnee=null;
+
+function factuMoisCourant(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+function factuBornes(m){
+  const [a,mo]=m.split('-').map(Number);
+  const p=n=>String(n).padStart(2,'0');
+  return [`${a}-${p(mo)}-01`, mo===12?`${a+1}-01-01`:`${a}-${p(mo+1)}-01`];
+}
+function factuMoisLabel(m){
+  const [a,mo]=m.split('-').map(Number);
+  return new Date(a,mo-1,1).toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+}
+function factuMoisDecale(m,d){
+  const [a,mo]=m.split('-').map(Number);
+  const t=new Date(a,mo-1+d,1);
+  return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0');
+}
+
+/* Prix HT d'un forfait, reconstitué depuis les coûts unitaires du linge */
+function factuPacks(c){
+  const g=k=>parseFloat((c.linge||{})[k])||0;
+  return {lit:g('drap_plat')+g('housse')+(c.taies_par_lit||4)*g('taie'),
+          kit:g('drap_bain')+g('serviette')+g('carre'),
+          tap:g('tapis')*(c.tapis_par_kit||1),
+          cui:(c.torchons_par_kit||2)*g('torchon')};
+}
+/* Nombre de lits proposé : l'habitude observée sur les séjours passés de ce logement,
+   sinon on plafonne au nombre de lits disponibles. Un couple ou deux amis donnent le
+   même nombre de personnes, donc la proposition reste corrigeable à la main. */
+function factuLits(c,pers){
+  const h=c.lits_habitude||{};
+  if(h[String(pers)]!=null)return parseInt(h[String(pers)])||1;
+  return Math.max(1,Math.min(pers,c.lits_max||1));
+}
+function factuCalc(r,c,ov){
+  ov=ov||{};
+  const nn=(v,d)=>(v===null||v===undefined||v==='')?d:(parseFloat(v)||0);
+  const pers=Math.max(1,nn(ov.nb_personnes,(parseInt(r.adults)||0)+(parseInt(r.children)||0))||1);
+  const auto=factuLits(c,pers);
+  const lits=Math.max(0,nn(ov.nb_lits,auto));
+  const tap =Math.max(0,nn(ov.nb_tapis,c.nb_tapis||1));
+  const cui =Math.max(0,nn(ov.nb_cuisine,c.nb_cuisine||1));
+  const chg =Math.max(0,nn(ov.nb_changements,c.nb_changements||1));
+  let prix=(ov.prix_voyageur!==null&&ov.prix_voyageur!==undefined&&ov.prix_voyageur!=='')
+           ?parseFloat(ov.prix_voyageur)
+           :(r.total_price!==null&&r.total_price!==undefined?parseFloat(r.total_price):null);
+  if(prix!==null&&!isFinite(prix))prix=null;
+  const P=factuPacks(c);
+  const blanch=chg*(pers*P.kit+lits*P.lit+tap*P.tap+cui*P.cui)*(parseFloat(c.marge_blanch)||1)*1.2;
+  const com=prix===null?null:prix*(parseFloat(c.commission)||0);
+  return {pers,lits,litsAuto:auto,tap,cui,chg,prix,blanch,com,
+          total:(com||0)+blanch, sansPrix:prix===null,
+          corrige:ov.nb_lits!==null&&ov.nb_lits!==undefined};
+}
+
+async function openFactu(){
+  show('factu-screen');boActif(true);boMarquer('factu');
+  if(!factuMois)factuMois=factuMoisCourant();
+  if(!factuAnnee)factuAnnee=new Date().getFullYear();
+  document.getElementById('factu-content').innerHTML='<div class="loading">Chargement…</div>';
+  await loadFactu();
+  renderFactu();
+}
+async function loadFactu(){
+  const [d1,d2]=factuBornes(factuMois);
+  try{
+    const [cf,rs,fa,lv]=await Promise.all([
+      axios.get(`${API}/factu_config?select=*,livrets(id,nom,superhote_rental_id)`,{headers:hd()}),
+      axios.get(`${API}/sh_reservations?select=booking_id,rental_id,first_name,last_name,checkin,checkout,adults,children,total_price,platform,statut,nights&checkin=gte.${d1}&checkin=lt.${d2}&statut=neq.7&order=checkin.asc&limit=3000`,{headers:hd()}),
+      axios.get(`${API}/factu_facture?select=*&mois=eq.${d1}`,{headers:hd()}).catch(()=>({data:[]})),
+      axios.get(`${API}/livrets?select=id,nom,superhote_rental_id&deleted_at=is.null&order=nom.asc`,{headers:hd()}).catch(()=>({data:[]}))
+    ]);
+    factuCfg=cf.data||[]; factuResas=rs.data||[];
+    factuFact={}; (fa.data||[]).forEach(f=>factuFact[f.livret_id]=f);
+    factuLivrets=lv.data||[];
+    factuOv={};
+    const ids=factuResas.map(r=>r.booking_id);
+    for(let i=0;i<ids.length;i+=350){
+      const lot=ids.slice(i,i+350).join(',');
+      const o=await axios.get(`${API}/factu_ligne?select=*&booking_id=in.(${lot})`,{headers:hd()}).catch(()=>({data:[]}));
+      (o.data||[]).forEach(x=>factuOv[x.booking_id]=x);
+    }
+  }catch(e){factuCfg=[];factuResas=[];logAndShowErr&&logAndShowErr(e);}
+}
+/* Regroupe les séjours du mois par logement configuré */
+function factuGroupes(){
+  const parRental={};
+  factuCfg.forEach(c=>{const rid=c.livrets&&c.livrets.superhote_rental_id;if(rid)parRental[rid]=c;});
+  const grp={};
+  factuResas.forEach(r=>{
+    const c=parRental[r.rental_id]; if(!c||c.actif===false)return;
+    const ov=factuOv[r.booking_id]||{};
+    const g=grp[c.livret_id]||(grp[c.livret_id]={cfg:c,nom:(c.livrets||{}).nom||'—',lignes:[],
+                                                com:0,blanch:0,total:0,sansPrix:0});
+    const calc=factuCalc(r,c,ov);
+    g.lignes.push({r,ov,calc});
+    if(ov.exclue)return;
+    g.com+=calc.com||0; g.blanch+=calc.blanch; g.total+=calc.total;
+    if(calc.sansPrix)g.sansPrix++;
+  });
+  return grp;
+}
+
+function setFactuTab(t){
+  factuTab=t;
+  ['mois','param','bilan'].forEach(k=>{
+    const b=document.getElementById('fat-'+k);
+    if(b)b.classList.toggle('on',k===t);
+  });
+  renderFactu();
+}
+function renderFactu(){
+  const c=document.getElementById('factu-content'); if(!c)return;
+  if(factuTab==='mois')  c.innerHTML=factuMoisHtml();
+  if(factuTab==='param') c.innerHTML=factuParamHtml();
+  if(factuTab==='bilan'){c.innerHTML='<div class="loading">Calcul de l\'année…</div>';factuBilan();}
+}
+
+/* ---------- Onglet « Factures du mois » ---------- */
+function factuMoisHtml(){
+  const grp=factuGroupes();
+  const cles=Object.keys(grp).sort((a,b)=>grp[a].nom.localeCompare(grp[b].nom,'fr'));
+  let tCom=0,tBl=0,tTot=0,tSej=0,tSans=0;
+  cles.forEach(k=>{const g=grp[k];tCom+=g.com;tBl+=g.blanch;tTot+=g.total;
+    tSej+=g.lignes.filter(l=>!l.ov.exclue).length;tSans+=g.sansPrix;});
+  const maj=document.getElementById('fa-total');
+  if(maj){
+    maj.textContent=eur(tTot);
+    document.getElementById('fa-com').textContent=eur(tCom);
+    document.getElementById('fa-bl').textContent=eur(tBl);
+    document.getElementById('fa-sej').textContent=tSej;
+  }
+  let h=`<div class="fa-bar">
+    <button class="adm-logout" onclick="factuAllerMois(-1)">←</button>
+    <input type="month" id="fa-mois" value="${factuMois}" onchange="factuChoixMois(this.value)">
+    <button class="adm-logout" onclick="factuAllerMois(1)">→</button>
+    <span class="fa-lab">${factuMoisLabel(factuMois)}</span>
+  </div>`;
+  if(!cles.length)
+    return h+`<div class="lst"><div class="lgn"><div class="pr"><div class="t1">Aucun séjour facturable sur ce mois</div>
+      <div class="t2">Vérifie la synchronisation SuperHote, ou configure les logements dans l'onglet Paramètres.</div></div></div></div>`;
+  if(tSans)
+    h+=`<div class="fa-alerte">⚠️ ${tSans} séjour${tSans>1?'s':''} sans prix voyageur : la commission n'est pas calculée dessus.
+        Ouvre le logement pour saisir le montant à la main.</div>`;
+  h+=`<div class="lst"><div class="lst-t"><span style="flex:1">Logement</span>
+      <span style="width:58px;text-align:right">Séjours</span>
+      <span style="width:92px;text-align:right">Commission</span>
+      <span style="width:92px;text-align:right">Blanchisserie</span>
+      <span style="width:98px;text-align:right">Total TTC</span>
+      <span style="width:118px"></span></div>`;
+  cles.forEach(k=>{
+    const g=grp[k], f=factuFact[k], validee=f&&f.statut==='validee';
+    const nb=g.lignes.filter(l=>!l.ov.exclue).length;
+    h+=`<div class="lgn fa-lgn" onclick="factuOuvrir('${k}')">
+      <div class="pt" style="background:${validee?'#39b174':g.sansPrix?'#e0a93a':'#8d7a4f'}"></div>
+      <div class="pr"><div class="t1">${fesc(g.nom)}</div>
+        <div class="t2">${Math.round(g.cfg.commission*100)} % de commission · blanchisserie ×${g.cfg.marge_blanch}${validee?' · facture validée':''}</div></div>
+      <span class="dt" style="width:58px;text-align:right">${nb}</span>
+      <span class="dt" style="width:92px;text-align:right">${eur(g.com)}</span>
+      <span class="dt" style="width:92px;text-align:right">${eur(g.blanch)}</span>
+      <span class="mt" style="width:98px;text-align:right">${eur(g.total)}</span>
+      <span class="ac" style="width:118px;justify-content:flex-end" onclick="event.stopPropagation()">
+        <button class="fa-mini" onclick="factuPdf('${k}')" title="Facture PDF">📄</button>
+        <button class="fa-mini" onclick="factuValider('${k}')" title="${validee?'Facture validée':'Figer la facture'}">${validee?'✓':'🔒'}</button>
+      </span></div>`;
+    if(factuOuvert===k)h+=factuDetailHtml(g);
+  });
+  h+=`</div>
+   <div class="fa-pied">
+     <div><span>Total facturé TTC</span><b>${eur(tTot)}</b></div>
+     <div><span>dont HT</span><b>${eur(tTot/1.2)}</b></div>
+     <div><span>dont TVA 20 %</span><b>${eur(tTot-tTot/1.2)}</b></div>
+   </div>
+   <p class="fa-note">La TVA est extraite du TTC (TTC ÷ 1,2). Tes classeurs la calculaient à 20 % du total,
+   ce qui la majore d'environ 20 % — l'écart apparaît dans l'onglet Bilan.</p>`;
+  return h;
+}
+function factuDetailHtml(g){
+  let h=`<div class="fa-det"><div class="fa-det-t">
+    <span style="flex:1">Voyageur</span><span style="width:76px">Arrivée</span>
+    <span style="width:34px;text-align:center">Pers</span><span style="width:62px;text-align:center">Lits</span>
+    <span style="width:86px;text-align:right">Prix voyageur</span>
+    <span style="width:76px;text-align:right">Commission</span>
+    <span style="width:76px;text-align:right">Blanchiss.</span>
+    <span style="width:82px;text-align:right">Total</span>
+    <span style="width:30px"></span></div>`;
+  g.lignes.forEach(l=>{
+    const {r,ov,calc}=l, id=r.booking_id, ex=!!ov.exclue;
+    h+=`<div class="fa-dl${ex?' ex':''}">
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        ${fesc(((r.first_name||'')+' '+(r.last_name||'')).trim()||'—')}</span>
+      <span style="width:76px;font-variant-numeric:tabular-nums">${new Date(r.checkin+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})}
+        <span style="color:var(--muted2)">· ${r.nights||''}n</span></span>
+      <span style="width:34px;text-align:center">${calc.pers}</span>
+      <span style="width:62px;text-align:center" class="fa-lits">
+        <button onclick="factuLitsDelta(${id},-1)">−</button><b${calc.corrige?' class="cor"':''}>${calc.lits}</b><button onclick="factuLitsDelta(${id},1)">+</button></span>
+      <span style="width:86px;text-align:right">${calc.sansPrix
+        ?`<input class="fa-px" type="number" step="0.01" placeholder="à saisir" onchange="factuPrix(${id},this.value)">`
+        :eur(calc.prix)}</span>
+      <span style="width:76px;text-align:right">${calc.com===null?'—':eur(calc.com)}</span>
+      <span style="width:76px;text-align:right">${eur(calc.blanch)}</span>
+      <span style="width:82px;text-align:right;font-weight:600;color:var(--gold2)">${eur(calc.total)}</span>
+      <span style="width:30px;text-align:right"><button class="fa-mini" title="${ex?'Remettre dans la facture':'Retirer de la facture'}" onclick="factuExclure(${id},${ex?'false':'true'})">${ex?'↩':'✕'}</button></span>
+    </div>`;
+  });
+  h+=`</div>`;
+  return h;
+}
+function factuOuvrir(k){factuOuvert=factuOuvert===k?null:k;renderFactu();}
+function factuAllerMois(d){factuMois=factuMoisDecale(factuMois,d);factuOuvert=null;openFactu();}
+function factuChoixMois(v){if(!v)return;factuMois=v;factuOuvert=null;openFactu();}
+
+/* ---------- Corrections à la ligne ---------- */
+async function factuUpsert(id,champs){
+  const ov=factuOv[id]||{booking_id:id};
+  Object.assign(ov,champs); factuOv[id]=ov;
+  const corps={booking_id:id};
+  ['nb_lits','nb_personnes','nb_tapis','nb_cuisine','nb_changements','prix_voyageur','exclue','note']
+    .forEach(k=>{if(ov[k]!==undefined)corps[k]=ov[k];});
+  try{
+    await axios.post(`${API}/factu_ligne?on_conflict=booking_id`,corps,
+      {headers:{...hd(),'Prefer':'resolution=merge-duplicates,return=minimal'}});
+  }catch(e){toast('Enregistrement impossible');logAndShowErr&&logAndShowErr(e);return;}
+  renderFactu();
+}
+function factuLitsDelta(id,d){
+  const r=factuResas.find(x=>x.booking_id===id); if(!r)return;
+  const c=factuCfg.find(x=>(x.livrets||{}).superhote_rental_id===r.rental_id); if(!c)return;
+  const cur=factuCalc(r,c,factuOv[id]||{}).lits;
+  factuUpsert(id,{nb_lits:Math.max(0,cur+d)});
+}
+function factuPrix(id,v){
+  const n=parseFloat(String(v).replace(',','.'));
+  factuUpsert(id,{prix_voyageur:isFinite(n)&&n>0?n:null});
+}
+function factuExclure(id,ex){factuUpsert(id,{exclue:!!ex});}
+
+/* ---------- Figer une facture ---------- */
+async function factuValider(k){
+  const grp=factuGroupes(), g=grp[k]; if(!g)return;
+  const dejaa=factuFact[k];
+  if(dejaa&&dejaa.statut==='validee'){
+    if(!await askConfirm(`La facture de ${g.nom} pour ${factuMoisLabel(factuMois)} est déjà validée (${eur((dejaa.totaux||{}).total||0)}).\n\nLa recalculer et la remplacer ?`))return;
+  }else{
+    if(!await askConfirm(`Figer la facture de ${g.nom} pour ${factuMoisLabel(factuMois)} ?\n\nTotal TTC : ${eur(g.total)}\nCommission : ${eur(g.com)}\nBlanchisserie : ${eur(g.blanch)}${g.sansPrix?`\n\n⚠️ ${g.sansPrix} séjour(s) sans prix : leur commission vaut 0.`:''}`))return;
+  }
+  const [d1]=factuBornes(factuMois);
+  const lignes=g.lignes.filter(l=>!l.ov.exclue).map(l=>({
+    booking_id:l.r.booking_id,
+    nom:((l.r.first_name||'')+' '+(l.r.last_name||'')).trim(),
+    checkin:l.r.checkin, checkout:l.r.checkout, nuits:l.r.nights,
+    pers:l.calc.pers, lits:l.calc.lits, prix:l.calc.prix,
+    com:+(l.calc.com||0).toFixed(2), blanch:+l.calc.blanch.toFixed(2), total:+l.calc.total.toFixed(2)}));
+  const totaux={commission:+g.com.toFixed(2), blanchisserie:+g.blanch.toFixed(2),
+                total:+g.total.toFixed(2), ht:+(g.total/1.2).toFixed(2),
+                tva:+(g.total-g.total/1.2).toFixed(2), sejours:lignes.length,
+                taux:g.cfg.commission, marge:g.cfg.marge_blanch};
+  const numero=`BN-${factuMois.replace('-','')}-${(g.nom||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6)}`;
+  try{
+    await axios.post(`${API}/factu_facture?on_conflict=livret_id,mois`,
+      {livret_id:k,mois:d1,numero,statut:'validee',totaux,lignes,validee_at:new Date().toISOString()},
+      {headers:{...hd(),'Prefer':'resolution=merge-duplicates,return=minimal'}});
+    toast('✓ Facture figée — '+eur(g.total));
+    await loadFactu(); renderFactu();
+  }catch(e){toast('Impossible de figer la facture');logAndShowErr&&logAndShowErr(e);}
+}
+
+/* ---------- Facture PDF ---------- */
+function factuFactureHtml(g){
+  const lignes=g.lignes.filter(l=>!l.ov.exclue);
+  const d=new Date();
+  let rows='';
+  lignes.forEach(l=>{
+    rows+=`<tr><td>${fesc(((l.r.first_name||'')+' '+(l.r.last_name||'')).trim()||'—')}</td>
+      <td class="c">${new Date(l.r.checkin+'T12:00:00').toLocaleDateString('fr-FR')}</td>
+      <td class="c">${l.r.nights||''}</td><td class="c">${l.calc.pers}</td>
+      <td class="r">${l.calc.prix===null?'—':eur(l.calc.prix)}</td>
+      <td class="r">${l.calc.com===null?'—':eur(l.calc.com)}</td>
+      <td class="r">${eur(l.calc.blanch)}</td>
+      <td class="r b">${eur(l.calc.total)}</td></tr>`;
+  });
+  return `<div style="width:1000px;background:#fff;color:#111;padding:44px 46px;font:13px/1.5 Helvetica,Arial,sans-serif;box-sizing:border-box">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #111;padding-bottom:16px">
+      <div><div style="font-size:23px;font-weight:700;letter-spacing:.5px">BE NOMADS</div>
+        <div style="color:#666;font-size:12px;margin-top:3px">Conciergerie — 7 rue de la Barre, Nevers</div></div>
+      <div style="text-align:right"><div style="font-size:17px;font-weight:700">Note d'honoraires</div>
+        <div style="color:#666;font-size:12px;margin-top:3px">${factuMoisLabel(factuMois)}</div>
+        <div style="color:#666;font-size:12px">Éditée le ${d.toLocaleDateString('fr-FR')}</div></div>
+    </div>
+    <div style="margin:22px 0 6px;font-size:15px;font-weight:700">${fesc(g.nom)}</div>
+    <div style="color:#666;font-size:12px;margin-bottom:18px">
+      Commission ${Math.round(g.cfg.commission*100)} % du prix tout inclus payé par le voyageur ·
+      blanchisserie refacturée avec un coefficient de ${g.cfg.marge_blanch} · ${lignes.length} séjour${lignes.length>1?'s':''}</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="background:#f4f2ed">
+        <th style="text-align:left;padding:7px 8px">Voyageur</th>
+        <th style="padding:7px 8px">Arrivée</th><th style="padding:7px 8px">Nuits</th><th style="padding:7px 8px">Pers.</th>
+        <th style="text-align:right;padding:7px 8px">Prix voyageur</th>
+        <th style="text-align:right;padding:7px 8px">Commission</th>
+        <th style="text-align:right;padding:7px 8px">Blanchisserie</th>
+        <th style="text-align:right;padding:7px 8px">Total</th></tr></thead>
+      <tbody>${rows}</tbody></table>
+    <div style="display:flex;justify-content:flex-end;margin-top:22px">
+      <table style="font-size:13px;border-collapse:collapse;min-width:300px">
+        <tr><td style="padding:5px 14px 5px 0;color:#666">Commission</td><td style="text-align:right;padding:5px 0">${eur(g.com)}</td></tr>
+        <tr><td style="padding:5px 14px 5px 0;color:#666">Blanchisserie</td><td style="text-align:right;padding:5px 0">${eur(g.blanch)}</td></tr>
+        <tr><td style="padding:7px 14px 7px 0;color:#666;border-top:1px solid #ddd">Total HT</td><td style="text-align:right;padding:7px 0;border-top:1px solid #ddd">${eur(g.total/1.2)}</td></tr>
+        <tr><td style="padding:5px 14px 5px 0;color:#666">TVA 20 %</td><td style="text-align:right;padding:5px 0">${eur(g.total-g.total/1.2)}</td></tr>
+        <tr><td style="padding:9px 14px 9px 0;font-weight:700;font-size:15px;border-top:2px solid #111">Total TTC</td>
+            <td style="text-align:right;padding:9px 0;font-weight:700;font-size:15px;border-top:2px solid #111">${eur(g.total)}</td></tr>
+      </table></div>
+    <div style="margin-top:30px;color:#888;font-size:10.5px;border-top:1px solid #eee;padding-top:12px">
+      Mathemia — Be Nomads · Prix voyageur relevé automatiquement depuis SuperHote.
+      Le ménage ne figure pas sur cette note.</div>
+    <style>td.c{text-align:center}td.r{text-align:right}td.b{font-weight:700}
+      tbody td{padding:6px 8px;border-bottom:1px solid #eee}</style>
+  </div>`;
+}
+async function factuPdf(k){
+  const grp=factuGroupes(), g=grp[k]; if(!g||!g.lignes.length){toast('Rien à facturer');return;}
+  toast('Génération du PDF…');
+  try{
+    await Promise.all([ensureLib('jspdf'),ensureLib('html2canvas')]);
+    const host=document.createElement('div');
+    host.style.cssText='position:fixed;left:-99999px;top:0;pointer-events:none;z-index:-1';
+    host.innerHTML=factuFactureHtml(g);
+    document.body.appendChild(host);
+    await new Promise(r=>setTimeout(r,160));
+    const cv=await html2canvas(host.firstElementChild,{scale:2,backgroundColor:'#ffffff',logging:false});
+    document.body.removeChild(host);
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({unit:'mm',format:'a4',orientation:'landscape'});
+    const lw=297, lh=cv.height*lw/cv.width;
+    pdf.addImage(cv.toDataURL('image/jpeg',0.93),'JPEG',0,0,lw,Math.min(lh,210),undefined,'FAST');
+    const nf=`facture-${factuMois}-${(g.nom||'').replace(/\s+/g,'-')}.pdf`;
+    if(navigator.share&&/iPhone|iPad|Android/i.test(navigator.userAgent)){
+      const b=pdf.output('blob');
+      try{await navigator.share({files:[new File([b],nf,{type:'application/pdf'})],title:nf});return;}catch(_e){}
+    }
+    pdf.save(nf);
+    toast('✓ Facture téléchargée');
+  }catch(e){toast('Erreur PDF');logAndShowErr&&logAndShowErr(e);}
+}
+
+/* ---------- Onglet « Paramètres » ---------- */
+function factuParamHtml(){
+  const cfg=[...factuCfg].sort((a,b)=>((a.livrets||{}).nom||'').localeCompare(((b.livrets||{}).nom||''),'fr'));
+  let h=`<p class="fa-note" style="margin:0 0 14px">Ces valeurs viennent de tes classeurs Excel, relevées sur le dernier mois rempli.
+    Toute modification s'applique aux mois non encore figés.</p>
+    <div class="lst"><div class="lst-t"><span style="flex:1">Logement</span>
+      <span style="width:84px;text-align:center">Commission</span>
+      <span style="width:72px;text-align:center">Marge blanch.</span>
+      <span style="width:62px;text-align:center">Lits max</span>
+      <span style="width:58px;text-align:center">Tapis</span>
+      <span style="width:58px;text-align:center">Cuisine</span>
+      <span style="width:88px;text-align:right">Forfait TTC</span></div>`;
+  cfg.forEach(c=>{
+    const P=factuPacks(c), m=parseFloat(c.marge_blanch)||1;
+    const base=(P.kit+P.lit+c.nb_tapis*P.tap+c.nb_cuisine*P.cui)*m*1.2;
+    h+=`<div class="lgn">
+      <div class="pt" style="background:${c.actif===false?'#555':'#8d7a4f'}"></div>
+      <div class="pr"><div class="t1">${fesc((c.livrets||{}).nom||'—')}</div>
+        <div class="t2">lit ${eur(P.lit)} HT · kit de bain ${eur(P.kit)} · tapis ${eur(P.tap)} · cuisine ${eur(P.cui)}</div></div>
+      <span style="width:84px;text-align:center"><input class="fa-in" type="number" step="1" min="0" max="100"
+        value="${Math.round(c.commission*1000)/10}" onchange="factuSetCfg('${c.livret_id}','commission',this.value/100)"> %</span>
+      <span style="width:72px;text-align:center"><input class="fa-in" type="number" step="0.05" min="1"
+        value="${m}" onchange="factuSetCfg('${c.livret_id}','marge_blanch',this.value)"></span>
+      <span style="width:62px;text-align:center"><input class="fa-in" type="number" step="1" min="1"
+        value="${c.lits_max}" onchange="factuSetCfg('${c.livret_id}','lits_max',this.value)"></span>
+      <span style="width:58px;text-align:center"><input class="fa-in" type="number" step="1" min="0"
+        value="${c.nb_tapis}" onchange="factuSetCfg('${c.livret_id}','nb_tapis',this.value)"></span>
+      <span style="width:58px;text-align:center"><input class="fa-in" type="number" step="1" min="0"
+        value="${c.nb_cuisine}" onchange="factuSetCfg('${c.livret_id}','nb_cuisine',this.value)"></span>
+      <span class="mt" style="width:88px;text-align:right">${eur(base)}</span></div>`;
+  });
+  h+=`</div>`;
+  const manquants=factuLivrets.filter(l=>l.superhote_rental_id&&!factuCfg.some(c=>c.livret_id===l.id));
+  if(manquants.length)
+    h+=`<div class="fa-alerte" style="margin-top:14px">Sans facturation configurée :
+        ${manquants.map(l=>fesc(l.nom)).join(', ')}.
+        <button class="fa-mini" style="margin-left:8px" onclick="factuCreerConf()">Les ajouter avec les valeurs par défaut</button></div>`;
+  return h;
+}
+async function factuSetCfg(id,champ,val){
+  const n=parseFloat(String(val).replace(',','.'));
+  if(!isFinite(n)){toast('Valeur invalide');return;}
+  try{
+    await axios.patch(`${API}/factu_config?livret_id=eq.${id}`,{[champ]:n},
+      {headers:{...hd(),'Prefer':'return=minimal'}});
+    const c=factuCfg.find(x=>x.livret_id===id); if(c)c[champ]=n;
+    toast('✓ Enregistré'); renderFactu();
+  }catch(e){toast('Enregistrement impossible');logAndShowErr&&logAndShowErr(e);}
+}
+async function factuCreerConf(){
+  const manquants=factuLivrets.filter(l=>l.superhote_rental_id&&!factuCfg.some(c=>c.livret_id===l.id));
+  if(!manquants.length)return;
+  if(!await askConfirm(`Ajouter ${manquants.length} logement(s) avec 20 % de commission et une marge de 1,5 ?\n\n${manquants.map(l=>l.nom).join('\n')}`))return;
+  try{
+    await axios.post(`${API}/factu_config`,manquants.map(l=>({livret_id:l.id})),
+      {headers:{...hd(),'Prefer':'return=minimal'}});
+    toast('✓ Ajoutés'); await loadFactu(); renderFactu();
+  }catch(e){toast('Ajout impossible');logAndShowErr&&logAndShowErr(e);}
+}
+
+/* ---------- Onglet « Bilan » ---------- */
+async function factuBilan(){
+  const c=document.getElementById('factu-content');
+  const a=factuAnnee;
+  let resas=[];
+  try{
+    const r=await axios.get(`${API}/sh_reservations?select=rental_id,checkin,adults,children,total_price,nights&checkin=gte.${a}-01-01&checkin=lt.${a+1}-01-01&statut=neq.7&order=checkin.asc&limit=6000`,{headers:hd()});
+    resas=r.data||[];
+  }catch(e){c.innerHTML='<div class="loading">Erreur de chargement.</div>';return;}
+  const parRental={};
+  factuCfg.forEach(x=>{const rid=(x.livrets||{}).superhote_rental_id;if(rid)parRental[rid]=x;});
+  const par={}; const mois={};
+  resas.forEach(r=>{
+    const cf=parRental[r.rental_id]; if(!cf||cf.actif===false)return;
+    const k=cf.livret_id, m=r.checkin.slice(0,7);
+    const calc=factuCalc(r,cf,factuOv[r.booking_id]||{});
+    const g=par[k]||(par[k]={nom:(cf.livrets||{}).nom||'—',mois:{},total:0,com:0,bl:0,n:0,sans:0});
+    g.mois[m]=(g.mois[m]||0)+calc.total;
+    g.total+=calc.total; g.com+=calc.com||0; g.bl+=calc.blanch; g.n++;
+    if(calc.sansPrix)g.sans++;
+    mois[m]=(mois[m]||0)+calc.total;
+  });
+  const cles=Object.keys(par).sort((x,y)=>par[y].total-par[x].total);
+  const lm=[]; for(let i=1;i<=12;i++)lm.push(`${a}-${String(i).padStart(2,'0')}`);
+  const grand=cles.reduce((s,k)=>s+par[k].total,0);
+  const gcom=cles.reduce((s,k)=>s+par[k].com,0);
+  const gbl=cles.reduce((s,k)=>s+par[k].bl,0);
+  const gsans=cles.reduce((s,k)=>s+par[k].sans,0);
+  let h=`<div class="fa-bar">
+    <button class="adm-logout" onclick="factuAnnee--;factuBilan()">←</button>
+    <span class="fa-lab" style="min-width:68px;text-align:center">${a}</span>
+    <button class="adm-logout" onclick="factuAnnee++;factuBilan()">→</button>
+    <span class="fa-lab" style="margin-left:auto">${eur(grand)} facturés · ${eur(gcom)} de commission · ${eur(gbl)} de blanchisserie</span>
+  </div>`;
+  if(gsans)h+=`<div class="fa-alerte">⚠️ ${gsans} séjour${gsans>1?'s':''} de ${a} sans prix voyageur.
+    SuperHote ne transmet aucun prix Airbnb avant février 2026 — sur ces lignes la commission vaut 0.</div>`;
+  h+=`<div class="fa-tbl-wrap"><table class="fa-tbl"><thead><tr><th style="text-align:left">Logement</th>
+     ${lm.map(m=>`<th>${new Date(m+'-01T12:00:00').toLocaleDateString('fr-FR',{month:'short'})}</th>`).join('')}
+     <th class="tot">Total</th></tr></thead><tbody>`;
+  cles.forEach(k=>{
+    const g=par[k];
+    h+=`<tr><td style="text-align:left">${fesc(g.nom)}</td>
+      ${lm.map(m=>`<td>${g.mois[m]?Math.round(g.mois[m]):''}</td>`).join('')}
+      <td class="tot">${eur(g.total)}</td></tr>`;
+  });
+  h+=`</tbody><tfoot><tr><td style="text-align:left">Total</td>
+      ${lm.map(m=>`<td>${mois[m]?Math.round(mois[m]):''}</td>`).join('')}
+      <td class="tot">${eur(grand)}</td></tr></tfoot></table></div>
+    <div class="fa-pied" style="margin-top:14px">
+      <div><span>Total TTC ${a}</span><b>${eur(grand)}</b></div>
+      <div><span>HT (TTC ÷ 1,2)</span><b>${eur(grand/1.2)}</b></div>
+      <div><span>TVA réelle</span><b>${eur(grand-grand/1.2)}</b></div>
+      <div><span>TVA méthode classeur</span><b>${eur(grand*0.2)}</b></div>
+      <div><span>Écart sur l'année</span><b>${eur(grand*0.2-(grand-grand/1.2))}</b></div>
+    </div>
+    <p class="fa-note">Montants en euros, arrondis à l'euro dans le tableau. Le ménage n'est pas compté.</p>`;
+  c.innerHTML=h;
 }
 
 document.getElementById('login-password').addEventListener('keypress',e=>{if(e.key==='Enter')login();});
