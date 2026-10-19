@@ -704,6 +704,8 @@ body{top:0!important}
   padding:3px 5px;font-size:11.5px;text-align:right;font-family:inherit}
 /* détail d'un logement, déplié sous sa ligne */
 .fa-det{background:rgba(0,0,0,.26);border-top:1px solid var(--border);padding:4px 16px 10px}
+.fa-det-aide{font-size:11.5px;color:var(--muted2);line-height:1.5;padding:8px 0 2px}
+.fa-det-aide b{color:var(--gold3)}
 .fa-det-t,.fa-dl{display:flex;align-items:center;gap:9px;font-size:11.5px;
   font-variant-numeric:tabular-nums;padding:5px 0}
 .fa-det-t{color:var(--muted2);text-transform:uppercase;letter-spacing:.6px;font-size:9.5px;
@@ -7616,19 +7618,15 @@ function factuPacks(c){
           tap:g('tapis')*(c.tapis_par_kit||1),
           cui:(c.torchons_par_kit||2)*g('torchon')};
 }
-/* Nombre de lits proposé : l'habitude observée sur les séjours passés de ce logement,
-   sinon on plafonne au nombre de lits disponibles. Un couple ou deux amis donnent le
-   même nombre de personnes, donc la proposition reste corrigeable à la main. */
-function factuLits(c,pers){
-  const h=c.lits_habitude||{};
-  if(h[String(pers)]!=null)return parseInt(h[String(pers)])||1;
-  return Math.max(1,Math.min(pers,c.lits_max||1));
-}
+/* Règle de Mathieu (19/10/2026) : par défaut TOUS les lits du logement sont comptés,
+   et il réduit à la main sur les séjours où ils n'ont pas tous servi. Le nombre de
+   personnes ne permet pas de deviner — un couple et deux amis donnent le même chiffre. */
+function factuLits(c){ return Math.max(1, parseInt(c.lits_max)||1); }
 function factuCalc(r,c,ov){
   ov=ov||{};
   const nn=(v,d)=>(v===null||v===undefined||v==='')?d:(parseFloat(v)||0);
   const pers=Math.max(1,nn(ov.nb_personnes,(parseInt(r.adults)||0)+(parseInt(r.children)||0))||1);
-  const auto=factuLits(c,pers);
+  const auto=factuLits(c);
   const lits=Math.max(0,nn(ov.nb_lits,auto));
   const tap =Math.max(0,nn(ov.nb_tapis,c.nb_tapis||1));
   const cui =Math.max(0,nn(ov.nb_cuisine,c.nb_cuisine||1));
@@ -7796,7 +7794,13 @@ function factuMoisHtml(){
   return h;
 }
 function factuDetailHtml(g){
-  let h=`<div class="fa-det"><div class="fa-det-t">
+  const parLit=factuPacks(g.cfg).lit*(parseFloat(g.cfg.marge_blanch)||1)*1.2;
+  const nonAjustes=g.lignes.filter(l=>!l.annulee&&!l.ov.exclue&&!l.calc.corrige).length;
+  let h=`<div class="fa-det">
+    <div class="fa-det-aide">Tous les lits sont comptés par défaut — ${eur(parLit)} par lit.
+      Clique sur <b>−</b> quand ils n'ont pas tous servi.${nonAjustes
+        ? ` ${nonAjustes} séjour${nonAjustes>1?'s':''} encore au défaut.` : ' Tous ajustés.'}</div>
+    <div class="fa-det-t">
     <span style="flex:1">Voyageur</span>
     <span style="width:62px">Entrée</span><span style="width:62px">Sortie</span>
     <span style="width:38px;text-align:center">Nuits</span>
@@ -7979,7 +7983,7 @@ function factuParamHtml(){
     Une modification s'applique aux mois pas encore figés.</p><div class="fa-prog">`;
   cfg.forEach(c=>{
     const P=factuPacks(c), m=parseFloat(c.marge_blanch)||1, id=c.livret_id;
-    const pers=2, lits=factuLits(c,pers);
+    const pers=2, lits=factuLits(c);
     // « tapis » est invariable ; un() ne pluralise qu'un mot simple, pas ces libellés
     const pl=(n,sing,plur)=>n>1?plur:sing;
     const detail=[[lits,pl(lits,'lit complet','lits complets'),P.lit],
@@ -7987,7 +7991,6 @@ function factuParamHtml(){
                   [c.nb_tapis,'tapis de bain',P.tap],
                   [c.nb_cuisine,pl(c.nb_cuisine,'service cuisine','services cuisine'),P.cui]];
     const htTot=detail.reduce((t,d)=>t+d[0]*d[2],0);
-    const hab=c.lits_habitude||{};
     h+=`<div class="fa-card">
       <div class="fa-card-t">${fesc((c.livrets||{}).nom||'—')}</div>
       <div class="fa-ln"><input class="fa-in lg" type="number" step="0.5" min="0" max="100"
@@ -8001,10 +8004,9 @@ function factuParamHtml(){
         <div class="fa-ex-l som"><span>linge</span><b>${eur(htTot)} HT</b></div>
         <div class="fa-ex-l tot"><span>blanchisserie facturée · × ${m} puis TVA</span><b>${eur(htTot*m*1.2)}</b></div>
       </div>
-      <div class="fa-ln hab"><span>Lits proposés</span>
-        ${Object.keys(hab).length
-          ? Object.keys(hab).sort((x,y)=>x-y).map(k=>`<i class="fa-etq">${k} pers → ${hab[k]}</i>`).join('')
-          : `<i class="fa-etq">${c.lits_max} au maximum</i>`}</div>
+      <div class="fa-ln hab"><span>Par défaut</span>
+        <i class="fa-etq">${c.lits_max} ${c.lits_max>1?'lits comptés':'lit compté'}</i>
+        <span style="font-size:11.5px;color:var(--muted2)">à réduire sur le séjour si tous n'ont pas servi</span></div>
       <div class="fa-ln">
         <input class="fa-in" type="number" min="1" value="${c.lits_max}"
           onchange="factuSetCfg('${id}','lits_max',this.value)"><span>lits dans le logement</span>
