@@ -177,6 +177,64 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-sans);min-hei
     font-size:16px !important;
   }
 }
+/* ============================================================
+   OSSATURE DU BACK-OFFICE (octobre 2026)
+   Barre latérale permanente + barre du bas sur téléphone.
+   Les écrans existants ne bougent pas : ils se contentent de
+   vivre dans la zone de droite, décalés par un padding.
+   ============================================================ */
+#rail{position:fixed;left:0;top:0;bottom:0;width:252px;z-index:200;display:none;
+  flex-direction:column;background:#101014;border-right:1px solid var(--border-gold);overflow-y:auto}
+body.bo #rail{display:flex}
+body.bo{padding-left:252px}
+#rail .rl-mark{padding:22px 20px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:11px}
+#rail .rl-m{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--gold),var(--gold2));
+  display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#rail .rl-m svg{width:18px;height:18px}
+#rail .rl-n{font-family:var(--font-serif);font-size:16.5px;font-weight:700;color:var(--gold3)}
+#rail .rl-s{font-size:10px;color:var(--muted2);letter-spacing:.14em;text-transform:uppercase;margin-top:1px}
+#rail nav{padding:14px 10px;flex:1}
+#rail .rl-g{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted2);
+  padding:16px 12px 7px;font-weight:600}
+#rail a{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:9px;cursor:pointer;
+  font-size:13.5px;color:var(--muted);transition:background .16s,color .16s;position:relative;
+  text-decoration:none;user-select:none}
+#rail a:hover{background:rgba(255,255,255,.04);color:var(--gold3)}
+#rail a.on{background:linear-gradient(90deg,rgba(201,169,97,.16),rgba(201,169,97,.04));
+  color:var(--gold3);font-weight:500}
+#rail a.on::before{content:'';position:absolute;left:0;top:7px;bottom:7px;width:2.5px;
+  border-radius:0 2px 2px 0;background:var(--gold2)}
+#rail a .ri{width:17px;text-align:center;font-size:14.5px;flex-shrink:0}
+#rail a .rb{margin-left:auto;background:#E8564E;color:#fff;font-size:10.5px;font-weight:700;
+  min-width:18px;height:18px;border-radius:9px;display:none;align-items:center;justify-content:center;padding:0 5px}
+#rail a .rb.calme{background:rgba(255,255,255,.1);color:var(--muted)}
+#rail .rl-pied{padding:13px 16px;border-top:1px solid var(--border);font-size:11.5px;color:var(--muted2);
+  display:flex;align-items:center;justify-content:space-between;gap:8px}
+#rail .rl-pied a{padding:4px 8px;font-size:11.5px}
+#rail-voile{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:190}
+#bo-burger{display:none;background:none;border:0;color:var(--gold2);font-size:21px;cursor:pointer;padding:0 4px 0 0}
+#bo-bas{display:none}
+@media (max-width:860px){
+  body.bo{padding-left:0;padding-bottom:62px}
+  #rail{transform:translateX(-100%);transition:transform .26s cubic-bezier(.3,.8,.3,1)}
+  #rail.ouvert{transform:none}
+  #rail-voile.ouvert{display:block}
+  body.bo #bo-burger{display:block}
+  body.bo #bo-bas{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:180;
+    background:rgba(16,16,20,.96);backdrop-filter:blur(18px);border-top:1px solid var(--border-gold);
+    padding:7px 4px 9px}
+  #bo-bas a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 2px;
+    font-size:9.5px;color:var(--muted2);cursor:pointer;position:relative;text-decoration:none}
+  #bo-bas a.on{color:var(--gold2)}
+  #bo-bas a .ri{font-size:17px}
+  #bo-bas a .rb{position:absolute;top:1px;right:50%;margin-right:-20px;background:#E8564E;color:#fff;
+    font-size:9px;font-weight:700;min-width:15px;height:15px;border-radius:8px;display:none;
+    align-items:center;justify-content:center;padding:0 3px}
+}
+/* Le bouton « Retour » de chaque écran devient inutile : la barre est toujours là */
+body.bo .adm-nav-left .adm-logout.retour{display:none}
+@media (max-width:860px){body.bo .bo-burger{display:block !important}}
+@media (max-width:1080px){.dash-duo{grid-template-columns:1fr !important}}
 /* Barre du haut sur téléphone : elle débordait à droite (boutons coupés).
    Elle passe sur deux lignes, les boutons restent entiers et cliquables. */
 @media (max-width:640px){
@@ -545,6 +603,43 @@ body{top:0!important}
 </head>
 <body>
 
+<!-- ===== Barre de navigation permanente du back-office ===== -->
+<div id="rail-voile" onclick="boMenu(false)"></div>
+<aside id="rail">
+  <div class="rl-mark">
+    <div class="rl-m"><svg viewBox="0 0 24 24" fill="none" stroke="#0a0a0a" stroke-width="2.4"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg></div>
+    <div><div class="rl-n">Be Nomads</div><div class="rl-s">Back-office</div></div>
+  </div>
+  <nav>
+    <div class="rl-g">Pilotage</div>
+    <a data-bo="dash"><span class="ri">◎</span>Tableau de bord</a>
+    <div class="rl-g">Vendre</div>
+    <a data-bo="demandes"><span class="ri">🛒</span>Commandes<span class="rb" id="rb-dem">0</span></a>
+    <a data-bo="requests"><span class="ri">✉</span>Demandes<span class="rb" id="rb-req">0</span></a>
+    <a data-bo="catalogue" data-su><span class="ri">🛎</span>Mes services</a>
+    <a data-bo="prestataires"><span class="ri">📞</span>Prestataires</a>
+    <div class="rl-g">Exploiter</div>
+    <a data-bo="reservations" data-su><span class="ri">📅</span>Réservations</a>
+    <a data-bo="stock"><span class="ri">📦</span>Stocks<span class="rb" id="rb-stk">0</span></a>
+    <a data-bo="courses"><span class="ri">🧺</span>Liste de courses</a>
+    <div class="rl-g">Contenu</div>
+    <a data-bo="admin"><span class="ri">📖</span>Mes livrets</a>
+    <a data-bo="avis" data-su><span class="ri">★</span>Avis<span class="rb" id="rb-avis">0</span></a>
+    <a data-bo="corbeille" data-su><span class="ri">🗑</span>Corbeille</a>
+  </nav>
+  <div class="rl-pied">
+    <span id="rail-email"></span>
+    <a onclick="logout()" title="Déconnexion">⏻</a>
+  </div>
+</aside>
+<div id="bo-bas">
+  <a data-bo="dash"><span class="ri">◎</span>Bord</a>
+  <a data-bo="demandes"><span class="ri">🛒</span><span class="rb" id="rb-dem2">0</span>Commandes</a>
+  <a data-bo="reservations"><span class="ri">📅</span>Résas</a>
+  <a data-bo="stock"><span class="ri">📦</span>Stocks</a>
+  <a data-bo="admin"><span class="ri">📖</span>Livrets</a>
+</div>
+
 <!-- LOGIN -->
 <div id="login-screen">
   <div class="login-left">
@@ -593,16 +688,33 @@ body{top:0!important}
       </div>
     </div>
     <button class="login-cta" onclick="login()">Se connecter</button>
-    <div class="divider"><span>ou</span></div>
-    <div class="reg-link">Pas encore de compte ? <a onclick="register()">Créer un accès</a></div>
+    <div class="reg-link" style="margin-top:18px"><a onclick="askReset()" style="cursor:pointer">Mot de passe oublié&nbsp;?</a></div>
   </div>
 </div>
 
 <!-- ADMIN -->
+<!-- TABLEAU DE BORD — nouvel accueil du back-office -->
+<div id="dash-screen" style="display:none">
+  <nav class="adm-nav">
+    <div class="adm-nav-left">
+      <button id="bo-burger" onclick="boMenu(true)">☰</button>
+      <div class="adm-nav-title serif">Tableau de bord</div>
+    </div>
+    <div class="adm-nav-right">
+      <span class="adm-nav-user" id="dash-date"></span>
+      <button class="adm-logout" onclick="refreshApp()" title="Actualiser">🔄</button>
+      <button class="adm-add" data-su-only onclick="openEditor(null)">+ Nouveau livret</button>
+    </div>
+  </nav>
+  <div class="adm-body">
+    <div id="dash-contenu"><div class="loading">Chargement…</div></div>
+  </div>
+</div>
+
 <div id="admin-screen">
   <nav class="adm-nav">
     <div class="adm-nav-left">
-      <div class="adm-nav-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#060606" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg></div>
+      <button id="bo-burger2" class="bo-burger" onclick="boMenu(true)" style="background:none;border:0;color:var(--gold2);font-size:21px;cursor:pointer;padding:0 4px 0 0;display:none">☰</button>
       <div class="adm-nav-title serif">Mes livrets</div>
     </div>
     <div class="adm-nav-right">
@@ -625,39 +737,19 @@ body{top:0!important}
     </div>
     <div class="adm-section-hdr">
       <div class="adm-section-title">Vos logements</div>
-      <div class="adm-actions-hdr">
-        <button class="adm-add-s" data-su-only onclick="showAllAvis()">
-          📨 Avis négatifs
-          <span class="badge" id="avis-badge" style="display:none">0</span>
-        </button>
-        <button class="adm-add-s" onclick="openCourses()">
-          🛒 Liste de courses
-        </button>
-        <button class="adm-add-s" onclick="openStock()">
-          📦 Stocks
-          <span class="badge" id="stk-badge" style="display:none">0</span>
-        </button>
-        <button class="adm-add-s" data-su-only onclick="openCatalogue()">
-          🛎️ Mes services
-        </button>
-        <button class="adm-add-s" data-su-only onclick="openReservations()">
-          📅 Réservations
-        </button>
-        <button class="adm-add-s" onclick="openDemandes()">
-          🛒 Commandes
-          <span class="badge" id="dem-badge" style="display:none">0</span>
-        </button>
-        <button class="adm-add-s" onclick="openRequests()">
-          📨 Demandes
-          <span class="badge" id="req-badge" style="display:none">0</span>
-        </button>
-        <button class="adm-add-s" data-su-only onclick="openCorbeille()">
-          🗑 Corbeille
-        </button>
-        <button class="adm-add" data-su-only onclick="openEditor(null)">
-          + Nouveau livret
-        </button>
       </div>
+      <div class="adm-hero-stats">
+        <div class="adm-stat"><div class="adm-stat-num gold-text serif" id="stat-l">—</div><div class="adm-stat-lbl">Livrets</div></div>
+        <div class="adm-stat"><div class="adm-stat-num gold-text serif" id="stat-v">—</div><div class="adm-stat-lbl">Vues 30j</div></div>
+        <div class="adm-stat"><div class="adm-stat-num gold-text serif" id="stat-a">—</div><div class="adm-stat-lbl">Upsell (mois)</div></div>
+      </div>
+    </div>
+    <div class="adm-section-hdr">
+      <div class="adm-section-title">Vos logements</div>
+      <div class="adm-actions-hdr">
+        <button class="adm-add" data-su-only onclick="openEditor(null)">+ Nouveau livret</button>
+      </div>
+      <!-- Les neuf boutons d'autrefois sont remplacés par la barre de gauche. -->
     </div>
     <input id="lv-search" oninput="lvSearch=this.value;renderLivrets()" placeholder="🔍 Rechercher un logement (nom, slug, catégorie)…" style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--border-gold);background:var(--card);color:var(--gold3);font-size:14px;box-sizing:border-box;margin-bottom:16px">
     <div id="livrets-loading" class="loading">Chargement…</div>
@@ -669,7 +761,8 @@ body{top:0!important}
 <div id="prestataires-screen" style="display:none">
   <nav class="adm-nav">
     <div class="adm-nav-left">
-      <button class="adm-logout" onclick="openCatalogue()">← Mes services</button>
+      <button class="bo-burger" onclick="boMenu(true)" style="background:none;border:0;color:var(--gold2);font-size:21px;cursor:pointer;padding:0 4px 0 0;display:none">☰</button>
+      <button class="adm-logout retour" onclick="openCatalogue()">← Mes services</button>
       <div class="adm-nav-title serif">Prestataires</div>
     </div>
     <div class="adm-nav-right">
@@ -689,7 +782,8 @@ body{top:0!important}
 <div id="courses-screen" style="display:none">
   <nav class="adm-nav">
     <div class="adm-nav-left">
-      <button class="adm-logout" onclick="showAdmin()">← Retour</button>
+      <button class="bo-burger" onclick="boMenu(true)" style="background:none;border:0;color:var(--gold2);font-size:21px;cursor:pointer;padding:0 4px 0 0;display:none">☰</button>
+      <button class="adm-logout retour" onclick="showAdmin()">← Retour</button>
       <div class="adm-nav-title serif">Liste de courses</div>
     </div>
     <div class="adm-nav-right">
@@ -704,7 +798,8 @@ body{top:0!important}
 <div id="stock-screen" style="display:none">
   <nav class="adm-nav">
     <div class="adm-nav-left">
-      <button class="adm-logout" onclick="showAdmin()">← Retour</button>
+      <button class="bo-burger" onclick="boMenu(true)" style="background:none;border:0;color:var(--gold2);font-size:21px;cursor:pointer;padding:0 4px 0 0;display:none">☰</button>
+      <button class="adm-logout retour" onclick="showAdmin()">← Retour</button>
       <div class="adm-nav-title serif">Stocks</div>
     </div>
     <div class="adm-nav-right">
@@ -739,7 +834,8 @@ body{top:0!important}
 <div id="catalogue-screen" style="display:none">
   <nav class="adm-nav">
     <div class="adm-nav-left">
-      <button class="adm-logout" onclick="showAdmin()">← Retour</button>
+      <button class="bo-burger" onclick="boMenu(true)" style="background:none;border:0;color:var(--gold2);font-size:21px;cursor:pointer;padding:0 4px 0 0;display:none">☰</button>
+      <button class="adm-logout retour" onclick="showAdmin()">← Retour</button>
       <div class="adm-nav-title serif">Mes services</div>
     </div>
     <div class="adm-nav-right">
@@ -769,7 +865,8 @@ body{top:0!important}
 <div id="demandes-screen" style="display:none">
   <nav class="adm-nav">
     <div class="adm-nav-left">
-      <button class="adm-logout" onclick="showAdmin()">← Retour</button>
+      <button class="bo-burger" onclick="boMenu(true)" style="background:none;border:0;color:var(--gold2);font-size:21px;cursor:pointer;padding:0 4px 0 0;display:none">☰</button>
+      <button class="adm-logout retour" onclick="showAdmin()">← Retour</button>
       <div class="adm-nav-title serif">Commandes</div>
     </div>
     <div class="adm-nav-right">
@@ -792,7 +889,8 @@ body{top:0!important}
 <div id="requests-screen" style="display:none">
   <nav class="adm-nav">
     <div class="adm-nav-left">
-      <button class="adm-logout" onclick="showAdmin()">← Retour</button>
+      <button class="bo-burger" onclick="boMenu(true)" style="background:none;border:0;color:var(--gold2);font-size:21px;cursor:pointer;padding:0 4px 0 0;display:none">☰</button>
+      <button class="adm-logout retour" onclick="showAdmin()">← Retour</button>
       <div class="adm-nav-title serif">Demandes</div>
     </div>
     <div class="adm-nav-right">
@@ -815,7 +913,8 @@ body{top:0!important}
 <div id="reservations-screen" style="display:none">
   <nav class="adm-nav">
     <div class="adm-nav-left">
-      <button class="adm-logout" onclick="showAdmin()">← Retour</button>
+      <button class="bo-burger" onclick="boMenu(true)" style="background:none;border:0;color:var(--gold2);font-size:21px;cursor:pointer;padding:0 4px 0 0;display:none">☰</button>
+      <button class="adm-logout retour" onclick="showAdmin()">← Retour</button>
       <div class="adm-nav-title serif">Réservations</div>
     </div>
     <div class="adm-nav-right">
@@ -839,7 +938,8 @@ body{top:0!important}
 <div id="corbeille-screen" style="display:none">
   <nav class="adm-nav">
     <div class="adm-nav-left">
-      <button class="adm-logout" onclick="showAdmin()">← Retour</button>
+      <button class="bo-burger" onclick="boMenu(true)" style="background:none;border:0;color:var(--gold2);font-size:21px;cursor:pointer;padding:0 4px 0 0;display:none">☰</button>
+      <button class="adm-logout retour" onclick="showAdmin()">← Retour</button>
       <div class="adm-nav-title serif">Corbeille</div>
     </div>
   </nav>
@@ -1575,14 +1675,89 @@ async function login(){
     cu=r.data;ss(r.data);document.getElementById('admin-email').textContent=em;showAdmin();ll();
   }catch{er.style.display='flex';}
 }
-async function register(){
-  const em=document.getElementById('login-email').value,pw=document.getElementById('login-password').value;
-  if(!em||!pw){alert('Remplis les champs.');return;}
-  try{await axios.post(`${AUTH}/signup`,{email:em,password:pw},{headers:{'Content-Type':'application/json','apikey':KEY}});alert('Compte créé ! Vérifie ton email.');}
-  catch{alert('Erreur.');}
+/* La création de compte depuis l'écran de connexion a été retirée le 30/09/2026 :
+   n'importe qui pouvait s'ouvrir un accès. Les comptes se créent désormais
+   uniquement depuis le tableau de bord Supabase. */
+
+/* ===== Mot de passe oublié =====
+   1) askReset()  envoie le lien de réinitialisation par e-mail
+   2) au retour du lien, l'adresse contient #type=recovery : on ouvre le
+      formulaire de nouveau mot de passe
+   3) doReset()   enregistre le nouveau mot de passe et reconnecte */
+/* Une seule adresse peut demander une réinitialisation. Même si quelqu'un
+   saisit une autre adresse dans le formulaire, le lien part toujours ici. */
+const RESET_EMAIL='primoconciergerie58@gmail.com';
+async function askReset(){
+  const saisi=(document.getElementById('login-email').value||'').trim().toLowerCase();
+  if(saisi && saisi!==RESET_EMAIL){
+    alert('La réinitialisation n’est possible que depuis l’adresse du compte principal.');
+    return;
+  }
+  if(!confirm('Envoyer un lien de réinitialisation à '+RESET_EMAIL+' ?'))return;
+  try{
+    await axios.post(`${AUTH}/recover`,
+      {email:RESET_EMAIL,gotrue_meta_security:{}},
+      {headers:{'Content-Type':'application/json','apikey':KEY}});
+    alert('Lien envoyé à '+RESET_EMAIL+'.\n\nOuvrez votre boîte mail et cliquez dessus : le formulaire de nouveau mot de passe s’ouvrira ici même. Le lien est valable 1 heure.');
+  }catch(e){
+    alert('L’envoi a échoué. Réessayez dans quelques minutes.');
+  }
 }
-function logout(){cu=null;cs();show('login-screen');}
-function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','prestataires-screen','courses-screen','demandes-screen','reservations-screen','corbeille-screen','requests-screen','stock-screen'].forEach(s=>{const el=document.getElementById(s);if(el)el.style.display=s===id?'block':'none';});if(id!=='voyageur-screen'){try{clearLivretColors();}catch(_e){}}}
+function showResetForm(token){
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
+  const st='width:100%;padding:13px 14px;border-radius:11px;border:1px solid var(--border-gold);background:var(--card);color:var(--gold3);font-size:16px;box-sizing:border-box;margin-top:6px';
+  ov.innerHTML='<div class="sc" style="max-width:430px;width:100%;padding:28px">'+
+    '<div class="serif gold-text" style="font-size:23px;margin-bottom:8px">Nouveau mot de passe</div>'+
+    '<p style="font-size:13px;color:var(--muted2);margin:0 0 20px;line-height:1.6">Choisissez un mot de passe d’au moins 10 caractères. Mélangez lettres, chiffres et ponctuation.</p>'+
+    '<label style="font-size:11.5px;color:var(--muted2)">Nouveau mot de passe</label>'+
+    '<input id="rst-p1" type="password" autocomplete="new-password" style="'+st+'">'+
+    '<label style="font-size:11.5px;color:var(--muted2);display:block;margin-top:14px">Confirmez</label>'+
+    '<input id="rst-p2" type="password" autocomplete="new-password" style="'+st+'">'+
+    '<div id="rst-msg" style="font-size:12.5px;color:#ff6b6b;margin-top:12px;min-height:17px"></div>'+
+    '<button id="rst-ok" class="adm-add" style="width:100%;margin-top:8px">Enregistrer et me connecter</button></div>';
+  document.body.appendChild(ov);
+  ov.querySelector('#rst-ok').onclick=()=>doReset(token,ov);
+  ov.querySelector('#rst-p2').addEventListener('keydown',e=>{if(e.key==='Enter')doReset(token,ov);});
+  setTimeout(()=>{const f=ov.querySelector('#rst-p1');if(f)f.focus();},120);
+}
+async function doReset(token,ov){
+  const m=ov.querySelector('#rst-msg');
+  const a=ov.querySelector('#rst-p1').value,b=ov.querySelector('#rst-p2').value;
+  if(a.length<10){m.textContent='Trop court : 10 caractères au minimum.';return;}
+  if(a!==b){m.textContent='Les deux mots de passe ne sont pas identiques.';return;}
+  m.style.color='var(--muted2)';m.textContent='Enregistrement…';
+  try{
+    const r=await axios.put(`${AUTH}/user`,{password:a},
+      {headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+token}});
+    // On repart d'une session propre
+    history.replaceState(null,'',location.pathname+location.search);
+    ov.remove();
+    const em=(r.data&&r.data.email)||'';
+    alert('Mot de passe enregistré.\n\nConnectez-vous avec votre nouveau mot de passe.');
+    show('login-screen');
+    if(em){const el=document.getElementById('login-email');if(el)el.value=em;}
+    const pw=document.getElementById('login-password');if(pw){pw.value='';pw.focus();}
+  }catch(e){
+    m.style.color='#ff6b6b';
+    m.textContent='Lien expiré ou déjà utilisé. Redemandez un lien depuis l’écran de connexion.';
+  }
+}
+/* Au chargement : le lien reçu par e-mail dépose le jeton dans l'adresse */
+(function(){
+  function lire(){
+    const h=location.hash||'';
+    if(h.indexOf('type=recovery')<0)return;
+    const p=new URLSearchParams(h.replace(/^#/,''));
+    const tok=p.get('access_token');
+    if(!tok)return;
+    show('login-screen');
+    showResetForm(tok);
+  }
+  if(document.readyState==='complete')lire(); else addEventListener('load',lire);
+})();
+function logout(){cu=null;cs();document.body.classList.remove('bo');show('login-screen');}
+function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','prestataires-screen','courses-screen','demandes-screen','reservations-screen','corbeille-screen','requests-screen','stock-screen','dash-screen'].forEach(s=>{const el=document.getElementById(s);if(el)el.style.display=s===id?'block':'none';});if(id!=='voyageur-screen'){try{clearLivretColors();}catch(_e){}}}
 
 
 // ===== CARNET DE PRESTATAIRES =====
@@ -1593,7 +1768,7 @@ async function loadPrestataires(force){
   return prestaData;
 }
 async function openPrestataires(){
-  show('prestataires-screen');
+  show('prestataires-screen');boActif(true);boMarquer('prestataires');
   document.getElementById('presta-list').innerHTML='<div class="loading">Chargement…</div>';
   await loadPrestataires(true);
   renderPrestataires();
@@ -1710,7 +1885,7 @@ let consoData=[],regleData=[],mvtData=[],stockTab='etat',stockResa=[];
 const CAFE_LABELS={senseo:'Senseo',tassimo:'Tassimo',dolce_gusto:'Dolce Gusto',nespresso:'Nespresso'};
 
 async function openStock(){
-  show('stock-screen');
+  show('stock-screen');boActif(true);boMarquer('stock');
   document.getElementById('stock-content').innerHTML='<div class="loading">Chargement…</div>';
   await Promise.all([loadStockData(),getConsoStart()]);
   renderStock();
@@ -2569,7 +2744,7 @@ async function loadHistoCouts(){
 }
 
 async function openCourses(){
-  show('courses-screen');
+  show('courses-screen');boActif(true);boMarquer('courses');
   const di=document.getElementById('courses-date');
   if(di&&!di.value)di.value=new Date().toISOString().slice(0,10);
   document.getElementById('courses-content').innerHTML='<div class="loading">Chargement…</div>';
@@ -2639,7 +2814,7 @@ function renderCourses(){
 // ===== Mes demandes (tableau de bord) =====
 let demData=[],demFilter='all',demChartMode='mois',demView='list',planMode='semaine',planRef=null,planGroup='personne';
 async function openDemandes(){
-  show('demandes-screen');
+  show('demandes-screen');boActif(true);boMarquer('demandes');
   Promise.all([loadPrestataires(),loadCatalogueForPrep()]).then(()=>{
     // Si une fiche détail est déjà ouverte, on la re-rend avec le bloc « À préparer »
     const ov=document.getElementById('dem-detail');
@@ -2664,12 +2839,12 @@ function demRefusedCount(c){return (c.items||[]).filter(i=>i.statut==='refuse').
 function demEur(cents){return (Math.round(cents)/100).toFixed(2).replace('.',',')+'€';}
 function demPaid(){return demData.filter(c=>demStatut(c)==='paye');}
 function setDemFilter(f){demFilter=f;renderDemandes();}
-function setDemBadge(n){const b=document.getElementById('dem-badge');if(b){if(n>0){b.textContent=n;b.style.display='';}else b.style.display='none';}}
+function setDemBadge(n){boPastille('dem',n);}
 // ===== Demandes (messages voyageurs) =====
 let reqData=[];
-function setReqBadge(n){const b=document.getElementById('req-badge');if(b){if(n>0){b.textContent=n;b.style.display='';}else b.style.display='none';}}
+function setReqBadge(n){boPastille('req',n);}
 async function openRequests(){
-  show('requests-screen');
+  show('requests-screen');boActif(true);boMarquer('requests');
   const box=document.getElementById('req-list');if(box)box.innerHTML='';
   document.getElementById('req-loading').style.display='block';
   try{
@@ -3004,7 +3179,7 @@ function resaStatusOf(r){
   return 'encours';
 }
 async function openReservations(){
-  show('reservations-screen');
+  show('reservations-screen');boActif(true);boMarquer('reservations');
   document.getElementById('resa-loading').style.display='block';
   document.getElementById('resa-list').innerHTML='';
   resaSearch='';resaStatus='all';resaLivretFilter='all';
@@ -3237,7 +3412,7 @@ function planningHtml(){
 // ===== Catalogue de services =====
 let catalogue=[],allLivrets=[],catSearch='';
 async function openCatalogue(){
-  show('catalogue-screen');
+  show('catalogue-screen');boActif(true);boMarquer('catalogue');
   loadPrestataires().then(()=>{try{renderCatalogue();}catch(_e){}});
   document.getElementById('cat-loading').style.display='block';
   document.getElementById('cat-list').innerHTML='';
@@ -3439,7 +3614,179 @@ async function delCatService(id){
     catalogue=catalogue.filter(x=>x!==s);renderCatalogue();toast('Service supprimé');
   }catch(e){alert('Erreur suppression : '+(e.response?.data?.message||e.message));}
 }
-function showAdmin(){show('admin-screen');applyTenantUI();ll();if(isSuperAdmin())loadAvisBadge();refreshBadges();startRefreshTimer();ensureLib('jspdf').catch(()=>{});}
+/* ============================================================
+   TABLEAU DE BORD
+   Ce qui demande une action aujourd'hui, puis l'état du parc.
+   Tout est lu dans les données déjà chargées par les autres écrans.
+   ============================================================ */
+async function openDash(){
+  show('dash-screen'); boActif(true); boMarquer('dash'); applyTenantUI();
+  const d=document.getElementById('dash-date');
+  if(d)d.textContent=new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  document.getElementById('dash-contenu').innerHTML='<div class="loading">Chargement…</div>';
+  startRefreshTimer(); refreshBadges();
+  try{
+    const auj=new Date().toISOString().slice(0,10);
+    const dans7=new Date(Date.now()+7*864e5).toISOString().slice(0,10);
+    const moisDeb=new Date().toISOString().slice(0,7)+'-01';
+    const [cmd,dem,lv,resa,conso,avis]=await Promise.all([
+      axios.get(`${API}/commandes?select=*&order=created_at.desc&limit=300`,{headers:hd()}).catch(()=>({data:[]})),
+      axios.get(`${API}/demandes?select=id,traitee&traitee=eq.false`,{headers:hd()}).catch(()=>({data:[]})),
+      axios.get(`${API}/livrets?select=id,nom,actif&deleted_at=is.null`,{headers:hd()}).catch(()=>({data:[]})),
+      axios.get(`${API}/sh_reservations?select=booking_id,checkin&checkin=gte.${auj}&checkin=lte.${dans7}`,{headers:hd()}).catch(()=>({data:[]})),
+      axios.get(`${API}/consommables?select=nom,stock_actuel,seuil_alerte,unite&actif=eq.true`,{headers:hd()}).catch(()=>({data:[]})),
+      axios.get(`${API}/avis_negatifs?select=id&lu=eq.false`,{headers:hd()}).catch(()=>({data:[]}))
+    ]);
+    const cmds=cmd.data||[];
+    const aTraiter=cmds.filter(c=>c.statut==='paye'&&!c.traitee);
+    const caMois=cmds.filter(c=>c.statut==='paye'&&c.created_at>=moisDeb)
+                     .reduce((t,c)=>t+(parseInt(c.total_cents)||0),0)/100;
+    const alertes=(conso.data||[]).filter(c=>(parseFloat(c.stock_actuel)||0)<=(parseFloat(c.seuil_alerte)||0));
+    // Prestations prévues dans les 7 jours, extraites des commandes payées
+    const presta=[];
+    cmds.filter(c=>c.statut==='paye'||c.statut==='rembourse_partiel').forEach(c=>{
+      (c.items||[]).forEach(it=>{
+        if(it.statut==='refuse'||!it.date)return;
+        if(it.date>=auj&&it.date<=dans7)presta.push({d:it.date,h:it.heure||'',t:it.titre,q:it.qty||1,lv:c.livret_nom||''});
+      });
+    });
+    presta.sort((a,b)=>(a.d+a.h).localeCompare(b.d+b.h));
+    const esc=x=>(''+(x==null?'':x)).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    const jour=x=>new Date(x+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
+
+    const kpi=(lab,val,det,urgent)=>`<div class="sc" style="padding:18px 19px;${urgent?'border-color:rgba(232,86,78,.4)':''}">
+      <div style="font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted2);margin-bottom:9px">${lab}</div>
+      <div class="serif" style="font-size:30px;font-weight:700;line-height:1;${urgent?'color:#E8564E':'color:var(--gold2)'}">${val}</div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:7px">${det}</div></div>`;
+
+    let h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:13px;margin-bottom:26px">';
+    h+=kpi('À traiter',aTraiter.length,aTraiter.length?'commande'+(aTraiter.length>1?'s':'')+' payée'+(aTraiter.length>1?'s':''):'rien en attente',aTraiter.length>0);
+    h+=kpi('Cette semaine',presta.length,'prestation'+(presta.length>1?'s':'')+' à préparer');
+    h+=kpi('Arrivées 7 jours',(resa.data||[]).length,'sur '+(lv.data||[]).filter(x=>x.actif!==false).length+' logements');
+    h+=kpi('Upsell du mois',caMois.toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €',
+           new Date().toLocaleDateString('fr-FR',{month:'long',year:'numeric'}));
+    h+='</div>';
+
+    // ----- Ce qui vous attend -----
+    const points=[];
+    aTraiter.slice(0,4).forEach(c=>points.push({c:'#E8564E',t:'Commande payée non traitée',
+      s:esc(c.livret_nom||'')+(c.guest_nom?' · '+esc(c.guest_nom):''),
+      m:((c.total_cents||0)/100).toFixed(2).replace('.',',')+' €',go:()=>boAller('demandes')}));
+    if((dem.data||[]).length)points.push({c:'#E0A83C',t:(dem.data.length)+' demande'+(dem.data.length>1?'s':'')+' sans réponse',
+      s:'Messages de voyageurs',m:'',go:()=>boAller('requests')});
+    if(alertes.length)points.push({c:'#E0A83C',t:alertes.length+' produit'+(alertes.length>1?'s':'')+' sous le seuil',
+      s:alertes.slice(0,3).map(a=>esc(a.nom)).join(' · '),m:'',go:()=>boAller('stock')});
+    if((avis.data||[]).length)points.push({c:'#7FA8D4',t:avis.data.length+' avis négatif'+(avis.data.length>1?'s':'')+' non lu'+(avis.data.length>1?'s':''),
+      s:'À lire et à traiter',m:'',go:()=>boAller('avis')});
+
+    h+='<div style="display:grid;grid-template-columns:1.45fr 1fr;gap:18px" class="dash-duo">';
+    h+='<div class="sc" style="padding:0;overflow:hidden">'+
+       '<div style="font-size:13.5px;font-weight:600;padding:15px 19px;border-bottom:1px solid var(--border)">⚡ Ce qui vous attend'+
+       '<span style="float:right;font-size:11px;color:var(--muted2);font-weight:400">'+points.length+'</span></div>';
+    if(!points.length)h+='<div style="padding:34px 19px;text-align:center;color:var(--muted2);font-size:12.5px;font-style:italic">Rien ne réclame votre attention. Bonne journée.</div>';
+    points.forEach((p,i)=>{
+      h+=`<div onclick="window.__dashGo(${i})" style="padding:13px 19px;border-top:1px solid rgba(255,255,255,.045);display:flex;align-items:center;gap:13px;cursor:pointer">
+        <span style="width:7px;height:7px;border-radius:50%;background:${p.c};flex-shrink:0"></span>
+        <div style="flex:1;min-width:0"><div style="font-weight:500;font-size:13px">${p.t}</div>
+        <div style="font-size:11.5px;color:var(--muted2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.s}</div></div>
+        ${p.m?'<div style="color:var(--gold2);font-weight:600;font-size:13px;white-space:nowrap">'+p.m+'</div>':''}</div>`;
+    });
+    h+='</div>';
+    window.__dashGo=(i)=>{try{points[i].go();}catch(e){}};
+
+    // ----- Prochaines prestations -----
+    h+='<div class="sc" style="padding:0;overflow:hidden">'+
+       '<div style="font-size:13.5px;font-weight:600;padding:15px 19px;border-bottom:1px solid var(--border)">📅 Prochaines prestations</div>';
+    if(!presta.length)h+='<div style="padding:34px 19px;text-align:center;color:var(--muted2);font-size:12.5px;font-style:italic">Aucune prestation prévue d’ici une semaine.</div>';
+    presta.slice(0,6).forEach(x=>{
+      h+=`<div onclick="boAller('courses')" style="padding:13px 19px;border-top:1px solid rgba(255,255,255,.045);display:flex;align-items:center;gap:13px;cursor:pointer">
+        <span style="width:7px;height:7px;border-radius:50%;background:var(--gold2);flex-shrink:0"></span>
+        <div style="flex:1;min-width:0"><div style="font-weight:500;font-size:13px">${esc(x.t)}${x.q>1?' × '+x.q:''}</div>
+        <div style="font-size:11.5px;color:var(--muted2);margin-top:2px">${esc(x.lv)} · ${jour(x.d)}${x.h?' à '+esc(x.h):''}</div></div></div>`;
+    });
+    h+='</div></div>';
+
+    // ----- État du parc -----
+    h+='<div style="margin:30px 0 13px;font-size:11px;letter-spacing:.19em;text-transform:uppercase;color:var(--gold2);font-weight:600">État du parc</div>';
+    h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:13px">';
+    h+=kpi('Livrets actifs',(lv.data||[]).filter(x=>x.actif!==false).length,'en ligne');
+    h+=kpi('Stocks',alertes.length,alertes.length?'à commander':'aucune alerte');
+    h+=kpi('Commandes payées',cmds.filter(c=>c.statut==='paye').length,'depuis le début');
+    h+=kpi('Total encaissé',(cmds.filter(c=>c.statut==='paye').reduce((t,c)=>t+(parseInt(c.total_cents)||0),0)/100)
+         .toLocaleString('fr-FR',{maximumFractionDigits:0})+' €','toutes commandes');
+    h+='</div>';
+    document.getElementById('dash-contenu').innerHTML=h;
+  }catch(e){
+    document.getElementById('dash-contenu').innerHTML='<div class="sc" style="padding:28px;text-align:center;color:var(--muted)">Impossible de charger le tableau de bord.</div>';
+    logAndShowErr&&logAndShowErr(e);
+  }
+}
+
+/* ============================================================
+   NAVIGATION DU BACK-OFFICE
+   Une barre permanente à gauche, un tableau de bord en accueil.
+   Les écrans existants ne changent pas : on se contente de les
+   ouvrir et de marquer l'entrée correspondante.
+   ============================================================ */
+const BO_ECRANS = {
+  dash:        {titre:'Tableau de bord', ouvre:()=>openDash()},
+  admin:       {titre:'Mes livrets',     ouvre:()=>openLivrets()},
+  demandes:    {titre:'Commandes',       ouvre:()=>openDemandes()},
+  requests:    {titre:'Demandes',        ouvre:()=>openRequests()},
+  catalogue:   {titre:'Mes services',    ouvre:()=>openCatalogue()},
+  prestataires:{titre:'Prestataires',    ouvre:()=>openPrestataires()},
+  reservations:{titre:'Réservations',    ouvre:()=>openReservations()},
+  stock:       {titre:'Stocks',          ouvre:()=>openStock()},
+  courses:     {titre:'Liste de courses',ouvre:()=>openCourses()},
+  avis:        {titre:'Avis',            ouvre:()=>showAllAvis()},
+  corbeille:   {titre:'Corbeille',       ouvre:()=>openCorbeille()}
+};
+let boVue='dash';
+function boMenu(ouvrir){
+  const r=document.getElementById('rail'), v=document.getElementById('rail-voile');
+  if(r)r.classList.toggle('ouvert',!!ouvrir);
+  if(v)v.classList.toggle('ouvert',!!ouvrir);
+}
+function boPastille(cle,n){
+  n=parseInt(n)||0;
+  ['rb-'+cle,'rb-'+cle+'2'].forEach(id=>{
+    const e=document.getElementById(id);
+    if(e){e.textContent=n;e.style.display=n>0?'flex':'none';}
+  });
+}
+function boMarquer(vue){
+  boVue=vue;
+  document.querySelectorAll('[data-bo]').forEach(a=>a.classList.toggle('on',a.dataset.bo===vue));
+}
+function boAller(vue){
+  const e=BO_ECRANS[vue]; if(!e)return;
+  boMarquer(vue); boMenu(false);
+  try{ e.ouvre(); }catch(err){ logAndShowErr&&logAndShowErr(err); }
+}
+/* Les entrées ne sont cliquables qu'une fois la page prête */
+function boBrancher(){
+  document.querySelectorAll('[data-bo]').forEach(a=>{
+    if(a.dataset.lie)return; a.dataset.lie='1';
+    a.addEventListener('click',()=>boAller(a.dataset.bo));
+  });
+}
+/* Les rubriques réservées au compte principal disparaissent pour un propriétaire */
+function boDroits(){
+  const su = (typeof isSuperAdmin==='function') ? isSuperAdmin() : true;
+  document.querySelectorAll('#rail a[data-su]').forEach(a=>{a.style.display = su?'':'none';});
+  const em=document.getElementById('rail-email');
+  if(em && typeof currentEmail==='function') em.textContent=currentEmail()||'';
+}
+/* Entre/sort du mode back-office : c'est lui qui fait apparaître la barre */
+function boActif(oui){
+  document.body.classList.toggle('bo', !!oui);
+  if(oui){ boBrancher(); boDroits(); }
+}
+
+function showAdmin(){boAller('dash');}
+/* L'ancien accueil devient la rubrique « Mes livrets » */
+function openLivrets(){show('admin-screen');boActif(true);boMarquer('admin');applyTenantUI();ll();
+  if(isSuperAdmin())loadAvisBadge();refreshBadges();startRefreshTimer();ensureLib('jspdf').catch(()=>{});}
 // Refresh manuel : recharge les données de l'écran actuel + les pastilles
 async function refreshApp(){
   const btn=document.getElementById('adm-refresh-btn');if(btn){btn.style.opacity='0.5';btn.style.transform='rotate(360deg)';btn.style.transition='transform .5s';}
@@ -3475,8 +3822,7 @@ async function refreshBadges(){
     try{
       const st=await axios.get(`${API}/consommables?select=stock_actuel,seuil_alerte&actif=eq.true`,{headers:hd()});
       const n=(st.data||[]).filter(x=>(parseFloat(x.stock_actuel)||0)<=(parseFloat(x.seuil_alerte)||0)).length;
-      const bd=document.getElementById('stk-badge');
-      if(bd){bd.textContent=n;bd.style.display=n?'inline-flex':'none';}
+      boPastille('stk', n);
     }catch(_e){}
   }catch(_){}
 }
@@ -3486,9 +3832,7 @@ setInterval(()=>{if(document.getElementById('admin-screen')?.style.display!=='no
 async function loadAvisBadge(){
   try{
     const r=await axios.get(`${API}/avis_negatifs?lu=eq.false&select=id`,{headers:hd()});
-    const badge=document.getElementById('avis-badge');
-    if(r.data.length>0){badge.textContent=r.data.length;badge.style.display='flex';}
-    else{badge.style.display='none';}
+    boPastille('avis', r.data.length);
   }catch(e){}
 }
 
@@ -4187,7 +4531,7 @@ async function del(id,nom){
   }catch(e){alert('Suppression impossible.');}
 }
 async function openCorbeille(){
-  show('corbeille-screen');
+  show('corbeille-screen');boActif(true);boMarquer('corbeille');
   const box=document.getElementById('corb-list');if(box)box.innerHTML='<div class="loading">Chargement…</div>';
   try{
     const r=await axios.get(`${API}/livrets?select=id,nom,slug,deleted_at&deleted_at=not.is.null&order=deleted_at.desc`,{headers:hd()});
@@ -4268,6 +4612,7 @@ async function toggleEditorService(i,on){
   catch(e){alert('Erreur : '+(e.response?.data?.message||e.message));}
 }
 async function openEditor(id){
+  document.body.classList.remove('bo');
   clid=id;adr=[];equip=[];serv=[];btnv=[];procEtapes=[];imgFond='';logoUrl='';vimeoPosterUrl='';resetLogoPreview();resetVimeoPosterPreview();
   ['f-nom','f-slug','f-bienvenue','f-vimeo','f-procedure','f-adresse','f-hote','f-lat','f-lng','f-wifi-nom','f-wifi-mdp','f-checkin','f-checkout','f-parking','f-regles','f-poubelles','f-contact-nom','f-contact-tel','f-contact-email','f-cta1-texte','f-cta2-texte','f-cta3-texte','f-lien-avis-google','f-lien-reservation','f-lien-autres'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
   // Consommables : valeurs par défaut d'un nouveau logement (espace stock créé d'office)
