@@ -961,6 +961,7 @@ body{top:0!important}
         <div class="adm-stat"><div class="adm-stat-num gold-text serif" id="stk-alert">—</div><div class="adm-stat-lbl">À commander</div></div>
         <div class="adm-stat"><div class="adm-stat-num money gold-text serif" id="stk-valeur">—</div><div class="adm-stat-lbl">Valeur stock</div></div>
         <div class="adm-stat"><div class="adm-stat-num money gold-text serif" id="stk-mois">—</div><div class="adm-stat-lbl">Coût / mois</div></div>
+        <div class="adm-stat"><div class="adm-stat-num gold-text serif" id="stk-frais">—</div><div class="adm-stat-lbl">Dernier calcul</div></div>
       </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">
@@ -2070,7 +2071,7 @@ async function openStock(){
 }
 async function loadStockData(){
   try{
-    const [c,r,m,lv,fo,rs,vm,vmp,vl]=await Promise.all([
+    const [c,r,m,lv,fo,rs,vm,vmp,vl,sc]=await Promise.all([
       axios.get(`${API}/consommables?select=*&order=ordre.asc`,{headers:hd()}),
       axios.get(`${API}/conso_regles?select=*`,{headers:hd()}),
       axios.get(`${API}/stock_mouvements?select=*&order=date_mouvement.desc&limit=4000`,{headers:hd()}),
@@ -2079,10 +2080,22 @@ async function loadStockData(){
       axios.get(`${API}/sh_reservations?select=booking_id,rental_id,checkin,checkout,adults,children&checkout=gte.${new Date(Date.now()-400*864e5).toISOString().slice(0,10)}&order=checkout.asc&limit=6000`,{headers:hd()}).catch(()=>({data:[]})),
       axios.get(`${API}/v_stock_mois?select=*&order=ym.asc`,{headers:hd()}).catch(()=>({data:[]})),
       axios.get(`${API}/v_stock_mois_produit?select=*`,{headers:hd()}).catch(()=>({data:[]})),
-      axios.get(`${API}/v_stock_logement?select=*&order=cout.desc`,{headers:hd()}).catch(()=>({data:[]}))
+      axios.get(`${API}/v_stock_logement?select=*&order=cout.desc`,{headers:hd()}).catch(()=>({data:[]})),
+      axios.get(`${API}/service_conso?select=*,catalogue_services(id,titre),consommables(id,nom,unite)`,{headers:hd()}).catch(()=>({data:[]}))
     ]);
-    consoData=c.data||[];regleData=r.data||[];mvtData=m.data||[];window.stockLivrets=lv.data||[];window.formatData=fo.data||[];window.stockResas=rs.data||[];window.vMois=vm.data||[];window.vMoisProd=vmp.data||[];window.vLogement=vl.data||[];_refCache=null;
+    consoData=c.data||[];regleData=r.data||[];mvtData=m.data||[];window.stockLivrets=lv.data||[];window.formatData=fo.data||[];window.stockResas=rs.data||[];window.vMois=vm.data||[];window.vMoisProd=vmp.data||[];window.vLogement=vl.data||[];window.svcConso=sc.data||[];_refCache=null;
   }catch(e){logAndShowErr&&logAndShowErr(e);}
+}
+async function saveSvcConso(sid,cid,v){
+  const q=parseFloat(String(v).replace(',','.'));
+  if(!isFinite(q)||q<0){toast('Quantité invalide');return;}
+  try{
+    await axios.patch(`${API}/service_conso?service_id=eq.${sid}&consommable_id=eq.${cid}`,
+      {quantite:q},{headers:{...hd(),'Prefer':'return=minimal'}});
+    const x=(window.svcConso||[]).find(y=>y.service_id===sid&&y.consommable_id===cid);
+    if(x)x.quantite=q;
+    toast('✓ Enregistré'); renderStock();
+  }catch(e){toast('Enregistrement impossible');logAndShowErr&&logAndShowErr(e);}
 }
 function setStockTab(t){stockTab=t;renderStock();}
 
@@ -2218,6 +2231,20 @@ function renderStock(){
   const sa=document.getElementById('stk-alert');if(sa){sa.textContent=k.nbAlert;sa.style.color=k.nbAlert?'#ff6b6b':'';}
   const sv=document.getElementById('stk-valeur');if(sv)sv.textContent=eur(k.valeur);
   const sm=document.getElementById('stk-mois');if(sm)sm.textContent=eur(k.coutMois);
+  // Fraîcheur du calcul : la tâche planifiée tourne toutes les heures, mais si
+  // elle s'arrête un jour il faut que ça se voie sans aller fouiller.
+  const sf=document.getElementById('stk-frais');
+  if(sf){
+    const d=(mvtData||[]).filter(m=>m.type==='sortie'&&m.date_mouvement)
+              .map(m=>m.date_mouvement).sort().pop();
+    if(!d){sf.textContent='—';sf.style.color='';}
+    else{
+      const j=Math.round((new Date().setHours(0,0,0,0)-new Date(d+'T00:00:00'))/864e5);
+      sf.textContent = j<=0?"aujourd'hui" : j===1?'hier' : 'il y a '+j+' j';
+      sf.style.color = j>2 ? '#ff6b6b' : (j>1 ? '#e0a93a' : '');
+      sf.title = 'Dernière sortie enregistrée le '+new Date(d+'T12:00:00').toLocaleDateString('fr-FR');
+    }
+  }
   const bd=document.getElementById('stk-badge');
   if(bd){bd.textContent=k.nbAlert;bd.style.display=k.nbAlert?'inline-flex':'none';}
   const box=document.getElementById('stock-content');if(!box)return;
@@ -2680,6 +2707,37 @@ function stockConfHtml(){
   });
   h+='</table></div>';
   h+='<div style="text-align:center;margin:16px 0"><button class="adm-add-s" onclick="addRegle()">+ Nouvelle règle</button></div>';
+  // Composition des services vendus : un petit déjeuner acheté puise dans le même
+  // stock que celui offert à l'arrivée. Sans cette table, une vente ne déduisait rien.
+  const svc={};
+  (window.svcConso||[]).forEach(x=>{
+    const t=(x.catalogue_services||{}).titre||'—';
+    (svc[t]=svc[t]||[]).push(x);
+  });
+  const titres=Object.keys(svc).sort((a,b)=>a.localeCompare(b,'fr'));
+  h+='<div class="sc" style="margin-top:18px"><div class="sc-title">🧺 Ce que retire un service vendu</div>'+
+     '<p style="font-size:12px;color:var(--muted2);margin:-8px 0 12px;line-height:1.5">'+
+     'Quand un voyageur achète un de ces services, son contenu sort du stock, '+
+     'exactement comme le petit-déjeuner offert à l’arrivée au Nœud Vert et au Majorelle.</p>';
+  if(!titres.length)
+    h+='<div style="font-size:13px;color:var(--muted)">Aucune composition enregistrée.</div>';
+  titres.forEach(t=>{
+    const lignes=svc[t].slice().sort((a,b)=>((a.consommables||{}).nom||'').localeCompare(((b.consommables||{}).nom||''),'fr'));
+    h+='<div style="margin-bottom:13px"><div style="font-weight:600;color:var(--gold2);font-size:13.5px;margin-bottom:5px">'+
+       (t||'').replace(/</g,'&lt;')+'</div>';
+    lignes.forEach(x=>{
+      const c=x.consommables||{};
+      h+='<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--gold3);padding:3px 0">'+
+         '<input class="fa-in" type="number" step="0.5" min="0" value="'+(parseFloat(x.quantite)||0)+'" '+
+         'onchange="saveSvcConso(\''+x.service_id+'\',\''+x.consommable_id+'\',this.value)">'+
+         '<span>'+un(c.unite||'',parseFloat(x.quantite)||0)+' — '+(c.nom||'').replace(/</g,'&lt;')+'</span></div>';
+    });
+    h+='</div>';
+  });
+  h+='<p style="font-size:11.5px;color:var(--muted2);line-height:1.55;margin:4px 0 0">'+
+     'Baguette, beurre, miel, brioche et capsules de café ne figurent pas encore dans '+
+     'l’inventaire : ajoute-les comme consommables si tu veux les suivre aussi.</p></div>';
+
   return h;
 }
 async function saveConsoConf(id,champ,val){
@@ -2820,78 +2878,30 @@ async function editConso(id){
   };
 }
 
-/* ---------- Calcul automatique de la consommation ---------- */
-/* Pour chaque séjour terminé (checkout <= aujourd'hui) d'un logement dont le
-   stock est géré, applique les règles et crée les sorties. L'index unique
-   (booking_id, consommable_id) en base empêche tout double décompte. */
+/* ---------- Calcul automatique de la consommation ----------
+   La logique vit désormais dans Postgres (calc_stock), appelée toutes les heures
+   par une tâche planifiée. Elle était auparavant ici, derrière ce bouton : plus
+   personne ne cliquait et les stocks dataient de sept jours.
+   Ce bouton force simplement un calcul immédiat. */
 async function syncConso(opts){
   opts=opts||{};
-  if(!consoData.length)await loadStockData();
-  if(!regleData.length){toast('Aucune règle de consommation');return;}
-  const depuis=await getConsoStart();
   toast('⏳ Calcul en cours…');
-  const today=new Date().toISOString().slice(0,10);
-  let resas=[];
   try{
-    const r=await axios.get(`${API}/sh_reservations?select=booking_id,rental_id,checkin,checkout,adults,children&checkout=lte.${today}&checkout=gte.${depuis}&order=checkout.desc&limit=4000`,{headers:hd()});
-    resas=r.data||[];
-  }catch(e){logAndShowErr&&logAndShowErr(e);return;}
-  // Séjours déjà comptabilisés
-  const deja=new Set((mvtData||[]).filter(m=>m.type==='sortie'&&m.booking_id).map(m=>String(m.booking_id)));
-  const byRental={};(window.stockLivrets||[]).forEach(l=>{if(l.superhote_rental_id)byRental[String(l.superhote_rental_id)]=l;});
-  const rows=[];const majStock={};
-  let nbRot=0,ignores=0;
-  resas.forEach(rs=>{
-    if(deja.has(String(rs.booking_id)))return;
-    const l=byRental[String(rs.rental_id)];
-    if(!l){ignores++;return;}
-    if(l.conso_geree===false)return;
-    const pers=Math.max(1,(parseInt(rs.adults)||0)+(parseInt(rs.children)||0));
-    const sdb=Math.max(1,parseInt(l.nb_sdb)||1);
-    const nuits=Math.max(1,Math.round((new Date(rs.checkout)-new Date(rs.checkin))/864e5));
-    let compte=false;
-    regleData.forEach(rg=>{
-      // Règle propre à un logement (ex : Domaine du Bois Bézard) : ignorée ailleurs
-      if(rg.livret_id&&rg.livret_id!==l.id)return;
-      // Une règle dédiée remplace la règle générale du même produit pour ce logement
-      if(!rg.livret_id&&regleData.some(x=>x.livret_id===l.id&&x.consommable_id===rg.consommable_id))return;
-      // Conditions
-      if(rg.condition_type==='machine_cafe'&&(l.machine_cafe||'')!==rg.condition_valeur)return;
-      if(rg.condition_type==='lave_vaisselle'&&l.a_lave_vaisselle===false)return;
-      if(rg.condition_type==='lave_linge'&&l.a_lave_linge===false)return;
-      if(rg.condition_type==='petit_dej'&&!l.petit_dej_offert)return;
-      const mult=rg.base==='personne'?pers:(rg.base==='sdb'?sdb:(rg.base==='nuit'?nuits:(rg.base==='personne_nuit'?pers*nuits:1)));
-      const q=(parseFloat(rg.quantite)||0)*mult;
-      if(q<=0)return;
-      const c=consoData.find(x=>x.id===rg.consommable_id);if(!c||c.actif===false)return;
-      rows.push({consommable_id:c.id,type:'sortie',quantite:q,livret_id:l.id,livret_nom:l.nom,
-        booking_id:rs.booking_id,nb_personnes:pers,nb_nuits:nuits,
-        cout:q*(parseFloat(c.cout_unitaire)||0),note:null,date_mouvement:rs.checkout+'T12:00:00Z'});
-      majStock[c.id]=(majStock[c.id]||0)+q;
-      compte=true;
-    });
-    if(compte)nbRot++;
-  });
-  if(!rows.length){toast(ignores?('Rien de nouveau ('+ignores+' séjour(s) sans logement lié)'):'✓ Déjà à jour');return;}
-  // Agrège les lignes d'un même (booking, consommable) — l'index unique l'exige
-  const agg={};
-  rows.forEach(r=>{const k=r.booking_id+'|'+r.consommable_id;
-    if(!agg[k])agg[k]=r;else{agg[k].quantite+=r.quantite;agg[k].cout+=r.cout;}});
-  const finals=Object.values(agg);
-  try{
-    for(let i=0;i<finals.length;i+=200){
-      await axios.post(`${API}/stock_mouvements`,finals.slice(i,i+200),
-        {headers:Object.assign({},hd(),{Prefer:'resolution=ignore-duplicates,return=minimal'})});
-    }
-    // Décrémente les stocks (sauf en mode « historique des coûts »)
-    if(!opts.histoOnly)for(const cid of Object.keys(majStock)){
-      const c=consoData.find(x=>x.id===cid);if(!c)continue;
-      const nv=Math.round(((parseFloat(c.stock_actuel)||0)-majStock[cid])*1000)/1000;
-      await axios.patch(`${API}/consommables?id=eq.${cid}`,{stock_actuel:nv},{headers:hd()});
-    }
-    await loadStockData();renderStock();
-    toast('✓ '+nbRot+' rotation'+(nbRot>1?'s':'')+' comptabilisée'+(nbRot>1?'s':'')+(opts.histoOnly?' (stock inchangé)':'')+(ignores?' · '+ignores+' séjour(s) sans logement lié':''));
-  }catch(e){logAndShowErr&&logAndShowErr(e);}
+    const corps = opts.histoOnly
+      ? {p_depuis: await getConsoStart(), p_maj_stock: false}
+      : {};
+    const r = await axios.post(`${API}/rpc/${opts.histoOnly?'calc_conso':'calc_stock'}`,
+                               corps, {headers:hd()});
+    const d = r.data || {};
+    const sej = d.sejours || (opts.histoOnly ? d : {});
+    const ven = d.ventes || {};
+    const nR = parseInt(sej.rotations)||0, nV = parseInt(ven.commandes)||0;
+    await loadStockData(); renderStock();
+    if(!nR && !nV) toast('✓ Déjà à jour');
+    else toast('✓ '+[nR?nR+' rotation'+(nR>1?'s':''):null,
+                     nV?nV+' vente'+(nV>1?'s':''):null].filter(Boolean).join(' · ')
+               + (opts.histoOnly?' (stock inchangé)':''));
+  }catch(e){toast('Calcul impossible');logAndShowErr&&logAndShowErr(e);}
 }
 
 /* Date de départ du suivi des stocks (table `parametres`, clé conso_start).
