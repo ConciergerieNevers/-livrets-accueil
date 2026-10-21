@@ -2422,8 +2422,12 @@ async function doReappro(cid,silent){
         }
       }
     }
-    await axios.patch(`${API}/consommables?id=eq.${cid}`,{stock_actuel:Math.round(nv*1000)/1000},{headers:hd()});
-    c.stock_actuel=nv;
+    const majStk={stock_actuel:Math.round(nv*1000)/1000};
+    // Un comptage physique fait foi : on date l'inventaire pour que le calcul
+    // automatique ne redéduise pas ce qu'il contient déjà.
+    if(aInv)majStk.inventaire_at=new Date().toISOString();
+    await axios.patch(`${API}/consommables?id=eq.${cid}`,majStk,{headers:hd()});
+    c.stock_actuel=nv; if(aInv)c.inventaire_at=majStk.inventaire_at;
     ['inv-','rea-'].forEach(p=>{const el=document.getElementById(p+cid);if(el)el.value='';});
     if(!silent){
       await loadStockData();renderStock();
@@ -2870,10 +2874,22 @@ async function editConso(id){
       seuil_alerte:parseFloat(String(g('seuil')||'0').replace(',','.'))||0,
       fournisseur:(g('four')||'').trim()||null,conditionnement:(g('cond')||'').trim()||null,
       actif:ov.querySelector('#cf-actif').checked};
+    // Changer « Stock actuel » ici, c'est compter : on le note au journal et on
+    // date l'inventaire, au lieu d'écraser la valeur sans laisser de trace.
+    const ancien=c?(parseFloat(c.stock_actuel)||0):null;
+    const ecart=c?Math.round((p.stock_actuel-ancien)*1000)/1000:0;
+    if(c&&Math.abs(ecart)>=0.001)p.inventaire_at=new Date().toISOString();
     try{
       if(c)await axios.patch(`${API}/consommables?id=eq.${c.id}`,p,{headers:hd()});
       else{p.ordre=(consoData.length?Math.max(...consoData.map(x=>x.ordre||0)):0)+1;await axios.post(`${API}/consommables`,p,{headers:hd()});}
-      ov.remove();await loadStockData();renderStock();toast('✓ Enregistré');
+      if(c&&Math.abs(ecart)>=0.001){
+        await axios.post(`${API}/stock_mouvements`,{consommable_id:c.id,type:'ajustement',quantite:ecart,
+          cout:ecart*(parseFloat(p.cout_unitaire)||0),
+          note:'Stock corrigé à la main : '+qfmt(ancien)+' → '+qfmt(p.stock_actuel)},
+          {headers:hd()}).catch(()=>{});
+      }
+      ov.remove();await loadStockData();renderStock();
+      toast(Math.abs(ecart)>=0.001?('✓ Enregistré · écart '+(ecart>0?'+':'')+qfmt(ecart)+' noté'):'✓ Enregistré');
     }catch(e){logAndShowErr&&logAndShowErr(e);}
   };
 }
