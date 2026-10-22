@@ -1874,7 +1874,11 @@ async function askReset(){
   }
   if(!confirm('Envoyer un lien de réinitialisation à '+RESET_EMAIL+' ?'))return;
   try{
-    await axios.post(`${AUTH}/recover`,
+    // Sans redirect_to, Supabase renvoie vers la « Site URL » du projet, qui peut
+    // pointer sur un ancien domaine : le lien s'ouvre alors sur une page vide.
+    // On impose le retour là d'où la demande est partie.
+    const retour = location.origin + location.pathname;
+    await axios.post(`${AUTH}/recover?redirect_to=${encodeURIComponent(retour)}`,
       {email:RESET_EMAIL,gotrue_meta_security:{}},
       {headers:{'Content-Type':'application/json','apikey':KEY}});
     alert('Lien envoyé à '+RESET_EMAIL+'.\n\nOuvrez votre boîte mail et cliquez dessus : le formulaire de nouveau mot de passe s’ouvrira ici même. Le lien est valable 1 heure.');
