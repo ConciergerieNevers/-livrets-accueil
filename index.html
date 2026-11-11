@@ -955,6 +955,11 @@ body{top:0!important}
       <button class="adm-add" onclick="achNewListe(true)" title="Liste pré-remplie complète">✨ Liste type T2 · 4 pers</button>
       <button class="adm-logout" onclick="achDelListe()" title="Supprimer la liste">🗑</button>
     </div>
+    <div id="ach-creator" style="display:none;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;background:var(--card);border:1px solid var(--border-gold);border-radius:12px;padding:12px">
+      <input id="ach-creator-nom" placeholder="Nom de la liste (ex : T2 rue des Perrières)" style="flex:1;min-width:180px;padding:10px 12px;border-radius:10px;border:1px solid var(--border-gold);background:transparent;color:var(--gold3)" onkeydown="if(event.key==='Enter')achCreateConfirm()">
+      <button class="adm-add" onclick="achCreateConfirm()">Créer</button>
+      <button class="adm-logout" onclick="document.getElementById('ach-creator').style.display='none'">Annuler</button>
+    </div>
     <div id="ach-progress" style="display:none;margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span id="ach-prog-txt"></span><span id="ach-prog-tot"></span></div>
       <div style="height:10px;border-radius:999px;background:var(--card);border:1px solid var(--border-gold);overflow:hidden"><div id="ach-prog-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#c9a45c,#e8cd8a);transition:width .3s"></div></div>
@@ -4119,34 +4124,60 @@ async function achOpenListe(id){
   const r=await axios.get(`${API}/achats_items?liste_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()});
   achItems=r.data||[]; achRender();
 }
-async function achNewListe(seed){
-  const nom=prompt(seed?'Nom de la liste (ex : T2 rue des Perrières)':'Nom de la nouvelle liste');
-  if(!nom)return;
-  const r=await axios.post(`${API}/achats_listes`,{nom},{headers:{...hd(),'Prefer':'return=representation'}});
-  const liste=r.data[0]; achListeId=liste.id;
-  if(seed){
-    const rows=ACH_TEMPLATE_T2.map((t,i)=>({liste_id:liste.id,piece:t[0],nom:t[1],qty:t[2],note:t[3]||null,ordre:i}));
-    for(let i=0;i<rows.length;i+=50){await axios.post(`${API}/achats_items`,rows.slice(i,i+50),{headers:hd()});}
-  }
-  await achLoadListes(); toast&&toast('Liste créée');
+let achSeedFlag=false;
+function achNewListe(seed){
+  achSeedFlag=!!seed;
+  const c=document.getElementById('ach-creator');
+  c.style.display='flex';
+  const inp=document.getElementById('ach-creator-nom');
+  inp.value=''; inp.focus();
 }
-async function achDelListe(){
+async function achCreateConfirm(){
+  const nom=document.getElementById('ach-creator-nom').value.trim();
+  if(!nom){toast('Donne un nom à la liste');return;}
+  try{
+    const r=await axios.post(`${API}/achats_listes`,{nom},{headers:{...hd(),'Prefer':'return=representation'}});
+    const liste=r.data[0]; achListeId=liste.id;
+    document.getElementById('ach-creator').style.display='none';
+    if(achSeedFlag){
+      toast('Création des articles…');
+      const rows=ACH_TEMPLATE_T2.map((t,i)=>({liste_id:liste.id,piece:t[0],nom:t[1],qty:t[2],note:t[3]||null,ordre:i}));
+      for(let i=0;i<rows.length;i+=50){await axios.post(`${API}/achats_items`,rows.slice(i,i+50),{headers:hd()});}
+    }
+    await achLoadListes();
+    toast('Liste créée ✓');
+  }catch(e){
+    const msg=(e.response&&e.response.data&&(e.response.data.message||e.response.data.msg))||e.message||'erreur inconnue';
+    toast('⚠️ '+msg);
+    console.error('achats:',e);
+  }
+}
+let achDelArm=null;
+async function achDelListe(btn){
   if(!achListeId)return;
-  const l=achListes.find(x=>x.id===achListeId);
-  if(!confirm(`Supprimer la liste « ${(l&&l.nom)||''} » et tous ses articles ?`))return;
-  await axios.delete(`${API}/achats_listes?id=eq.${achListeId}`,{headers:hd()});
-  achListeId=null; await achLoadListes();
-  if(!achListes.length)document.getElementById('ach-content').innerHTML='<div class="loading">Sélectionne ou crée une liste…</div>';
+  if(achDelArm!==achListeId){
+    achDelArm=achListeId; toast('Appuie encore pour supprimer la liste');
+    setTimeout(()=>{achDelArm=null;},3500); return;
+  }
+  achDelArm=null;
+  try{
+    await axios.delete(`${API}/achats_listes?id=eq.${achListeId}`,{headers:hd()});
+    achListeId=null; achItems=[]; await achLoadListes();
+    if(!achListes.length)document.getElementById('ach-content').innerHTML='<div class="loading">Sélectionne ou crée une liste…</div>';
+    toast('Liste supprimée');
+  }catch(e){toast('⚠️ '+((e.response&&e.response.data&&e.response.data.message)||e.message));}
 }
 async function achAddItem(){
   if(!achListeId){alert('Crée d’abord une liste.');return;}
   const nom=document.getElementById('ach-new-nom').value.trim(); if(!nom)return;
   const piece=document.getElementById('ach-new-piece').value.trim()||'Divers';
   const qty=parseInt(document.getElementById('ach-new-qty').value)||1;
-  const r=await axios.post(`${API}/achats_items`,{liste_id:achListeId,piece,nom,qty,ordre:achItems.length},{headers:{...hd(),'Prefer':'return=representation'}});
-  achItems.push(r.data[0]);
-  document.getElementById('ach-new-nom').value='';
-  achRender();
+  try{
+    const r=await axios.post(`${API}/achats_items`,{liste_id:achListeId,piece,nom,qty,ordre:achItems.length},{headers:{...hd(),'Prefer':'return=representation'}});
+    achItems.push(r.data[0]);
+    document.getElementById('ach-new-nom').value='';
+    achRender();
+  }catch(e){toast('⚠️ '+((e.response&&e.response.data&&e.response.data.message)||e.message));}
 }
 async function achToggle(id,val){
   const it=achItems.find(i=>i.id===id); if(!it)return; it.achete=val;
