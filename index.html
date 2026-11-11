@@ -960,6 +960,10 @@ body{top:0!important}
       <button class="adm-add" onclick="achCreateConfirm()">Créer</button>
       <button class="adm-logout" onclick="document.getElementById('ach-creator').style.display='none'">Annuler</button>
     </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button id="ach-mode-piece" class="adm-add" style="flex:1" onclick="achSetMode('piece')">🏠 Par pièce</button>
+      <button id="ach-mode-mag" class="adm-logout" style="flex:1" onclick="achSetMode('magasin')">🏬 Par magasin</button>
+    </div>
     <div id="ach-progress" style="display:none;margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span id="ach-prog-txt"></span><span id="ach-prog-tot"></span></div>
       <div style="height:10px;border-radius:999px;background:var(--card);border:1px solid var(--border-gold);overflow:hidden"><div id="ach-prog-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#c9a45c,#e8cd8a);transition:width .3s"></div></div>
@@ -4257,48 +4261,72 @@ function achProgress(){
   document.getElementById('ach-prog-bar').style.width=(tot?Math.round(done/tot*100):0)+'%';
 }
 let achPiecesIdx=[];
+let achMode='piece';
+function achSetMode(m){
+  achMode=m;
+  const bp=document.getElementById('ach-mode-piece'), bm=document.getElementById('ach-mode-mag');
+  if(bp&&bm){bp.className=m==='piece'?'adm-add':'adm-logout';bm.className=m==='magasin'?'adm-add':'adm-logout';bp.style.flex=bm.style.flex='1';}
+  achRender();
+}
+function achMagasinDe(it){
+  if(!it.lien)return '📦 Sans magasin';
+  if(/^https?:\/\//i.test(it.lien))return '🌐 '+it.lien.replace(/^https?:\/\/(www\.)?/i,'').split('/')[0].toLowerCase();
+  return '🏬 '+it.lien.trim();
+}
 function achRender(){
   achPiecesIdx=[];
   const box=document.getElementById('ach-content'); if(!box)return;
   if(!achItems.length){box.innerHTML='<div class="loading">Liste vide — ajoute des articles ou utilise ✨ Liste type.</div>';achProgress();return;}
   const esc=s=>(''+(s||'')).replace(/</g,'&lt;');
-  const pieces=[...new Set([...ACH_PIECES_ORDRE.filter(p=>achItems.some(i=>i.piece===p)),...achItems.map(i=>i.piece)])];
+  let groupes, cleDe;
+  if(achMode==='magasin'){
+    cleDe=achMagasinDe;
+    const set=[...new Set(achItems.map(cleDe))];
+    groupes=set.filter(g=>g!=='📦 Sans magasin').sort((a,b)=>a.localeCompare(b,'fr'));
+    if(set.includes('📦 Sans magasin'))groupes.push('📦 Sans magasin');
+  }else{
+    cleDe=it=>it.piece;
+    groupes=[...new Set([...ACH_PIECES_ORDRE.filter(pc=>achItems.some(i=>i.piece===pc)),...achItems.map(i=>i.piece)])];
+  }
   let h='';
-  for(const pc of pieces){
-    const its=achItems.filter(i=>i.piece===pc); if(!its.length)continue;
+  for(const gp of groupes){
+    const its=achItems.filter(i=>cleDe(i)===gp); if(!its.length)continue;
     const done=its.filter(i=>i.achete).length;
     h+=`<div style="background:var(--card);border:1px solid var(--border-gold);border-radius:14px;margin-bottom:12px;overflow:hidden">
-      <div style="padding:11px 14px;font-weight:700;color:var(--gold2);display:flex;justify-content:space-between;align-items:center"><span>${esc(pc)}</span><span style="font-size:12px;opacity:.75">${done}/${its.length}</span></div>`;
+      <div style="padding:11px 14px;font-weight:700;color:var(--gold2);display:flex;justify-content:space-between;align-items:center"><span>${esc(gp)}</span><span style="font-size:12px;opacity:.75">${done}/${its.length}</span></div>`;
     for(const it of its){
-      const lienHtml = it.lien
+      const lienHtml = (achMode!=='magasin'&&it.lien)
         ? (/^https?:\/\//i.test(it.lien)
             ? `<a href="${esc(it.lien)}" target="_blank" rel="noopener" style="font-size:11.5px;color:#c9a45c;text-decoration:none">🔗 ${esc(it.lien.replace(/^https?:\/\/(www\.)?/i,'').split('/')[0])}</a>`
             : `<span style="font-size:11.5px;color:#c9a45c">📍 ${esc(it.lien)}</span>`)
-        : '';
+        : (achMode==='magasin'&&it.lien&&/^https?:\/\//i.test(it.lien)?`<a href="${esc(it.lien)}" target="_blank" rel="noopener" style="font-size:11.5px;color:#c9a45c;text-decoration:none">🔗 ouvrir la page produit</a>`:'');
+      const pieceTag = achMode==='magasin'?`<span style="font-size:11px;opacity:.6"> · ${esc(it.piece)}</span>`:'';
       h+=`<div style="padding:8px 14px;border-top:1px solid rgba(255,255,255,.05);${it.achete?'opacity:.45':''}">
         <div style="display:flex;align-items:center;gap:9px">
         <input type="checkbox" ${it.achete?'checked':''} onchange="achToggle('${it.id}',this.checked)" style="width:19px;height:19px;accent-color:#c9a45c;flex:none">
-        <div style="flex:1;min-width:0" id="ach-nom-${it.id}"><span onclick="achEditNom('${it.id}')" style="cursor:pointer;${it.achete?'text-decoration:line-through':''}">${esc(it.nom)}</span>${it.note?`<span style="font-size:11px;opacity:.6"> · ${esc(it.note)}</span>`:''}${lienHtml?`<div>${lienHtml}</div>`:''}</div>
+        <div style="flex:1;min-width:0" id="ach-nom-${it.id}"><span onclick="achEditNom('${it.id}')" style="cursor:pointer;${it.achete?'text-decoration:line-through':''}">${esc(it.nom)}</span>${pieceTag}${it.note?`<span style="font-size:11px;opacity:.6"> · ${esc(it.note)}</span>`:''}${lienHtml?`<div>${lienHtml}</div>`:''}</div>
         <button onclick="achEditLien('${it.id}')" title="Lien ou magasin" style="background:none;border:0;cursor:pointer;font-size:14px;flex:none;opacity:${it.lien?1:.45}">🔗</button>
         <input type="number" min="1" value="${it.qty||1}" onchange="achField('${it.id}','qty',this.value)" title="Quantité" style="width:52px;padding:5px;border-radius:8px;border:1px solid var(--border-gold);background:transparent;color:var(--gold3);text-align:center;flex:none">
         <input value="${it.prix!=null?it.prix:''}" onchange="achField('${it.id}','prix',this.value)" placeholder="€" title="Prix unitaire" style="width:62px;padding:5px;border-radius:8px;border:1px solid var(--border-gold);background:transparent;color:var(--gold3);text-align:center;flex:none">
         <button onclick="achDelItem('${it.id}')" style="background:none;border:0;color:#b66;cursor:pointer;font-size:15px;flex:none">✕</button>
         </div>
         <div id="ach-lien-${it.id}" style="display:none;margin:7px 0 2px 28px;gap:7px" class="ach-lien-edit">
-          <input id="ach-lien-inp-${it.id}" value="${esc(it.lien||'')}" placeholder="https://… ou nom du magasin (Ikea, Leroy Merlin…)" style="flex:1;padding:7px 10px;border-radius:9px;border:1px solid var(--border-gold);background:transparent;color:var(--gold3);font-size:13px" onkeydown="if(event.key==='Enter')achSaveLien('${it.id}')">
+          <input id="ach-lien-inp-${it.id}" value="${esc(it.lien||'')}" placeholder="https://… ou nom du magasin (Ikea, Brico Dépôt…)" style="flex:1;padding:7px 10px;border-radius:9px;border:1px solid var(--border-gold);background:transparent;color:var(--gold3);font-size:13px" onkeydown="if(event.key==='Enter')achSaveLien('${it.id}')">
           <button class="adm-add" style="padding:7px 13px;font-size:13px" onclick="achSaveLien('${it.id}')">OK</button>
         </div>
       </div>`;
     }
-    const pidx=achPiecesIdx.push(pc)-1;
-    h+=`<div style="padding:7px 14px;border-top:1px solid rgba(255,255,255,.05)">
-      <button onclick="achAddInToggle(${pidx})" style="background:none;border:0;color:var(--gold2);cursor:pointer;font-size:13px;padding:2px 0">+ Ajouter un article</button>
-      <div id="ach-addin-${pidx}" style="display:none;gap:7px;margin-top:6px">
-        <input id="ach-addin-nom-${pidx}" placeholder="Nom de l\u2019article" style="flex:1;padding:7px 10px;border-radius:9px;border:1px solid var(--border-gold);background:transparent;color:var(--gold3);font-size:13px" onkeydown="if(event.key==='Enter')achAddIn(${pidx})">
-        <input id="ach-addin-qty-${pidx}" type="number" min="1" value="1" style="width:52px;padding:7px;border-radius:9px;border:1px solid var(--border-gold);background:transparent;color:var(--gold3);text-align:center">
-        <button class="adm-add" style="padding:7px 13px;font-size:13px" onclick="achAddIn(${pidx})">OK</button>
-      </div>
-    </div>`;
+    if(achMode==='piece'){
+      const pidx=achPiecesIdx.push(gp)-1;
+      h+=`<div style="padding:7px 14px;border-top:1px solid rgba(255,255,255,.05)">
+        <button onclick="achAddInToggle(${pidx})" style="background:none;border:0;color:var(--gold2);cursor:pointer;font-size:13px;padding:2px 0">+ Ajouter un article</button>
+        <div id="ach-addin-${pidx}" style="display:none;gap:7px;margin-top:6px">
+          <input id="ach-addin-nom-${pidx}" placeholder="Nom de l\u2019article" style="flex:1;padding:7px 10px;border-radius:9px;border:1px solid var(--border-gold);background:transparent;color:var(--gold3);font-size:13px" onkeydown="if(event.key==='Enter')achAddIn(${pidx})">
+          <input id="ach-addin-qty-${pidx}" type="number" min="1" value="1" style="width:52px;padding:7px;border-radius:9px;border:1px solid var(--border-gold);background:transparent;color:var(--gold3);text-align:center">
+          <button class="adm-add" style="padding:7px 13px;font-size:13px" onclick="achAddIn(${pidx})">OK</button>
+        </div>
+      </div>`;
+    }
     h+='</div>';
   }
   box.innerHTML=h; achProgress();
