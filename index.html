@@ -4194,6 +4194,22 @@ async function achDelItem(id){
   achItems=achItems.filter(i=>i.id!==id); achRender();
   await axios.delete(`${API}/achats_items?id=eq.${id}`,{headers:hd()});
 }
+function achEditLien(id){
+  const d=document.getElementById('ach-lien-'+id); if(!d)return;
+  const vis=d.style.display!=='none';
+  document.querySelectorAll('.ach-lien-edit').forEach(e=>e.style.display='none');
+  if(!vis){d.style.display='flex';const i=document.getElementById('ach-lien-inp-'+id);i.focus();}
+}
+async function achSaveLien(id){
+  const inp=document.getElementById('ach-lien-inp-'+id); if(!inp)return;
+  let v=inp.value.trim();
+  if(v&&/^www\./i.test(v))v='https://'+v;
+  const it=achItems.find(i=>i.id===id); if(it)it.lien=v||null;
+  try{
+    await axios.patch(`${API}/achats_items?id=eq.${id}`,{lien:v||null},{headers:hd()});
+    achRender(); toast(v?'Lien enregistré ✓':'Lien retiré');
+  }catch(e){toast('⚠️ '+((e.response&&e.response.data&&e.response.data.message)||e.message));}
+}
 function achProgress(){
   const tot=achItems.length, done=achItems.filter(i=>i.achete).length;
   const dep=achItems.filter(i=>i.achete&&i.prix).reduce((s,i)=>s+(parseFloat(i.prix)||0)*(i.qty||1),0);
@@ -4216,12 +4232,24 @@ function achRender(){
     h+=`<div style="background:var(--card);border:1px solid var(--border-gold);border-radius:14px;margin-bottom:12px;overflow:hidden">
       <div style="padding:11px 14px;font-weight:700;color:var(--gold2);display:flex;justify-content:space-between;align-items:center"><span>${esc(pc)}</span><span style="font-size:12px;opacity:.75">${done}/${its.length}</span></div>`;
     for(const it of its){
-      h+=`<div style="display:flex;align-items:center;gap:9px;padding:8px 14px;border-top:1px solid rgba(255,255,255,.05);${it.achete?'opacity:.45':''}">
+      const lienHtml = it.lien
+        ? (/^https?:\/\//i.test(it.lien)
+            ? `<a href="${esc(it.lien)}" target="_blank" rel="noopener" style="font-size:11.5px;color:#c9a45c;text-decoration:none">🔗 ${esc(it.lien.replace(/^https?:\/\/(www\.)?/i,'').split('/')[0])}</a>`
+            : `<span style="font-size:11.5px;color:#c9a45c">📍 ${esc(it.lien)}</span>`)
+        : '';
+      h+=`<div style="padding:8px 14px;border-top:1px solid rgba(255,255,255,.05);${it.achete?'opacity:.45':''}">
+        <div style="display:flex;align-items:center;gap:9px">
         <input type="checkbox" ${it.achete?'checked':''} onchange="achToggle('${it.id}',this.checked)" style="width:19px;height:19px;accent-color:#c9a45c;flex:none">
-        <div style="flex:1;min-width:0"><span style="${it.achete?'text-decoration:line-through':''}">${esc(it.nom)}</span>${it.note?`<span style="font-size:11px;opacity:.6"> · ${esc(it.note)}</span>`:''}</div>
+        <div style="flex:1;min-width:0"><span style="${it.achete?'text-decoration:line-through':''}">${esc(it.nom)}</span>${it.note?`<span style="font-size:11px;opacity:.6"> · ${esc(it.note)}</span>`:''}${lienHtml?`<div>${lienHtml}</div>`:''}</div>
+        <button onclick="achEditLien('${it.id}')" title="Lien ou magasin" style="background:none;border:0;cursor:pointer;font-size:14px;flex:none;opacity:${it.lien?1:.45}">🔗</button>
         <input type="number" min="1" value="${it.qty||1}" onchange="achField('${it.id}','qty',this.value)" title="Quantité" style="width:52px;padding:5px;border-radius:8px;border:1px solid var(--border-gold);background:transparent;color:var(--gold3);text-align:center;flex:none">
         <input value="${it.prix!=null?it.prix:''}" onchange="achField('${it.id}','prix',this.value)" placeholder="€" title="Prix unitaire" style="width:62px;padding:5px;border-radius:8px;border:1px solid var(--border-gold);background:transparent;color:var(--gold3);text-align:center;flex:none">
         <button onclick="achDelItem('${it.id}')" style="background:none;border:0;color:#b66;cursor:pointer;font-size:15px;flex:none">✕</button>
+        </div>
+        <div id="ach-lien-${it.id}" style="display:none;margin:7px 0 2px 28px;gap:7px" class="ach-lien-edit">
+          <input id="ach-lien-inp-${it.id}" value="${esc(it.lien||'')}" placeholder="https://… ou nom du magasin (Ikea, Leroy Merlin…)" style="flex:1;padding:7px 10px;border-radius:9px;border:1px solid var(--border-gold);background:transparent;color:var(--gold3);font-size:13px" onkeydown="if(event.key==='Enter')achSaveLien('${it.id}')">
+          <button class="adm-add" style="padding:7px 13px;font-size:13px" onclick="achSaveLien('${it.id}')">OK</button>
+        </div>
       </div>`;
     }
     h+='</div>';
