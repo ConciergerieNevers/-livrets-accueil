@@ -953,6 +953,7 @@ body{top:0!important}
       <select id="ach-sel" onchange="achOpenListe(this.value)" style="flex:1;min-width:200px;padding:11px 12px;border-radius:12px;border:1px solid var(--border-gold);background:var(--card);color:var(--gold3);font-size:14px"></select>
       <button class="adm-add" onclick="achNewListe()">+ Nouvelle liste</button>
       <button class="adm-add" onclick="achNewListe(true)" title="Liste pré-remplie complète">✨ Liste type T2 · 4 pers</button>
+      <button class="adm-logout" onclick="achPdf()" title="Exporter la liste en PDF">📄 PDF</button>
       <button class="adm-logout" onclick="achDelListe()" title="Supprimer la liste">🗑</button>
     </div>
     <div id="ach-creator" style="display:none;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;background:var(--card);border:1px solid var(--border-gold);border-radius:12px;padding:12px">
@@ -4250,6 +4251,69 @@ async function achAddIn(pidx){
     achItems.push(r.data[0]); achRender(); toast('Ajouté ✓');
   }catch(e){toast('⚠️ '+((e.response&&e.response.data&&e.response.data.message)||e.message));}
 }
+async function achPdf(){
+  if(!achListeId||!achItems.length){toast('Liste vide');return;}
+  toast('Création du PDF…');
+  try{
+    await Promise.all([ensureLib('jspdf'),ensureLib('html2canvas')]);
+    const l=achListes.find(z=>z.id===achListeId)||{};
+    const esc=s=>(''+(s||'')).replace(/</g,'&lt;');
+    const groupes={}, ordre=[];
+    const cle=achMode==='magasin'?achMagasinDe:(it=>it.piece);
+    const listeG=achMode==='magasin'
+      ? [...new Set(achItems.map(cle))].sort((a,b)=>(a==='📦 Sans magasin')-(b==='📦 Sans magasin')||a.localeCompare(b,'fr'))
+      : [...new Set([...ACH_PIECES_ORDRE.filter(pc=>achItems.some(i=>i.piece===pc)),...achItems.map(i=>i.piece)])];
+    const tot=achItems.length, done=achItems.filter(i=>i.achete).length;
+    const est=achItems.filter(i=>i.prix).reduce((s,i)=>s+(parseFloat(i.prix)||0)*(i.qty||1),0);
+    let hh=`<div style="font-family:Helvetica,Arial,sans-serif;width:760px;background:#fff;color:#1C2733;padding:34px 38px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:3px solid #F23A16;padding-bottom:10px">
+        <div><div style="font-size:23px;font-weight:800;color:#F23A16">BE NOMADS — Liste d'achats</div>
+        <div style="font-size:15px;margin-top:3px"><b>${esc(l.nom||'')}</b> · ${achMode==='magasin'?'classée par magasin':'classée par pièce'}</div></div>
+        <div style="font-size:11px;color:#777">${new Date().toLocaleDateString('fr-FR')}</div>
+      </div>
+      <div style="font-size:12.5px;margin:9px 0 14px;color:#444">${done}/${tot} articles achetés${est?` · budget estimé ${est.toFixed(0)} €`:''}</div>`;
+    for(const gp of listeG){
+      const its=achItems.filter(i=>cle(i)===gp); if(!its.length)continue;
+      hh+=`<div style="font-size:14px;font-weight:800;color:#F23A16;margin:13px 0 5px">${esc(gp)}</div>`;
+      for(const it of its){
+        const lien=it.lien?(/^https?:\/\//i.test(it.lien)?it.lien.replace(/^https?:\/\/(www\.)?/i,'').split('/')[0]:it.lien):'';
+        hh+=`<div style="display:flex;gap:8px;font-size:11.8px;padding:2.5px 0;border-bottom:0.5px solid #eee">
+          <div style="width:14px">${it.achete?'☑':'☐'}</div>
+          <div style="flex:1;${it.achete?'text-decoration:line-through;color:#999':''}">${esc(it.nom)}${achMode==='magasin'?` <span style="color:#999;font-size:10px">· ${esc(it.piece)}</span>`:''}${(achMode!=='magasin'&&lien)?` <span style="color:#b8860b;font-size:10px">· ${esc(lien)}</span>`:''}</div>
+          <div style="width:40px;text-align:center">×${it.qty||1}</div>
+          <div style="width:58px;text-align:right">${it.prix!=null?((parseFloat(it.prix)||0)*(it.qty||1)).toFixed(0)+' €':''}</div>
+        </div>`;
+      }
+    }
+    hh+=`<div style="margin-top:14px;font-size:10px;color:#999;text-align:center">★ Feel free to be nomads ★</div></div>`;
+    const host=document.createElement('div');
+    host.style.cssText='position:fixed;left:-9999px;top:0;z-index:-1';
+    host.innerHTML=hh; document.body.appendChild(host);
+    await new Promise(r=>setTimeout(r,120));
+    const cv=await html2canvas(host.firstElementChild,{scale:2,backgroundColor:'#ffffff',logging:false});
+    document.body.removeChild(host);
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({unit:'mm',format:'a4',orientation:'portrait'});
+    const pw=210, ph=297;
+    const pagePx=Math.floor(cv.width*ph/pw);
+    let y=0, first=true;
+    while(y<cv.height){
+      const h=Math.min(pagePx,cv.height-y);
+      const c2=document.createElement('canvas'); c2.width=cv.width; c2.height=h;
+      c2.getContext('2d').drawImage(cv,0,y,cv.width,h,0,0,cv.width,h);
+      if(!first)pdf.addPage();
+      pdf.addImage(c2.toDataURL('image/jpeg',0.92),'JPEG',0,0,pw,h*pw/cv.width,undefined,'FAST');
+      first=false; y+=h;
+    }
+    const nf=`liste-achats-${(l.nom||'liste').replace(/\s+/g,'-').toLowerCase()}.pdf`;
+    if(navigator.share&&/iPhone|iPad|Android/i.test(navigator.userAgent)){
+      const b=pdf.output('blob');
+      try{await navigator.share({files:[new File([b],nf,{type:'application/pdf'})],title:nf});toast('✓ PDF partagé');return;}catch(_e){}
+    }
+    pdf.save(nf);
+    toast('✓ PDF téléchargé');
+  }catch(e){toast('⚠️ Erreur PDF : '+(e.message||e));console.error(e);}
+}
 function achProgress(){
   const tot=achItems.length, done=achItems.filter(i=>i.achete).length;
   const dep=achItems.filter(i=>i.achete&&i.prix).reduce((s,i)=>s+(parseFloat(i.prix)||0)*(i.qty||1),0);
@@ -4293,7 +4357,7 @@ function achRender(){
     const its=achItems.filter(i=>cleDe(i)===gp); if(!its.length)continue;
     const done=its.filter(i=>i.achete).length;
     h+=`<div style="background:var(--card);border:1px solid var(--border-gold);border-radius:14px;margin-bottom:12px;overflow:hidden">
-      <div style="padding:11px 14px;font-weight:700;color:var(--gold2);display:flex;justify-content:space-between;align-items:center"><span>${esc(gp)}</span><span style="font-size:12px;opacity:.75">${done}/${its.length}</span></div>`;
+      <div style="padding:11px 14px;font-weight:700;color:var(--gold2);display:flex;justify-content:space-between;align-items:center"><span>${esc(gp)}</span><span style="font-size:12px;opacity:.75">${(()=>{const st=its.filter(i=>i.prix).reduce((s,i)=>s+(parseFloat(i.prix)||0)*(i.qty||1),0);return (st?st.toFixed(0)+' € · ':'')+done+'/'+its.length;})()}</span></div>`;
     for(const it of its){
       const lienHtml = (achMode!=='magasin'&&it.lien)
         ? (/^https?:\/\//i.test(it.lien)
@@ -4329,6 +4393,15 @@ function achRender(){
     }
     h+='</div>';
   }
+  const totEst=achItems.filter(i=>i.prix).reduce((s,i)=>s+(parseFloat(i.prix)||0)*(i.qty||1),0);
+  const totDep=achItems.filter(i=>i.achete&&i.prix).reduce((s,i)=>s+(parseFloat(i.prix)||0)*(i.qty||1),0);
+  const sansPrix=achItems.filter(i=>i.prix==null).length;
+  h+=`<div style="background:var(--card);border:1.5px solid var(--gold2);border-radius:14px;padding:14px 16px;margin:4px 0 18px">
+    <div style="display:flex;justify-content:space-between;font-size:14px;padding:3px 0"><span>Total estimé</span><b style="color:var(--gold2)">${totEst.toFixed(2).replace('.',',')} €</b></div>
+    <div style="display:flex;justify-content:space-between;font-size:14px;padding:3px 0"><span>Déjà dépensé (coché)</span><b>${totDep.toFixed(2).replace('.',',')} €</b></div>
+    <div style="display:flex;justify-content:space-between;font-size:14px;padding:3px 0;border-top:1px solid rgba(255,255,255,.08);margin-top:4px;padding-top:8px"><span>Reste à acheter</span><b style="color:var(--gold2)">${(totEst-totDep).toFixed(2).replace('.',',')} €</b></div>
+    ${sansPrix?`<div style="font-size:11px;opacity:.55;margin-top:6px">${sansPrix} article(s) sans prix — non comptés dans le total</div>`:''}
+  </div>`;
   box.innerHTML=h; achProgress();
 }
 
