@@ -4193,7 +4193,7 @@ async function achField(id,field,val){
   const it=achItems.find(i=>i.id===id); if(!it)return;
   it[field]=(field==='qty')?(parseInt(val)||1):(field==='prix'?(val===''?null:parseFloat((''+val).replace(',','.'))):val);
   await axios.patch(`${API}/achats_items?id=eq.${id}`,{[field]:it[field]},{headers:hd()});
-  achProgress();
+  achRender();
 }
 async function achDelItem(id){
   achItems=achItems.filter(i=>i.id!==id); achRender();
