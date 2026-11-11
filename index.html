@@ -4210,6 +4210,42 @@ async function achSaveLien(id){
     achRender(); toast(v?'Lien enregistré ✓':'Lien retiré');
   }catch(e){toast('⚠️ '+((e.response&&e.response.data&&e.response.data.message)||e.message));}
 }
+function achEditNom(id){
+  const it=achItems.find(i=>i.id===id); const box=document.getElementById('ach-nom-'+id);
+  if(!it||!box||box.querySelector('input'))return;
+  const esc2=s=>(''+(s||'')).replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  box.innerHTML=`<input id="ach-nom-inp-${id}" value="${esc2(it.nom)}" style="width:100%;padding:6px 9px;border-radius:9px;border:1px solid var(--border-gold);background:transparent;color:var(--gold3);font-size:14px">`;
+  const inp=document.getElementById('ach-nom-inp-'+id);
+  inp.focus(); inp.setSelectionRange(inp.value.length,inp.value.length);
+  let done=false;
+  const save=async()=>{
+    if(done)return; done=true;
+    const v=inp.value.trim();
+    if(v&&v!==it.nom){
+      it.nom=v;
+      try{await axios.patch(`${API}/achats_items?id=eq.${id}`,{nom:v},{headers:hd()});}
+      catch(e){toast('⚠️ '+((e.response&&e.response.data&&e.response.data.message)||e.message));}
+    }
+    achRender();
+  };
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')save();if(e.key==='Escape'){done=true;achRender();}});
+  inp.addEventListener('blur',save);
+}
+function achAddInToggle(pidx){
+  const d=document.getElementById('ach-addin-'+pidx); if(!d)return;
+  d.style.display=d.style.display==='none'?'flex':'none';
+  if(d.style.display==='flex')document.getElementById('ach-addin-nom-'+pidx).focus();
+}
+async function achAddIn(pidx){
+  const piece=achPiecesIdx[pidx]; if(!piece)return;
+  const inp=document.getElementById('ach-addin-nom-'+pidx);
+  const nom=(inp.value||'').trim(); if(!nom){toast('Nom de l\u2019article ?');return;}
+  const qty=parseInt(document.getElementById('ach-addin-qty-'+pidx).value)||1;
+  try{
+    const r=await axios.post(`${API}/achats_items`,{liste_id:achListeId,piece,nom,qty,ordre:achItems.length},{headers:{...hd(),'Prefer':'return=representation'}});
+    achItems.push(r.data[0]); achRender(); toast('Ajouté ✓');
+  }catch(e){toast('⚠️ '+((e.response&&e.response.data&&e.response.data.message)||e.message));}
+}
 function achProgress(){
   const tot=achItems.length, done=achItems.filter(i=>i.achete).length;
   const dep=achItems.filter(i=>i.achete&&i.prix).reduce((s,i)=>s+(parseFloat(i.prix)||0)*(i.qty||1),0);
@@ -4220,7 +4256,9 @@ function achProgress(){
   document.getElementById('ach-prog-tot').textContent=est?`Dépensé : ${dep.toFixed(0)} € · Budget estimé : ${est.toFixed(0)} €`:'';
   document.getElementById('ach-prog-bar').style.width=(tot?Math.round(done/tot*100):0)+'%';
 }
+let achPiecesIdx=[];
 function achRender(){
+  achPiecesIdx=[];
   const box=document.getElementById('ach-content'); if(!box)return;
   if(!achItems.length){box.innerHTML='<div class="loading">Liste vide — ajoute des articles ou utilise ✨ Liste type.</div>';achProgress();return;}
   const esc=s=>(''+(s||'')).replace(/</g,'&lt;');
@@ -4240,7 +4278,7 @@ function achRender(){
       h+=`<div style="padding:8px 14px;border-top:1px solid rgba(255,255,255,.05);${it.achete?'opacity:.45':''}">
         <div style="display:flex;align-items:center;gap:9px">
         <input type="checkbox" ${it.achete?'checked':''} onchange="achToggle('${it.id}',this.checked)" style="width:19px;height:19px;accent-color:#c9a45c;flex:none">
-        <div style="flex:1;min-width:0"><span style="${it.achete?'text-decoration:line-through':''}">${esc(it.nom)}</span>${it.note?`<span style="font-size:11px;opacity:.6"> · ${esc(it.note)}</span>`:''}${lienHtml?`<div>${lienHtml}</div>`:''}</div>
+        <div style="flex:1;min-width:0" id="ach-nom-${it.id}"><span onclick="achEditNom('${it.id}')" style="cursor:pointer;${it.achete?'text-decoration:line-through':''}">${esc(it.nom)}</span>${it.note?`<span style="font-size:11px;opacity:.6"> · ${esc(it.note)}</span>`:''}${lienHtml?`<div>${lienHtml}</div>`:''}</div>
         <button onclick="achEditLien('${it.id}')" title="Lien ou magasin" style="background:none;border:0;cursor:pointer;font-size:14px;flex:none;opacity:${it.lien?1:.45}">🔗</button>
         <input type="number" min="1" value="${it.qty||1}" onchange="achField('${it.id}','qty',this.value)" title="Quantité" style="width:52px;padding:5px;border-radius:8px;border:1px solid var(--border-gold);background:transparent;color:var(--gold3);text-align:center;flex:none">
         <input value="${it.prix!=null?it.prix:''}" onchange="achField('${it.id}','prix',this.value)" placeholder="€" title="Prix unitaire" style="width:62px;padding:5px;border-radius:8px;border:1px solid var(--border-gold);background:transparent;color:var(--gold3);text-align:center;flex:none">
@@ -4252,6 +4290,15 @@ function achRender(){
         </div>
       </div>`;
     }
+    const pidx=achPiecesIdx.push(pc)-1;
+    h+=`<div style="padding:7px 14px;border-top:1px solid rgba(255,255,255,.05)">
+      <button onclick="achAddInToggle(${pidx})" style="background:none;border:0;color:var(--gold2);cursor:pointer;font-size:13px;padding:2px 0">+ Ajouter un article</button>
+      <div id="ach-addin-${pidx}" style="display:none;gap:7px;margin-top:6px">
+        <input id="ach-addin-nom-${pidx}" placeholder="Nom de l\u2019article" style="flex:1;padding:7px 10px;border-radius:9px;border:1px solid var(--border-gold);background:transparent;color:var(--gold3);font-size:13px" onkeydown="if(event.key==='Enter')achAddIn(${pidx})">
+        <input id="ach-addin-qty-${pidx}" type="number" min="1" value="1" style="width:52px;padding:7px;border-radius:9px;border:1px solid var(--border-gold);background:transparent;color:var(--gold3);text-align:center">
+        <button class="adm-add" style="padding:7px 13px;font-size:13px" onclick="achAddIn(${pidx})">OK</button>
+      </div>
+    </div>`;
     h+='</div>';
   }
   box.innerHTML=h; achProgress();
