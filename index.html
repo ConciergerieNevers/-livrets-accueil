@@ -765,6 +765,7 @@ body{top:0!important}
     <a data-bo="reservations" data-su><span class="ri">📅</span>Réservations</a>
     <a data-bo="stock"><span class="ri">📦</span>Stocks<span class="rb" id="rb-stk">0</span></a>
     <a data-bo="courses"><span class="ri">🧺</span>Liste de courses</a>
+    <a data-bo="achats" data-su><span class="ri">🛋</span>Aménagement</a>
     <a data-bo="factu" data-su><span class="ri">🧾</span>Facturation</a>
     <div class="rl-g">Contenu</div>
     <a data-bo="admin"><span class="ri">📖</span>Mes livrets</a>
@@ -939,6 +940,35 @@ body{top:0!important}
 </div>
 
 <!-- STOCKS DE CONSOMMABLES -->
+<div id="achats-screen" style="display:none">
+  <nav class="adm-nav">
+    <div class="adm-nav-left">
+      <button class="bo-burger" onclick="boMenu(true)" style="background:none;border:0;color:var(--gold2);font-size:21px;cursor:pointer;padding:0 4px 0 0;display:none">☰</button>
+      <div class="adm-nav-title serif">🛋 Aménagement — listes d'achats</div>
+    </div>
+    <div class="adm-nav-right"><button class="adm-logout" onclick="boAller('dash')">← Tableau de bord</button></div>
+  </nav>
+  <div class="adm-body">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+      <select id="ach-sel" onchange="achOpenListe(this.value)" style="flex:1;min-width:200px;padding:11px 12px;border-radius:12px;border:1px solid var(--border-gold);background:var(--card);color:var(--gold3);font-size:14px"></select>
+      <button class="adm-add" onclick="achNewListe()">+ Nouvelle liste</button>
+      <button class="adm-add" onclick="achNewListe(true)" title="Liste pré-remplie complète">✨ Liste type T2 · 4 pers</button>
+      <button class="adm-logout" onclick="achDelListe()" title="Supprimer la liste">🗑</button>
+    </div>
+    <div id="ach-progress" style="display:none;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span id="ach-prog-txt"></span><span id="ach-prog-tot"></span></div>
+      <div style="height:10px;border-radius:999px;background:var(--card);border:1px solid var(--border-gold);overflow:hidden"><div id="ach-prog-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#c9a45c,#e8cd8a);transition:width .3s"></div></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <input id="ach-new-nom" placeholder="Ajouter un article…" style="flex:2;min-width:160px;padding:10px 12px;border-radius:12px;border:1px solid var(--border-gold);background:var(--card);color:var(--gold3)" onkeydown="if(event.key==='Enter')achAddItem()">
+      <input id="ach-new-piece" list="ach-pieces" placeholder="Pièce" style="flex:1;min-width:110px;padding:10px 12px;border-radius:12px;border:1px solid var(--border-gold);background:var(--card);color:var(--gold3)">
+      <datalist id="ach-pieces"></datalist>
+      <input id="ach-new-qty" type="number" min="1" value="1" style="width:64px;padding:10px;border-radius:12px;border:1px solid var(--border-gold);background:var(--card);color:var(--gold3)">
+      <button class="adm-add" onclick="achAddItem()">Ajouter</button>
+    </div>
+    <div id="ach-content"><div class="loading">Sélectionne ou crée une liste…</div></div>
+  </div>
+</div>
 <div id="stock-screen" style="display:none">
   <nav class="adm-nav">
     <div class="adm-nav-left">
@@ -1940,7 +1970,7 @@ async function doReset(token,ov){
   if(document.readyState==='complete')lire(); else addEventListener('load',lire);
 })();
 function logout(){cu=null;cs();document.body.classList.remove('bo');show('login-screen');}
-function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','prestataires-screen','courses-screen','demandes-screen','reservations-screen','corbeille-screen','requests-screen','stock-screen','dash-screen','factu-screen'].forEach(s=>{const el=document.getElementById(s);if(el)el.style.display=s===id?'block':'none';});if(id!=='voyageur-screen'){try{clearLivretColors();}catch(_e){}}}
+function show(id){['login-screen','admin-screen','editor-screen','voyageur-screen','catalogue-screen','prestataires-screen','courses-screen','demandes-screen','reservations-screen','corbeille-screen','requests-screen','stock-screen','dash-screen','factu-screen','achats-screen'].forEach(s=>{const el=document.getElementById(s);if(el)el.style.display=s===id?'block':'none';});if(id!=='voyageur-screen'){try{clearLivretColors();}catch(_e){}}}
 
 
 // ===== CARNET DE PRESTATAIRES =====
@@ -3994,6 +4024,7 @@ const BO_ECRANS = {
   reservations:{titre:'Réservations',    ouvre:()=>openReservations()},
   stock:       {titre:'Stocks',          ouvre:()=>openStock()},
   courses:     {titre:'Liste de courses',ouvre:()=>openCourses()},
+  achats:      {titre:'Aménagement',     ouvre:()=>openAchats()},
   factu:       {titre:'Facturation',     ouvre:()=>openFactu()},
   avis:        {titre:'Avis',            ouvre:()=>showAllAvis()},
   corbeille:   {titre:'Corbeille',       ouvre:()=>openCorbeille()}
@@ -4038,6 +4069,133 @@ function boDroits(){
 function boActif(oui){
   document.body.classList.toggle('bo', !!oui);
   if(oui){ boBrancher(); boDroits(); }
+}
+
+
+/* ===== 🛋 MODULE AMÉNAGEMENT — listes d'achats (onglet perso, tables achats_*) ===== */
+let achListes=[], achItems=[], achListeId=null;
+const ACH_PIECES_ORDRE=['Cuisine — Électroménager','Cuisine — Ustensiles','Cuisine — Vaisselle','Cuisine — Autres','Chambre 1','Chambre 2','Salle de bains','WC','Salon','Salle à manger','Entrée','Buanderie & entretien','Sécurité (obligatoire)','Confort & options','Consommables premier accueil','Divers'];
+const ACH_TEMPLATE_T2=[
+ /* [pièce, nom, qty, note] */
+ ['Cuisine — Électroménager','Réfrigérateur-congélateur',1,''],['Cuisine — Électroménager','Plaque de cuisson (induction 3-4 feux)',1,''],['Cuisine — Électroménager','Four encastrable ou posable',1,''],['Cuisine — Électroménager','Hotte aspirante',1,''],['Cuisine — Électroménager','Micro-ondes',1,''],['Cuisine — Électroménager','Lave-vaisselle',1,'conseillé'],['Cuisine — Électroménager','Bouilloire électrique',1,''],['Cuisine — Électroménager','Cafetière (Senseo si possible)',1,''],['Cuisine — Électroménager','Grille-pain',1,''],['Cuisine — Électroménager','Mixeur plongeant',1,'facultatif'],['Cuisine — Électroménager','Meubles de cuisine (si cuisine nue)',1,'à évaluer sur place'],
+ ['Cuisine — Ustensiles','Fait-tout avec couvercle',1,''],['Cuisine — Ustensiles','Casseroles (petite/moyenne/grande)',3,''],['Cuisine — Ustensiles','Poêles (2 tailles)',2,''],['Cuisine — Ustensiles','Set spatules / cuillères bois / fouet',1,''],['Cuisine — Ustensiles','Planche à découper',2,''],['Cuisine — Ustensiles','Set couteaux de cuisine',1,''],['Cuisine — Ustensiles','Ouvre-boîte',1,''],['Cuisine — Ustensiles','Éplucheur',1,''],['Cuisine — Ustensiles','Râpe',1,''],['Cuisine — Ustensiles','Passoire',1,''],['Cuisine — Ustensiles','Saladier',2,''],['Cuisine — Ustensiles','Plats de cuisson (four)',2,''],['Cuisine — Ustensiles','Dessous de plat',2,''],['Cuisine — Ustensiles','Verre doseur',1,''],['Cuisine — Ustensiles','Tire-bouchon + ouvre-bouteille',1,''],['Cuisine — Ustensiles','Ciseaux de cuisine',1,''],['Cuisine — Ustensiles','Couverts de service',1,''],['Cuisine — Ustensiles','Maniques',2,''],
+ ['Cuisine — Vaisselle','Assiettes plates',8,'2× par personne'],['Cuisine — Vaisselle','Assiettes creuses',8,''],['Cuisine — Vaisselle','Assiettes à dessert',8,''],['Cuisine — Vaisselle','Bols',8,''],['Cuisine — Vaisselle','Verres à eau',8,''],['Cuisine — Vaisselle','Verres à vin',8,''],['Cuisine — Vaisselle','Flûtes à champagne',4,'1 par personne'],['Cuisine — Vaisselle','Tasses à café + soucoupes',8,''],['Cuisine — Vaisselle','Mugs',4,''],['Cuisine — Vaisselle','Couteaux de table',8,''],['Cuisine — Vaisselle','Fourchettes',8,''],['Cuisine — Vaisselle','Cuillères à soupe',8,''],['Cuisine — Vaisselle','Cuillères à café',8,''],
+ ['Cuisine — Autres','Torchons',6,''],['Cuisine — Autres','Éponges + grattoirs (lot)',1,''],['Cuisine — Autres','Liquide vaisselle',1,''],['Cuisine — Autres','Tablettes lave-vaisselle',1,''],['Cuisine — Autres','Sacs poubelle (rouleau)',2,''],['Cuisine — Autres','Essuie-tout',2,''],['Cuisine — Autres','Papier alu + film + papier cuisson',1,''],['Cuisine — Autres','Kit sel / poivre / huile d’olive / vinaigre',1,''],['Cuisine — Autres','Plateau de service',2,''],['Cuisine — Autres','Sets de table',8,''],['Cuisine — Autres','Boîtes de conservation (lot)',1,''],['Cuisine — Autres','Carafe',1,''],['Cuisine — Autres','Poubelle de tri',1,''],
+ ['Chambre 1','Lit 160×200 (cadre + sommier)',1,''],['Chambre 1','Matelas 160×200 qualité hôtelière',1,''],['Chambre 1','Alèses de matelas',2,''],['Chambre 1','Oreillers carrés 65×65',2,''],['Chambre 1','Oreillers rectangulaires',2,''],['Chambre 1','Protège-oreillers',4,''],['Chambre 1','Couette 240×260',1,''],['Chambre 1','Parures complètes (housse + taies + drap housse)',2,'2 jeux par lit'],['Chambre 1','Couverture supplémentaire',1,''],['Chambre 1','Tables de chevet',2,''],['Chambre 1','Lampes de chevet',2,''],['Chambre 1','Armoire ou penderie',1,''],['Chambre 1','Cintres',10,''],['Chambre 1','Commode',1,''],['Chambre 1','Miroir',1,''],['Chambre 1','Rideaux occultants',1,''],['Chambre 1','Multiprise près du lit',1,''],['Chambre 1','Déco murale',1,''],
+ ['Chambre 2','Lit 160×200 (ou 2×90 jumelables)',1,''],['Chambre 2','Matelas qualité hôtelière',1,''],['Chambre 2','Alèses de matelas',2,''],['Chambre 2','Oreillers carrés 65×65',2,''],['Chambre 2','Oreillers rectangulaires',2,''],['Chambre 2','Protège-oreillers',4,''],['Chambre 2','Couette',1,''],['Chambre 2','Parures complètes',2,''],['Chambre 2','Couverture supplémentaire',1,''],['Chambre 2','Tables de chevet',2,''],['Chambre 2','Lampes de chevet',2,''],['Chambre 2','Armoire ou penderie',1,''],['Chambre 2','Cintres',10,''],['Chambre 2','Miroir',1,''],['Chambre 2','Rideaux occultants',1,''],['Chambre 2','Multiprise près du lit',1,''],['Chambre 2','Déco murale',1,''],
+ ['Salle de bains','Draps de bain qualité hôtelière',8,'2× par personne'],['Salle de bains','Serviettes de mains',8,''],['Salle de bains','Carrés visage',4,''],['Salle de bains','Tapis de bain',2,''],['Salle de bains','Sèche-cheveux puissant',1,''],['Salle de bains','Miroir bien éclairé',1,''],['Salle de bains','Miroir grossissant',1,''],['Salle de bains','Distributeurs savon / gel douche / shampoing',2,''],['Salle de bains','Gobelet',1,''],['Salle de bains','Patères / porte-serviettes',2,''],['Salle de bains','Poubelle',1,''],['Salle de bains','Panier à linge',1,''],['Salle de bains','Paroi ou rideau de douche',1,'si besoin'],
+ ['WC','Balai WC + support',1,''],['WC','Dérouleur papier + réserve',1,''],['WC','Papier toilette (pack)',1,''],['WC','Poubelle à couvercle',1,''],['WC','Désodorisant',1,''],
+ ['Salon','Canapé 3 places confortable (ou convertible)',1,''],['Salon','Fauteuils',2,''],['Salon','Table basse',1,''],['Salon','Meuble TV',1,''],['Salon','Smart TV (accès streaming)',1,''],['Salon','Enceinte connectée',1,''],['Salon','Tapis',1,''],['Salon','Lampadaire',1,''],['Salon','Lampes d’appoint',2,''],['Salon','Coussins déco',4,''],['Salon','Plaids',2,''],['Salon','Dessous de verre (lot)',1,''],['Salon','Rideaux',1,''],['Salon','Cadres / déco murale',3,''],['Salon','Plantes',2,''],['Salon','Guides touristiques locaux',1,''],['Salon','Jeux de société',3,''],['Salon','Livres (lot)',1,''],
+ ['Salle à manger','Table 4-6 personnes',1,''],['Salle à manger','Chaises',6,'4 + 2 d’appoint'],['Salle à manger','Luminaire / suspension',1,''],
+ ['Entrée','Portemanteau / patères',1,''],['Entrée','Meuble à chaussures ou console',1,''],['Entrée','Miroir',1,''],['Entrée','Paillasson',1,''],['Entrée','Boîte à clefs sécurisée (arrivée autonome)',1,''],['Entrée','Doubles des clefs',2,''],
+ ['Buanderie & entretien','Lave-linge',1,''],['Buanderie & entretien','Étendoir à linge',1,''],['Buanderie & entretien','Fer + planche à repasser',1,''],['Buanderie & entretien','Aspirateur',1,''],['Buanderie & entretien','Balai + pelle + balayette',1,''],['Buanderie & entretien','Serpillière + seau',1,''],['Buanderie & entretien','Kit produits d’entretien',1,''],['Buanderie & entretien','Lessive',1,''],['Buanderie & entretien','Ampoules de rechange (lot)',1,''],['Buanderie & entretien','Petit escabeau',1,''],
+ ['Sécurité (obligatoire)','Détecteurs de fumée',2,'obligatoire'],['Sécurité (obligatoire)','Détecteur de monoxyde de carbone',1,'si gaz / chaudière'],['Sécurité (obligatoire)','Extincteur',1,''],['Sécurité (obligatoire)','Trousse de premiers secours',1,''],['Sécurité (obligatoire)','Affichage consignes + numéros d’urgence',1,''],
+ ['Confort & options','Chauffage d’appoint',1,''],['Confort & options','Ventilateurs',2,''],['Confort & options','Bureau / espace de travail',1,'facultatif'],['Confort & options','Lit bébé + alèse',1,'facultatif'],['Confort & options','Chaise haute bébé',1,'facultatif'],['Confort & options','Multiprises',3,''],['Confort & options','Rallonges',2,''],['Confort & options','Piles (lot)',1,''],['Confort & options','Coffre-fort',1,'facultatif'],
+ ['Consommables premier accueil','Kit accueil (café dosettes, thé, sucre)',1,''],['Consommables premier accueil','Savon / gel douche / shampoing (stock)',1,''],['Consommables premier accueil','Papier toilette (stock)',1,''],['Consommables premier accueil','Éponges / lavettes (stock)',1,'']
+];
+
+async function openAchats(){
+  show('achats-screen');boActif(true);boMarquer('achats');
+  const dl=document.getElementById('ach-pieces');
+  if(dl&&!dl.children.length)dl.innerHTML=ACH_PIECES_ORDRE.map(p=>`<option value="${p}">`).join('');
+  await achLoadListes();
+}
+async function achLoadListes(){
+  try{
+    const r=await axios.get(`${API}/achats_listes?select=*&order=created_at.desc`,{headers:hd()});
+    achListes=r.data||[];
+  }catch(e){
+    document.getElementById('ach-content').innerHTML='<div class="loading">⚠️ Tables non créées — colle le SQL fourni dans Supabase puis reviens ici.</div>';
+    achListes=[];return;
+  }
+  const sel=document.getElementById('ach-sel');
+  sel.innerHTML=achListes.length?achListes.map(l=>`<option value="${l.id}">${(l.nom||'').replace(/</g,'&lt;')}</option>`).join(''):'<option value="">— aucune liste —</option>';
+  if(!achListeId&&achListes.length)achListeId=achListes[0].id;
+  if(achListeId){sel.value=achListeId;await achOpenListe(achListeId);}
+}
+async function achOpenListe(id){
+  if(!id)return; achListeId=id;
+  document.getElementById('ach-content').innerHTML='<div class="loading">Chargement…</div>';
+  const r=await axios.get(`${API}/achats_items?liste_id=eq.${id}&select=*&order=ordre.asc`,{headers:hd()});
+  achItems=r.data||[]; achRender();
+}
+async function achNewListe(seed){
+  const nom=prompt(seed?'Nom de la liste (ex : T2 rue des Perrières)':'Nom de la nouvelle liste');
+  if(!nom)return;
+  const r=await axios.post(`${API}/achats_listes`,{nom},{headers:{...hd(),'Prefer':'return=representation'}});
+  const liste=r.data[0]; achListeId=liste.id;
+  if(seed){
+    const rows=ACH_TEMPLATE_T2.map((t,i)=>({liste_id:liste.id,piece:t[0],nom:t[1],qty:t[2],note:t[3]||null,ordre:i}));
+    for(let i=0;i<rows.length;i+=50){await axios.post(`${API}/achats_items`,rows.slice(i,i+50),{headers:hd()});}
+  }
+  await achLoadListes(); toast&&toast('Liste créée');
+}
+async function achDelListe(){
+  if(!achListeId)return;
+  const l=achListes.find(x=>x.id===achListeId);
+  if(!confirm(`Supprimer la liste « ${(l&&l.nom)||''} » et tous ses articles ?`))return;
+  await axios.delete(`${API}/achats_listes?id=eq.${achListeId}`,{headers:hd()});
+  achListeId=null; await achLoadListes();
+  if(!achListes.length)document.getElementById('ach-content').innerHTML='<div class="loading">Sélectionne ou crée une liste…</div>';
+}
+async function achAddItem(){
+  if(!achListeId){alert('Crée d’abord une liste.');return;}
+  const nom=document.getElementById('ach-new-nom').value.trim(); if(!nom)return;
+  const piece=document.getElementById('ach-new-piece').value.trim()||'Divers';
+  const qty=parseInt(document.getElementById('ach-new-qty').value)||1;
+  const r=await axios.post(`${API}/achats_items`,{liste_id:achListeId,piece,nom,qty,ordre:achItems.length},{headers:{...hd(),'Prefer':'return=representation'}});
+  achItems.push(r.data[0]);
+  document.getElementById('ach-new-nom').value='';
+  achRender();
+}
+async function achToggle(id,val){
+  const it=achItems.find(i=>i.id===id); if(!it)return; it.achete=val;
+  achRender();
+  await axios.patch(`${API}/achats_items?id=eq.${id}`,{achete:val},{headers:hd()});
+}
+async function achField(id,field,val){
+  const it=achItems.find(i=>i.id===id); if(!it)return;
+  it[field]=(field==='qty')?(parseInt(val)||1):(field==='prix'?(val===''?null:parseFloat((''+val).replace(',','.'))):val);
+  await axios.patch(`${API}/achats_items?id=eq.${id}`,{[field]:it[field]},{headers:hd()});
+  achProgress();
+}
+async function achDelItem(id){
+  achItems=achItems.filter(i=>i.id!==id); achRender();
+  await axios.delete(`${API}/achats_items?id=eq.${id}`,{headers:hd()});
+}
+function achProgress(){
+  const tot=achItems.length, done=achItems.filter(i=>i.achete).length;
+  const dep=achItems.filter(i=>i.achete&&i.prix).reduce((s,i)=>s+(parseFloat(i.prix)||0)*(i.qty||1),0);
+  const est=achItems.filter(i=>i.prix).reduce((s,i)=>s+(parseFloat(i.prix)||0)*(i.qty||1),0);
+  const w=document.getElementById('ach-progress'); if(!w)return;
+  w.style.display=tot?'block':'none';
+  document.getElementById('ach-prog-txt').textContent=`${done} / ${tot} articles achetés`;
+  document.getElementById('ach-prog-tot').textContent=est?`Dépensé : ${dep.toFixed(0)} € · Budget estimé : ${est.toFixed(0)} €`:'';
+  document.getElementById('ach-prog-bar').style.width=(tot?Math.round(done/tot*100):0)+'%';
+}
+function achRender(){
+  const box=document.getElementById('ach-content'); if(!box)return;
+  if(!achItems.length){box.innerHTML='<div class="loading">Liste vide — ajoute des articles ou utilise ✨ Liste type.</div>';achProgress();return;}
+  const esc=s=>(''+(s||'')).replace(/</g,'&lt;');
+  const pieces=[...new Set([...ACH_PIECES_ORDRE.filter(p=>achItems.some(i=>i.piece===p)),...achItems.map(i=>i.piece)])];
+  let h='';
+  for(const pc of pieces){
+    const its=achItems.filter(i=>i.piece===pc); if(!its.length)continue;
+    const done=its.filter(i=>i.achete).length;
+    h+=`<div style="background:var(--card);border:1px solid var(--border-gold);border-radius:14px;margin-bottom:12px;overflow:hidden">
+      <div style="padding:11px 14px;font-weight:700;color:var(--gold2);display:flex;justify-content:space-between;align-items:center"><span>${esc(pc)}</span><span style="font-size:12px;opacity:.75">${done}/${its.length}</span></div>`;
+    for(const it of its){
+      h+=`<div style="display:flex;align-items:center;gap:9px;padding:8px 14px;border-top:1px solid rgba(255,255,255,.05);${it.achete?'opacity:.45':''}">
+        <input type="checkbox" ${it.achete?'checked':''} onchange="achToggle('${it.id}',this.checked)" style="width:19px;height:19px;accent-color:#c9a45c;flex:none">
+        <div style="flex:1;min-width:0"><span style="${it.achete?'text-decoration:line-through':''}">${esc(it.nom)}</span>${it.note?`<span style="font-size:11px;opacity:.6"> · ${esc(it.note)}</span>`:''}</div>
+        <input type="number" min="1" value="${it.qty||1}" onchange="achField('${it.id}','qty',this.value)" title="Quantité" style="width:52px;padding:5px;border-radius:8px;border:1px solid var(--border-gold);background:transparent;color:var(--gold3);text-align:center;flex:none">
+        <input value="${it.prix!=null?it.prix:''}" onchange="achField('${it.id}','prix',this.value)" placeholder="€" title="Prix unitaire" style="width:62px;padding:5px;border-radius:8px;border:1px solid var(--border-gold);background:transparent;color:var(--gold3);text-align:center;flex:none">
+        <button onclick="achDelItem('${it.id}')" style="background:none;border:0;color:#b66;cursor:pointer;font-size:15px;flex:none">✕</button>
+      </div>`;
+    }
+    h+='</div>';
+  }
+  box.innerHTML=h; achProgress();
 }
 
 function showAdmin(){boAller('dash');}
