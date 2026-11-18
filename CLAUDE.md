@@ -315,3 +315,9 @@ L'autonomie **ne se calcule PAS** sur l'historique de `stock_mouvements` (trop c
 
 ## Écarts de prix relevés dans le tableau de Mathieu (non tranchés)
 Son onglet « coût moyen » contredit ses lignes d'achat : Sopalin 0,40 vs **2,34 €** · pastille LV 0,12 vs **0,456 €** · PQ 0,47 vs **0,33 €**. Se corrigera tout seul au 1er réappro via `cout_lot`.
+
+## Module 🎄 Décorations de Noël (18/11/2026)
+- **Onglet admin** `noel` (sidebar, data-su) : suivi par logement — contrôlé ou non, décos `logement`/`local`/`aucune`, en place oui/non, contrôleur, remarques presta, note admin (📝, PATCH), rond vert `vu` = validation Mathieu. Bouton « 📋 Copier le lien prestataires ».
+- **Formulaire public** `https://benomadnevers.com/noel` (route ajoutée AVANT le routage court) : wizard 4 étapes sans compte — choix du logement (déjà contrôlés grisés ✅, copies « *copie* » filtrées), localisation des décos, mises en place, nom du contrôleur + remarques. Insert anon.
+- **Table `noel_controles`** : livret_id FK, decos_localisation (check logement/local/aucune), en_place bool, controleur, remarques, admin_note, vu bool, created_at. RLS : insert+select anon/authenticated ; update/delete réservés à l'email primoconciergerie58@gmail.com. ⚠️ Les GRANT table n'étaient PAS automatiques sur ce projet : `GRANT SELECT, INSERT … TO anon` nécessaires en plus des policies (erreur 42501 sinon) ; TRUNCATE/REFERENCES/TRIGGER révoqués.
+- Écrans `noel-screen` + `noelpub-screen` ajoutés à la liste de `show()`.
