@@ -8916,8 +8916,14 @@ async function factuBilan(){
   const a=factuAnnee;
   let resas=[];
   try{
-    const r=await axios.get(`${API}/sh_reservations?select=booking_id,rental_id,checkin,checkout,adults,children,total_price,statut,nights&checkout=gte.${a}-01-01&checkout=lt.${a+1}-01-01&order=checkout.asc&limit=6000`,{headers:hd()});
-    resas=r.data||[];
+    /* PostgREST tronque toute réponse à 1 000 lignes : on pagine jusqu'à épuisement,
+       sinon le bilan s'arrête au printemps (vécu : 2 873 séjours en 2026, coupés à mai). */
+    for(let off=0;off<30000;off+=1000){
+      const r=await axios.get(`${API}/sh_reservations?select=booking_id,rental_id,checkin,checkout,adults,children,total_price,statut,nights&checkout=gte.${a}-01-01&checkout=lt.${a+1}-01-01&order=checkout.asc&limit=1000&offset=${off}`,{headers:hd()});
+      const page=r.data||[];
+      resas=resas.concat(page);
+      if(page.length<1000)break;
+    }
   }catch(e){c.innerHTML='<div class="loading">Erreur de chargement.</div>';return;}
   const parRental={};
   factuCfg.forEach(x=>{const rid=(x.livrets||{}).superhote_rental_id;if(rid)parRental[rid]=x;});
