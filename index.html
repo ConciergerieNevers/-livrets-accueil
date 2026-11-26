@@ -697,6 +697,18 @@ body{top:0!important}
 .fa-mini{background:rgba(255,255,255,.055);border:1px solid var(--border);color:var(--gold3);
   border-radius:7px;padding:3px 7px;font-size:12px;cursor:pointer;font-family:inherit;line-height:1.4}
 .fa-mini:hover{background:rgba(224,169,58,.14);border-color:var(--border-gold)}
+.fa-dl{cursor:pointer}
+.fa-edit{background:rgba(224,169,58,.06);border:1px solid var(--border-gold);border-radius:11px;
+  padding:12px 14px;margin:4px 0 10px;display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center}
+.fa-edit .bl{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted)}
+.fa-edit .bl b{color:var(--gold2);min-width:20px;text-align:center;font-size:14px}
+.fa-edit .bl button{background:rgba(255,255,255,.07);border:1px solid var(--border-gold);color:var(--gold2);
+  border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;line-height:1}
+.fa-edit .som{font-size:12.5px;color:var(--gold3);font-variant-numeric:tabular-nums;margin-left:auto}
+.fa-edit .som b{color:var(--gold2)}
+.fa-card-t{cursor:pointer;display:flex;align-items:center;gap:8px}
+.fa-card-t .chev{margin-left:auto;color:var(--muted2);font-size:11px}
+.fa-card-res{font-size:11px;color:var(--muted2);font-weight:400;letter-spacing:0}
 .fa-in{width:46px;background:#141414;border:1px solid var(--border);color:var(--gold3);border-radius:6px;
   padding:3px 4px;font-size:12px;text-align:center;font-family:inherit}
 .fa-in:focus{border-color:var(--border-gold);outline:none}
@@ -8188,7 +8200,8 @@ async function deleteAvis(id){
    Les taux viennent des classeurs Excel de Mathieu, repris au centime près. */
 const fesc=x=>(''+(x==null?'':x)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
 let factuCfg=[], factuResas=[], factuOv={}, factuFact={}, factuLivrets=[],
-    factuMois=null, factuTab='mois', factuOuvert=null, factuAnnee=null;
+    factuMois=null, factuTab='mois', factuOuvert=null, factuAnnee=null,
+    factuEdit=null, factuParamOuverts={};
 
 function factuMoisCourant(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
 function factuBornes(m){
@@ -8402,6 +8415,7 @@ function factuMoisHtml(){
       <span class="dt" style="width:92px;text-align:right">${eur(g.blanch+g.men)}</span>
       <span class="mt" style="width:98px;text-align:right">${eur(g.total)}</span>
       <span class="ac" style="width:118px;justify-content:flex-end" onclick="event.stopPropagation()">
+        <button class="fa-mini" onclick="factuAllerParam('${k}')" title="Modifier les réglages de ce logement (tapis, lits, barème ménage, Pennylane…)">⚙️</button>
         <button class="fa-mini" onclick="factuPdf('${k}')" title="Facture PDF">📄</button>
         <button class="fa-mini" onclick="factuValider('${k}')" title="${validee?'Facture validée — recliquer pour regénérer':'Valider et générer la facture Pennylane'}">${validee?'✓':'🔒'}</button>
       </span></div>`;
@@ -8429,8 +8443,9 @@ function factuDetailHtml(g){
     <div class="fa-det-aide">${menage
       ? `Seul le ménage est facturé, au barème du séjour : ${m.n1?eur(m.n1):'à saisir'} pour 1 nuit · ${m.n2?eur(m.n2):'à saisir'} pour 2 nuits · ${m.n3?eur(m.n3):'à saisir'} pour 3 nuits et plus.`
       : `Tous les lits sont comptés par défaut — ${eur(parLit)} par lit.
-      Clique sur <b>−</b> quand ils n'ont pas tous servi.${nonAjustes
-        ? ` ${nonAjustes} séjour${nonAjustes>1?'s':''} encore au défaut.` : ' Tous ajustés.'}`}</div>
+      Clique sur un séjour pour ajuster lits, personnes, tapis ou prix.${nonAjustes
+        ? ` ${nonAjustes} séjour${nonAjustes>1?'s':''} encore au défaut.` : ' Tous ajustés.'}`}
+      <button class="fa-mini" style="margin-left:8px" onclick="factuAllerParam('${g.cfg.livret_id}')" title="Réglages du logement">⚙️ Réglages du logement</button></div>
     <div class="fa-det-t">
     <span style="flex:1">Voyageur</span>
     <span style="width:62px">Entrée</span><span style="width:62px">Sortie</span>
@@ -8445,7 +8460,7 @@ function factuDetailHtml(g){
     const {r,ov,calc}=l, id=r.booking_id, ex=!!ov.exclue, an=!!l.annulee;
     const etiq = an ? (r.status_label==='REQUEST_INFORMATION'?'demande':'annulé')
                     : (l.inconnu?'statut inconnu':'');
-    h+=`<div class="fa-dl${ex||an?' ex':''}">
+    h+=`<div class="fa-dl${ex||an?' ex':''}"${an||menage?'':` onclick="factuEditer(${id})" title="Modifier ce séjour (lits, personnes, prix…)"`}>
       <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
         ${fesc(((r.first_name||'')+' '+(r.last_name||'')).trim()||'—')}${etiq?` <i class="fa-etq">${etiq}</i>`:''}</span>
       <span style="width:62px;font-variant-numeric:tabular-nums">${jjmm(r.checkin)}</span>
@@ -8453,22 +8468,51 @@ function factuDetailHtml(g){
       <span style="width:38px;text-align:center">${nuits(r)}</span>
       <span style="width:34px;text-align:center">${calc.pers}</span>
       <span style="width:62px;text-align:center" class="fa-lits">${menage?'—':`
-        <button onclick="factuLitsDelta(${id},-1)">−</button><b${calc.corrige?' class="cor"':''}>${calc.lits}</b><button onclick="factuLitsDelta(${id},1)">+</button>`}</span>
+        <button onclick="event.stopPropagation();factuLitsDelta(${id},-1)">−</button><b${calc.corrige?' class="cor"':''}>${calc.lits}</b><button onclick="event.stopPropagation();factuLitsDelta(${id},1)">+</button>`}</span>
       <span style="width:86px;text-align:right">${an||menage?'—':(calc.sansPrix
-        ?`<input class="fa-px" type="number" step="0.01" placeholder="à saisir" onchange="factuPrix(${id},this.value)">`
+        ?`<input class="fa-px" type="number" step="0.01" placeholder="à saisir" onclick="event.stopPropagation()" onchange="factuPrix(${id},this.value)">`
         :(calc.prix===null?'—':eur(calc.prix)))}</span>
       <span style="width:76px;text-align:right">${an||calc.com===null?'—':eur(calc.com)}</span>
       <span style="width:76px;text-align:right">${an?'—':(menage
         ?(calc.menageManquant?'<i class="fa-etq">barème ?</i>':eur(calc.men))
         :eur(calc.blanch))}</span>
       <span style="width:82px;text-align:right;font-weight:600;color:var(--gold2)">${an?'—':eur(calc.total)}</span>
-      <span style="width:56px;text-align:right;display:inline-flex;gap:4px;justify-content:flex-end"><a class="fa-mini" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center" href="${shResaUrl(id)}" target="_blank" rel="noopener" title="Ouvrir la réservation dans SuperHote" onclick="event.stopPropagation()">↗</a>${an?'':`<button class="fa-mini" title="${ex?'Remettre dans la facture':'Retirer de la facture'}" onclick="factuExclure(${id},${ex?'false':'true'})">${ex?'↩':'✕'}</button>`}</span>
+      <span style="width:56px;text-align:right;display:inline-flex;gap:4px;justify-content:flex-end"><a class="fa-mini" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center" href="${shResaUrl(id)}" target="_blank" rel="noopener" title="Ouvrir la réservation dans SuperHote" onclick="event.stopPropagation()">↗</a>${an?'':`<button class="fa-mini" title="${ex?'Remettre dans la facture':'Retirer de la facture'}" onclick="event.stopPropagation();factuExclure(${id},${ex?'false':'true'})">${ex?'↩':'✕'}</button>`}</span>
     </div>`;
+    if(factuEdit===id&&!an&&!menage)h+=factuEditHtml(l);
   });
   h+=`</div>`;
   return h;
 }
-function factuOuvrir(k){factuOuvert=factuOuvert===k?null:k;renderFactu();}
+/* Panneau d'édition d'un séjour : lits consommés, personnes, tapis, changements, prix —
+   la blanchisserie et le total se recalculent à chaque toucher. */
+function factuEditHtml(l){
+  const {r,calc}=l, id=r.booking_id;
+  const bl=(lab,champ,val,min)=>`<span class="bl">${lab}
+    <button onclick="event.stopPropagation();factuEditDelta(${id},'${champ}',-1,${min})">−</button><b>${val}</b><button onclick="event.stopPropagation();factuEditDelta(${id},'${champ}',1,${min})">+</button></span>`;
+  return `<div class="fa-edit" onclick="event.stopPropagation()">
+    ${bl('Lits consommés','nb_lits',calc.lits,0)}
+    ${bl('Personnes','nb_personnes',calc.pers,1)}
+    ${bl('Tapis','nb_tapis',calc.tap,0)}
+    ${bl('Changements','nb_changements',calc.chg,0)}
+    <span class="bl">Prix voyageur <input class="fa-in" style="width:76px" type="number" step="0.01"
+      value="${calc.prix===null?'':calc.prix}" placeholder="€" onchange="factuPrix(${id},this.value)"></span>
+    <button class="fa-mini" onclick="factuReinit(${id})" title="Revenir aux valeurs par défaut du logement">↩ Défauts</button>
+    <span class="som">blanchisserie <b>${eur(calc.blanch)}</b> · total séjour <b>${eur(calc.total)}</b></span>
+  </div>`;
+}
+function factuEditer(id){factuEdit=factuEdit===id?null:id;renderFactu();}
+function factuEditDelta(id,champ,d,min){
+  const r=factuResas.find(x=>x.booking_id===id); if(!r)return;
+  const c=factuCfg.find(x=>(x.livrets||{}).superhote_rental_id===r.rental_id); if(!c)return;
+  const calc=factuCalc(r,c,factuOv[id]||{});
+  const cur={nb_lits:calc.lits,nb_personnes:calc.pers,nb_tapis:calc.tap,nb_changements:calc.chg}[champ];
+  factuUpsert(id,{[champ]:Math.max(min,cur+d)});
+}
+function factuReinit(id){
+  factuUpsert(id,{nb_lits:null,nb_personnes:null,nb_tapis:null,nb_cuisine:null,nb_changements:null,prix_voyageur:null});
+}
+function factuOuvrir(k){factuOuvert=factuOuvert===k?null:k;factuEdit=null;renderFactu();}
 function factuAllerMois(d){factuMois=factuMoisDecale(factuMois,d);factuOuvert=null;openFactu();}
 function factuChoixMois(v){if(!v)return;factuMois=v;factuOuvert=null;openFactu();}
 
@@ -8726,8 +8770,12 @@ async function factuRecapPdf(){
    L'exemple chiffré est calculé en direct, donc il bouge avec les réglages. */
 function factuParamHtml(){
   const cfg=[...factuCfg].sort((a,b)=>((a.livrets||{}).nom||'').localeCompare(((b.livrets||{}).nom||''),'fr'));
-  let h=`<p class="fa-note" style="margin:0 0 16px">Valeurs reprises de tes classeurs, sur le dernier mois rempli.
-    Une modification s'applique aux mois pas encore figés.</p><div class="fa-prog">`;
+  const tousOuverts=cfg.length&&cfg.every(c=>factuParamOuverts[c.livret_id]);
+  let h=`<div style="display:flex;align-items:flex-start;gap:12px;margin:0 0 16px">
+    <p class="fa-note" style="margin:0;flex:1">Valeurs reprises de tes classeurs, sur le dernier mois rempli.
+    Une modification s'applique aux mois pas encore figés. Clique sur un logement pour ouvrir sa programmation.</p>
+    <button class="adm-logout" onclick="factuParamTout()">${tousOuverts?'▲ Tout fermer':'▼ Tout ouvrir'}</button>
+  </div><div class="fa-prog">`;
   cfg.forEach(c=>{
     const P=factuPacks(c), m=parseFloat(c.marge_blanch)||1, id=c.livret_id;
     const pers=2, lits=factuLits(c);
@@ -8772,9 +8820,16 @@ function factuParamHtml(){
         <input class="fa-in" type="number" min="0" value="${c.nb_cuisine}"
           onchange="factuSetCfg('${id}','nb_cuisine',this.value)"><span>${pl(c.nb_cuisine,'service cuisine','services cuisine')}</span>
       </div>`;
-    h+=`<div class="fa-card">
-      <div class="fa-card-t">${fesc((c.livrets||{}).nom||'—')}</div>
-      <div class="fa-ln"><select class="fa-in lg" style="width:auto" onchange="factuSetTxt('${id}','mode',this.value)">
+    const ouvert=!!factuParamOuverts[id];
+    const resume=estMenage
+      ?`ménage ${men.n1||'?'} / ${men.n2||'?'} / ${men.n3||'?'} €`
+      :`${Math.round(c.commission*1000)/10} % · linge ×${m}`;
+    h+=`<div class="fa-card" id="fa-card-${id}">
+      <div class="fa-card-t" onclick="factuParamToggle('${id}')">${fesc((c.livrets||{}).nom||'—')}
+        <span class="fa-card-res">${resume} · ${c.entite==='jimadenton'?'JIMADENTON':'MATHEMIA'}</span>
+        <span class="chev">${ouvert?'▲':'▼'}</span></div>`;
+    if(ouvert)h+=`
+      <div class="fa-ln" style="margin-top:11px"><select class="fa-in lg" style="width:auto" onchange="factuSetTxt('${id}','mode',this.value)">
           <option value="standard"${estMenage?'':' selected'}>Commission + blanchisserie</option>
           <option value="menage"${estMenage?' selected':''}>Ménage seul</option>
         </select><span>ce qui est facturé au propriétaire</span></div>
@@ -8786,7 +8841,8 @@ function factuParamHtml(){
         </select><span>compte Pennylane qui facture</span>
         <input class="fa-in" type="text" style="width:110px" value="${fesc(c.pennylane_customer_id||'')}" placeholder="ID client"
           onchange="factuSetTxt('${id}','pennylane_customer_id',this.value)"><span>n° client Pennylane du propriétaire</span>
-      </div></div>`;
+      </div>`;
+    h+=`</div>`;
   });
   h+=`</div>`;
   const manquants=factuLivrets.filter(l=>l.superhote_rental_id&&!factuCfg.some(c=>c.livret_id===l.id));
@@ -8795,6 +8851,22 @@ function factuParamHtml(){
         ${manquants.map(l=>fesc(l.nom)).join(', ')}.
         <button class="fa-mini" style="margin-left:8px" onclick="factuCreerConf()">Les ajouter à 20 % et 1,5</button></div>`;
   return h;
+}
+function factuParamToggle(id){
+  if(factuParamOuverts[id])delete factuParamOuverts[id];else factuParamOuverts[id]=1;
+  renderFactu();
+}
+function factuParamTout(){
+  const tous=factuCfg.length&&factuCfg.every(c=>factuParamOuverts[c.livret_id]);
+  factuParamOuverts={};
+  if(!tous)factuCfg.forEach(c=>factuParamOuverts[c.livret_id]=1);
+  renderFactu();
+}
+/* Depuis la liste du mois : ouvre l'onglet Paramètres directement sur la carte du logement. */
+function factuAllerParam(id){
+  factuParamOuverts={};factuParamOuverts[id]=1;
+  setFactuTab('param');
+  setTimeout(()=>{const el=document.getElementById('fa-card-'+id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},60);
 }
 /* Champs texte de la config (mode, entité Pennylane, n° client). */
 async function factuSetTxt(id,champ,val){
