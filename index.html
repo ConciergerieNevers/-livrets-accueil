@@ -700,6 +700,10 @@ body{top:0!important}
 .fa-dl{cursor:pointer}
 .fa-dl.lng{background:rgba(224,86,64,.10);border-radius:8px}
 .fa-etq.rge{color:#e8907e;border-color:rgba(224,86,64,.55)}
+.fa-men{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:rgba(58,168,160,.10);
+  border:1px solid rgba(58,168,160,.4);border-radius:10px;padding:9px 13px;margin:8px 0 2px;
+  font-size:12.5px;color:#7fd2cb}
+.fa-men b{color:#9fe8e1}
 .fa-edit{background:rgba(224,169,58,.06);border:1px solid var(--border-gold);border-radius:11px;
   padding:12px 14px;margin:4px 0 10px;display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center}
 .fa-edit .bl{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted)}
@@ -8563,6 +8567,15 @@ function factuDetailHtml(g){
     </div>`;
     if(factuEdit===id&&!menage)h+=factuEditHtml(l);
   });
+  /* Ligne ménage, à part et dans sa couleur : la somme des ménages du mois et qui les fait.
+     En mode standard elle est purement informative (non facturée au propriétaire). */
+  const sejsMen=g.lignes.filter(l=>!l.ov.exclue&&!l.annulee&&!l.enCours);
+  let menTot=0,menSans=0;
+  sejsMen.forEach(l=>{const t=factuMenageTarif(g.cfg,parseInt(nuits(l.r))||1);if(t===null)menSans++;else menTot+=t;});
+  const mb2=g.cfg.menage||{};
+  h+=`<div class="fa-men">🧽 <b>Ménages du mois</b> — ${sejsMen.length} séjour${sejsMen.length>1?'s':''} · barème ${mb2.n1||'?'} / ${mb2.n2||'?'} / ${mb2.n3||'?'} € · total <b>${eur(menTot)}</b>${menSans?` · ${menSans} séjour${menSans>1?'s':''} sans barème`:''}${g.cfg.menage_prestataire?` · fait par <b>${fesc(g.cfg.menage_prestataire)}</b>`:''}
+    <span style="font-size:11px;opacity:.8">${menage?'(facturé au propriétaire)':'(à part — pas dans la facture du propriétaire)'}</span>
+    <button class="fa-mini" style="margin-left:auto" onclick="event.stopPropagation();factuMenagePdf('${g.cfg.livret_id}')" title="Récap des ménages du mois : à envoyer au client ou au prestataire ménage">📄 PDF ménages</button></div>`;
   h+=`</div>`;
   return h;
 }
@@ -8912,6 +8925,59 @@ async function factuRecapPdf(){
   }catch(e){toast('Erreur PDF');logAndShowErr&&logAndShowErr(e);}
 }
 
+/* ---------- Récap des MÉNAGES d'un logement (pour le client ou le prestataire) ---------- */
+function factuMenageHtml(g){
+  const lignes=g.lignes.filter(l=>!l.ov.exclue&&!l.annulee&&!l.enCours);
+  const mb=g.cfg.menage||{};
+  let rows='',tot=0,sans=0;
+  lignes.forEach(l=>{
+    const n=parseInt(nuits(l.r))||1, t=factuMenageTarif(g.cfg,n);
+    if(t===null)sans++;else tot+=t;
+    rows+=`<tr><td>${fesc(((l.r.first_name||'')+' '+(l.r.last_name||'')).trim()||'—')}</td>
+      <td class="c">${l.r.checkin?new Date(l.r.checkin+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
+      <td class="c">${l.r.checkout?new Date(l.r.checkout+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
+      <td class="c">${n}</td>
+      <td class="r">${t===null?'barème à définir':eur(t)}</td></tr>`;
+  });
+  const d=new Date();
+  return `<div style="width:860px;background:#fff;color:#111;padding:42px 44px;font:13px/1.5 Helvetica,Arial,sans-serif;box-sizing:border-box">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #2a8c84;padding-bottom:14px">
+      <div><div style="font-size:22px;font-weight:700;letter-spacing:.5px">BE NOMADS</div>
+        <div style="color:#666;font-size:12px;margin-top:3px">Récapitulatif des ménages — ${factuMoisLabel(factuMois)}</div></div>
+      <div style="text-align:right;color:#666;font-size:12px">Édité le ${d.toLocaleDateString('fr-FR')}</div>
+    </div>
+    <div style="margin:20px 0 4px;font-size:15px;font-weight:700">${fesc(g.nom)}</div>
+    <div style="color:#666;font-size:12px;margin-bottom:16px">
+      ${lignes.length} ménage${lignes.length>1?'s':''} de fin de séjour
+      ${g.cfg.menage_prestataire?` · réalisés par <b>${fesc(g.cfg.menage_prestataire)}</b>`:''} ·
+      barème : ${mb.n1||'—'} € (1 nuit) · ${mb.n2||'—'} € (2 nuits) · ${mb.n3||'—'} € (3 nuits et +)</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="background:#eef7f6">
+        <th style="text-align:left;padding:7px 8px">Voyageur</th>
+        <th style="padding:7px 8px">Entrée</th><th style="padding:7px 8px">Sortie</th>
+        <th style="padding:7px 8px">Nuits</th>
+        <th style="text-align:right;padding:7px 8px">Ménage</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="5" style="padding:14px;text-align:center;color:#888">Aucun séjour ce mois-ci.</td></tr>'}</tbody></table>
+    <div style="display:flex;justify-content:flex-end;margin-top:18px">
+      <table style="font-size:13px;border-collapse:collapse;min-width:260px">
+        <tr><td style="padding:8px 14px 8px 0;font-weight:700;font-size:15px;border-top:2px solid #2a8c84">Total ménages</td>
+            <td style="text-align:right;padding:8px 0;font-weight:700;font-size:15px;border-top:2px solid #2a8c84">${eur(tot)}</td></tr>
+      </table></div>
+    ${sans?`<div style="color:#b05f1f;font-size:11.5px;margin-top:8px">⚠️ ${sans} séjour${sans>1?'s':''} sans barème : montant non compté.</div>`:''}
+    <div style="margin-top:26px;color:#888;font-size:10.5px;border-top:1px solid #eee;padding-top:10px">
+      Mathemia — Be Nomads · Document de suivi des ménages${g.cfg.mode==='menage'?' (montants facturés au propriétaire)':' (montants hors facture propriétaire)'}.</div>
+    <style>td.c{text-align:center}td.r{text-align:right}tbody td{padding:6px 8px;border-bottom:1px solid #eee}</style>
+  </div>`;
+}
+async function factuMenagePdf(k){
+  const grp=factuGroupes(), g=grp[k]; if(!g){toast('Aucun séjour ce mois-ci');return;}
+  toast('Génération du PDF ménages…');
+  try{
+    await factuPdfRender(factuMenageHtml(g),`menages-${factuMois}-${(g.nom||'').replace(/\s+/g,'-')}.pdf`,'portrait');
+    toast('✓ PDF ménages téléchargé');
+  }catch(e){toast('Erreur PDF');logAndShowErr&&logAndShowErr(e);}
+}
+
 /* ---------- Onglet « Paramètres » ---------- */
 /* ---------- Onglet « Paramètres » : la programmation d'un logement ----------
    Objectif : voir en une phrase ce qu'on prend, et ce qu'un séjour consomme.
@@ -8933,8 +8999,9 @@ function factuParamHtml(){
     const pers=2, lits=factuLits(c);
     // « tapis » est invariable ; un() ne pluralise qu'un mot simple, pas ces libellés
     const pl=(n,sing,plur)=>n>1?plur:sing;
+    const kitLbl=(parseFloat((c.linge||{}).peignoir)||0)>0?' + peignoir':'';
     const detail=[[lits,pl(lits,'lit complet','lits complets'),P.lit],
-                  [pers,pl(pers,'kit de bain','kits de bain'),P.kit],
+                  [pers,pl(pers,'kit de bain'+kitLbl,'kits de bain'+kitLbl),P.kit],
                   [c.nb_tapis,'tapis de bain',P.tap],
                   [c.nb_cuisine,pl(c.nb_cuisine,'service cuisine','services cuisine'),P.cui]];
     const htTot=detail.reduce((t,d)=>t+d[0]*d[2],0);
@@ -8971,6 +9038,19 @@ function factuParamHtml(){
           onchange="factuSetCfg('${id}','nb_tapis',this.value)"><span>tapis</span>
         <input class="fa-in" type="number" min="0" value="${c.nb_cuisine}"
           onchange="factuSetCfg('${id}','nb_cuisine',this.value)"><span>${pl(c.nb_cuisine,'service cuisine','services cuisine')}</span>
+      </div>
+      <div class="fa-ln">
+        <input class="fa-in" type="number" step="0.01" min="0" value="${parseFloat((c.linge||{}).peignoir)||''}" placeholder="0"
+          onchange="factuSetLinge('${id}','peignoir',this.value)"><span>peignoir € HT par personne (vide = pas de peignoir)</span>
+      </div>
+      <div class="fa-ln" style="color:#7fd2cb">
+        <span style="font-size:12px">🧽 Ménage (ligne à part, non facturée au propriétaire) :</span>
+        <input class="fa-in" type="number" step="1" min="0" value="${men.n1||''}" placeholder="€"
+          onchange="factuSetMenage('${id}','n1',this.value)"><span>1 nuit</span>
+        <input class="fa-in" type="number" step="1" min="0" value="${men.n2||''}" placeholder="€"
+          onchange="factuSetMenage('${id}','n2',this.value)"><span>2 nuits</span>
+        <input class="fa-in" type="number" step="1" min="0" value="${men.n3||''}" placeholder="€"
+          onchange="factuSetMenage('${id}','n3',this.value)"><span>3 nuits et +</span>
       </div>`;
     const ouvert=!!factuParamOuverts[id];
     const resume=(estMenage
@@ -9000,6 +9080,10 @@ function factuParamHtml(){
           onchange="factuSetCfg('${id}','ordre',this.value)"><span>ordre de facturation</span>
         <input class="fa-in" type="text" style="width:130px" value="${fesc(c.groupe||'')}" placeholder="aucun"
           onchange="factuSetTxt('${id}','groupe',this.value.trim())"><span>groupe de facturation (même nom = une seule facture Pennylane)</span>
+      </div>
+      <div class="fa-ln">
+        <input class="fa-in" type="text" style="width:160px" value="${fesc(c.menage_prestataire||'')}" placeholder="ex. Équipe de Ménage 1"
+          onchange="factuSetTxt('${id}','menage_prestataire',this.value.trim())"><span>prestataire ménage (affiché sur le PDF ménages)</span>
       </div>`;
     h+=`</div>`;
   });
@@ -9034,6 +9118,18 @@ async function factuSetTxt(id,champ,val){
       {headers:{...hd(),'Prefer':'return=minimal'}});
     const c=factuCfg.find(x=>x.livret_id===id); if(c)c[champ]=val===''?null:val;
     toast('✓ Enregistré'); renderFactu();
+  }catch(e){toast('Enregistrement impossible');logAndShowErr&&logAndShowErr(e);}
+}
+/* Coût unitaire du linge (ex. peignoir) fusionné dans le jsonb linge. */
+async function factuSetLinge(id,k,val){
+  const c=factuCfg.find(x=>x.livret_id===id); if(!c)return;
+  const n=parseFloat(String(val).replace(',','.'));
+  const linge={...(c.linge||{})};
+  if(isFinite(n)&&n>0)linge[k]=n; else delete linge[k];
+  try{
+    await axios.patch(`${API}/factu_config?livret_id=eq.${id}`,{linge},
+      {headers:{...hd(),'Prefer':'return=minimal'}});
+    c.linge=linge; toast('✓ Enregistré'); renderFactu();
   }catch(e){toast('Enregistrement impossible');logAndShowErr&&logAndShowErr(e);}
 }
 /* Barème ménage n1/n2/n3 fusionné dans le jsonb. */
