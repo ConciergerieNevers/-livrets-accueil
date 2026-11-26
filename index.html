@@ -8252,10 +8252,13 @@ function factuCalc(r,c,ov){
             total:men||0,sansPrix:false,corrige:false};
   }
   const auto=factuLits(c);
-  const lits=Math.max(0,nn(ov.nb_lits,auto));
+  /* Annulé mais encaissé : commission sur le montant saisi, pas de linge par défaut
+     (0 changement → blanchisserie 0, ajustable dans l'éditeur si le séjour a été entamé). */
+  const annEnc=!!ov.annule_encaisse;
+  const lits=Math.max(0,nn(ov.nb_lits,annEnc?0:auto));
   const tap =Math.max(0,nn(ov.nb_tapis,c.nb_tapis||1));
   const cui =Math.max(0,nn(ov.nb_cuisine,c.nb_cuisine||1));
-  const chg =Math.max(0,nn(ov.nb_changements,c.nb_changements||1));
+  const chg =Math.max(0,nn(ov.nb_changements,annEnc?0:(c.nb_changements||1)));
   let prix=(ov.prix_voyageur!==null&&ov.prix_voyageur!==undefined&&ov.prix_voyageur!=='')
            ?parseFloat(ov.prix_voyageur)
            :(r.total_price!==null&&r.total_price!==undefined?parseFloat(r.total_price):null);
@@ -8319,8 +8322,9 @@ function factuGroupes(){
                                                 annulees:0,inconnus:0});
     const calc=factuCalc(r,c,ov);
     const annulee=factuAnnulee(r), inconnu=factuStatutInconnu(r);
-    g.lignes.push({r,ov,calc,annulee,inconnu});
-    if(annulee){g.annulees++;return;}
+    const annEnc=annulee&&!!ov.annule_encaisse;
+    g.lignes.push({r,ov,calc,annulee,annEnc,inconnu});
+    if(annulee&&!annEnc){g.annulees++;return;}
     if(ov.exclue)return;
     if(inconnu)g.inconnus++;
     g.com+=calc.com||0; g.blanch+=calc.blanch; g.men+=calc.men||0; g.total+=calc.total;
@@ -8378,7 +8382,7 @@ function factuMoisHtml(){
   const cles=factuOrdreCles(grp);
   let tCom=0,tBl=0,tMen=0,tTot=0,tSej=0,tSans=0,tAnn=0,tInc=0,tMenM=0;
   cles.forEach(k=>{const g=grp[k];tCom+=g.com;tBl+=g.blanch;tMen+=g.men;tTot+=g.total;
-    tSej+=g.lignes.filter(l=>!l.ov.exclue&&!l.annulee).length;
+    tSej+=g.lignes.filter(l=>!l.ov.exclue&&(!l.annulee||l.annEnc)).length;
     tSans+=g.sansPrix;tAnn+=g.annulees;tInc+=g.inconnus;tMenM+=g.menManquant;});
   const maj=document.getElementById('fa-total');
   if(maj){
@@ -8490,29 +8494,30 @@ function factuDetailHtml(g){
     <span style="width:82px;text-align:right">Total</span>
     <span style="width:56px"></span></div>`;
   g.lignes.forEach(l=>{
-    const {r,ov,calc}=l, id=r.booking_id, ex=!!ov.exclue, an=!!l.annulee;
-    const etiq = an ? (r.status_label==='REQUEST_INFORMATION'?'demande':'annulé')
+    const {r,ov,calc}=l, id=r.booking_id, ex=!!ov.exclue, an=!!l.annulee, enc=!!l.annEnc;
+    const mort=an&&!enc; // annulé sans encaissement : barré, hors facture
+    const etiq = an ? (enc?'annulé · encaissé':(r.status_label==='REQUEST_INFORMATION'?'demande':'annulé'))
                     : (l.inconnu?'statut inconnu':'');
-    h+=`<div class="fa-dl${ex||an?' ex':''}"${an||menage?'':` onclick="factuEditer(${id})" title="Modifier ce séjour (lits, personnes, prix…)"`}>
+    h+=`<div class="fa-dl${(ex||mort)?' ex':''}"${menage?'':` onclick="factuEditer(${id})" title="${an?'Séjour annulé : saisir un montant encaissé malgré tout':'Modifier ce séjour (lits, personnes, prix…)'}"`}>
       <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
         ${fesc(((r.first_name||'')+' '+(r.last_name||'')).trim()||'—')}${etiq?` <i class="fa-etq">${etiq}</i>`:''}</span>
       <span style="width:62px;font-variant-numeric:tabular-nums">${jjmm(r.checkin)}</span>
       <span style="width:62px;font-variant-numeric:tabular-nums">${jjmm(r.checkout)}</span>
       <span style="width:38px;text-align:center">${nuits(r)}</span>
       <span style="width:34px;text-align:center">${calc.pers}</span>
-      <span style="width:62px;text-align:center" class="fa-lits">${menage?'—':`
+      <span style="width:62px;text-align:center" class="fa-lits">${menage||mort?'—':`
         <button onclick="event.stopPropagation();factuLitsDelta(${id},-1)">−</button><b${calc.corrige?' class="cor"':''}>${calc.lits}</b><button onclick="event.stopPropagation();factuLitsDelta(${id},1)">+</button>`}</span>
-      <span style="width:86px;text-align:right">${an||menage?'—':(calc.sansPrix
+      <span style="width:86px;text-align:right">${mort||menage?'—':(calc.sansPrix&&!an
         ?`<input class="fa-px" type="number" step="0.01" placeholder="à saisir" onclick="event.stopPropagation()" onchange="factuPrix(${id},this.value)">`
         :(calc.prix===null?'—':eur(calc.prix)))}</span>
-      <span style="width:76px;text-align:right">${an||calc.com===null?'—':eur(calc.com)}</span>
-      <span style="width:76px;text-align:right">${an?'—':(menage
+      <span style="width:76px;text-align:right">${mort||calc.com===null?'—':eur(calc.com)}</span>
+      <span style="width:76px;text-align:right">${mort?'—':(menage
         ?(calc.menageManquant?'<i class="fa-etq">barème ?</i>':eur(calc.men))
         :eur(calc.blanch))}</span>
-      <span style="width:82px;text-align:right;font-weight:600;color:var(--gold2)">${an?'—':eur(calc.total)}</span>
-      <span style="width:56px;text-align:right;display:inline-flex;gap:4px;justify-content:flex-end"><a class="fa-mini" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center" href="${shResaUrl(id)}" target="_blank" rel="noopener" title="Ouvrir la réservation dans SuperHote" onclick="event.stopPropagation()">↗</a>${an?'':`<button class="fa-mini" title="${ex?'Remettre dans la facture':'Retirer de la facture'}" onclick="event.stopPropagation();factuExclure(${id},${ex?'false':'true'})">${ex?'↩':'✕'}</button>`}</span>
+      <span style="width:82px;text-align:right;font-weight:600;color:var(--gold2)">${mort?'—':eur(calc.total)}</span>
+      <span style="width:56px;text-align:right;display:inline-flex;gap:4px;justify-content:flex-end"><a class="fa-mini" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center" href="${shResaUrl(id)}" target="_blank" rel="noopener" title="Ouvrir la réservation dans SuperHote" onclick="event.stopPropagation()">↗</a>${mort?'':`<button class="fa-mini" title="${ex?'Remettre dans la facture':'Retirer de la facture'}" onclick="event.stopPropagation();factuExclure(${id},${ex?'false':'true'})">${ex?'↩':'✕'}</button>`}</span>
     </div>`;
-    if(factuEdit===id&&!an&&!menage)h+=factuEditHtml(l);
+    if(factuEdit===id&&!menage)h+=factuEditHtml(l);
   });
   h+=`</div>`;
   return h;
@@ -8521,6 +8526,20 @@ function factuDetailHtml(g){
    la blanchisserie et le total se recalculent à chaque toucher. */
 function factuEditHtml(l){
   const {r,calc}=l, id=r.booking_id;
+  if(l.annulee){
+    /* Séjour annulé : saisir ce qui a quand même été encaissé (indemnité, acompte gardé…) —
+       la commission se calcule dessus et la ligne rentre dans la facture. */
+    return `<div class="fa-edit" onclick="event.stopPropagation()">
+      <span class="bl">Encaissé malgré l'annulation :
+        <input class="fa-in" style="width:86px" type="number" step="0.01" min="0"
+          value="${l.annEnc&&calc.prix!==null?calc.prix:''}" placeholder="0 €"
+          onchange="factuAnnuleEncaisse(${id},this.value)"></span>
+      ${l.annEnc
+        ?`<button class="fa-mini" onclick="factuAnnuleRetirer(${id})">✕ Finalement rien encaissé</button>
+          <span class="som">commission <b>${eur(calc.com||0)}</b> · facturé <b>${eur(calc.total)}</b></span>`
+        :`<span style="font-size:11.5px;color:var(--muted2)">Saisis le montant encaissé : la commission sera facturée dessus et la ligne réintègre la facture. Vérifie l'encaissement via ↗ SuperHote.</span>`}
+    </div>`;
+  }
   const bl=(lab,champ,val,min)=>`<span class="bl">${lab}
     <button onclick="event.stopPropagation();factuEditDelta(${id},'${champ}',-1,${min})">−</button><b>${val}</b><button onclick="event.stopPropagation();factuEditDelta(${id},'${champ}',1,${min})">+</button></span>`;
   return `<div class="fa-edit" onclick="event.stopPropagation()">
@@ -8545,6 +8564,15 @@ function factuEditDelta(id,champ,d,min){
 function factuReinit(id){
   factuUpsert(id,{nb_lits:null,nb_personnes:null,nb_tapis:null,nb_cuisine:null,nb_changements:null,prix_voyageur:null});
 }
+/* Annulé mais encaissé : montant > 0 → la ligne redevient facturable (commission dessus). */
+function factuAnnuleEncaisse(id,v){
+  const n=parseFloat(String(v).replace(',','.'));
+  if(isFinite(n)&&n>0)factuUpsert(id,{annule_encaisse:true,prix_voyageur:n});
+  else factuAnnuleRetirer(id);
+}
+function factuAnnuleRetirer(id){
+  factuUpsert(id,{annule_encaisse:false,prix_voyageur:null});
+}
 function factuOuvrir(k){factuOuvert=factuOuvert===k?null:k;factuEdit=null;renderFactu();}
 function factuAllerMois(d){factuMois=factuMoisDecale(factuMois,d);factuOuvert=null;openFactu();}
 function factuChoixMois(v){if(!v)return;factuMois=v;factuOuvert=null;openFactu();}
@@ -8554,7 +8582,7 @@ async function factuUpsert(id,champs){
   const ov=factuOv[id]||{booking_id:id};
   Object.assign(ov,champs); factuOv[id]=ov;
   const corps={booking_id:id};
-  ['nb_lits','nb_personnes','nb_tapis','nb_cuisine','nb_changements','prix_voyageur','exclue','note']
+  ['nb_lits','nb_personnes','nb_tapis','nb_cuisine','nb_changements','prix_voyageur','exclue','note','annule_encaisse']
     .forEach(k=>{if(ov[k]!==undefined)corps[k]=ov[k];});
   try{
     await axios.post(`${API}/factu_ligne?on_conflict=booking_id`,corps,
@@ -8587,7 +8615,7 @@ async function factuValider(k){
     if(!await askConfirm(`Valider la facture de ${g.nom} pour ${factuMoisLabel(factuMois)}${finPhrase}\n\nTotal TTC : ${eur(g.total)}\nCommission : ${eur(g.com)}\nBlanchisserie : ${eur(g.blanch)}${g.men?`\nMénages : ${eur(g.men)}`:''}${g.sansPrix?`\n\n⚠️ ${g.sansPrix} séjour(s) sans prix : leur commission vaut 0.`:''}${g.menManquant?`\n\n⚠️ ${g.menManquant} séjour(s) sans barème ménage : ils valent 0.`:''}`))return;
   }
   const [d1]=factuBornes(factuMois);
-  const lignes=g.lignes.filter(l=>!l.ov.exclue&&!l.annulee).map(l=>({
+  const lignes=g.lignes.filter(l=>!l.ov.exclue&&(!l.annulee||l.annEnc)).map(l=>({
     booking_id:l.r.booking_id,
     nom:((l.r.first_name||'')+' '+(l.r.last_name||'')).trim(),
     checkin:l.r.checkin, checkout:l.r.checkout, nuits:nuits(l.r),
@@ -8628,7 +8656,7 @@ async function factuValiderGroupe(gr){
   try{
     for(const k of membres){
       const g=grp[k];
-      const lignes=g.lignes.filter(l=>!l.ov.exclue&&!l.annulee).map(l=>({
+      const lignes=g.lignes.filter(l=>!l.ov.exclue&&(!l.annulee||l.annEnc)).map(l=>({
         booking_id:l.r.booking_id,
         nom:((l.r.first_name||'')+' '+(l.r.last_name||'')).trim(),
         checkin:l.r.checkin, checkout:l.r.checkout, nuits:nuits(l.r),
@@ -8675,11 +8703,11 @@ async function factuPennylane(corps){
 /* ---------- Facture PDF ---------- */
 function factuFactureHtml(g){
   const menage=g.cfg.mode==='menage';
-  const lignes=g.lignes.filter(l=>!l.ov.exclue&&!l.annulee);
+  const lignes=g.lignes.filter(l=>!l.ov.exclue&&(!l.annulee||l.annEnc));
   const d=new Date();
   let rows='';
   lignes.forEach(l=>{
-    rows+=`<tr><td>${fesc(((l.r.first_name||'')+' '+(l.r.last_name||'')).trim()||'—')}</td>
+    rows+=`<tr><td>${fesc(((l.r.first_name||'')+' '+(l.r.last_name||'')).trim()||'—')}${l.annEnc?' <i>(annulé · encaissé)</i>':''}</td>
       <td class="c">${l.r.checkin?new Date(l.r.checkin+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
       <td class="c">${l.r.checkout?new Date(l.r.checkout+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
       <td class="c">${nuits(l.r)}</td><td class="c">${l.calc.pers}</td>
@@ -8776,7 +8804,7 @@ function factuRecapHtml(){
   cles.forEach(k=>{
     const g=grp[k];
     const menage=g.cfg.mode==='menage';
-    const lignes=g.lignes.filter(l=>!l.ov.exclue&&!l.annulee);
+    const lignes=g.lignes.filter(l=>!l.ov.exclue&&(!l.annulee||l.annEnc));
     if(!lignes.length)return;
     tCom+=g.com;tBl+=g.blanch;tMen+=g.men;tTot+=g.total;tSej+=lignes.length;
     const mb=g.cfg.menage||{};
@@ -8787,7 +8815,7 @@ function factuRecapHtml(){
       <td class="r">${eur(g.com)}</td><td class="r">${eur(g.blanch+g.men)}</td><td class="r b">${eur(g.total)}</td></tr>`;
     lignes.forEach(l=>{
       corps+=`<tr><td class="num">${l.r.booking_id}</td>
-        <td>${fesc(((l.r.first_name||'')+' '+(l.r.last_name||'')).trim()||'—')}${l.inconnu?' <i>(statut inconnu)</i>':''}</td>
+        <td>${fesc(((l.r.first_name||'')+' '+(l.r.last_name||'')).trim()||'—')}${l.annEnc?' <i>(annulé · encaissé)</i>':(l.inconnu?' <i>(statut inconnu)</i>':'')}</td>
         <td class="c">${l.r.checkin?new Date(l.r.checkin+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
         <td class="c">${l.r.checkout?new Date(l.r.checkout+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
         <td class="c">${nuits(l.r)}</td>
