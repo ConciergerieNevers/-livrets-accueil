@@ -8314,6 +8314,8 @@ function renderFactu(){
   if(factuTab==='bilan'){c.innerHTML='<div class="loading">Calcul de l\'année…</div>';factuBilan();}
 }
 
+/* Fiche de la réservation dans SuperHote (V2) — vérifié sur l'interface connect. */
+function shResaUrl(id){ return 'https://connect.superhote.com/reservations/all/'+id; }
 /* Dates courtes et nombre de nuits : SuperHote ne renseigne pas toujours nights. */
 function jjmm(d){ return d ? new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}) : '—'; }
 function nuits(r){
@@ -8342,7 +8344,8 @@ function factuMoisHtml(){
     <input type="month" id="fa-mois" value="${factuMois}" onchange="factuChoixMois(this.value)">
     <button class="adm-logout" onclick="factuAllerMois(1)">→</button>
     <span class="fa-lab">${factuMoisLabel(factuMois)}</span>
-    <span class="fa-lab" style="margin-left:auto">séjours <b style="color:var(--gold3)">terminés</b> dans le mois</span>
+    <button class="adm-logout" style="margin-left:auto" onclick="factuRecapPdf()" title="Toutes les réservations du mois, ligne par ligne, avec leur n° SuperHote">🖨 Récap PDF</button>
+    <span class="fa-lab">séjours <b style="color:var(--gold3)">terminés</b> dans le mois</span>
   </div>`;
   if(!cles.length)
     return h+`<div class="lst"><div class="lgn"><div class="pr"><div class="t1">Aucun séjour facturable sur ce mois</div>
@@ -8405,7 +8408,7 @@ function factuDetailHtml(g){
     <span style="width:76px;text-align:right">Commission</span>
     <span style="width:76px;text-align:right">Blanchiss.</span>
     <span style="width:82px;text-align:right">Total</span>
-    <span style="width:30px"></span></div>`;
+    <span style="width:56px"></span></div>`;
   g.lignes.forEach(l=>{
     const {r,ov,calc}=l, id=r.booking_id, ex=!!ov.exclue, an=!!l.annulee;
     const etiq = an ? (r.status_label==='REQUEST_INFORMATION'?'demande':'annulé')
@@ -8425,7 +8428,7 @@ function factuDetailHtml(g){
       <span style="width:76px;text-align:right">${an||calc.com===null?'—':eur(calc.com)}</span>
       <span style="width:76px;text-align:right">${an?'—':eur(calc.blanch)}</span>
       <span style="width:82px;text-align:right;font-weight:600;color:var(--gold2)">${an?'—':eur(calc.total)}</span>
-      <span style="width:30px;text-align:right">${an?'':`<button class="fa-mini" title="${ex?'Remettre dans la facture':'Retirer de la facture'}" onclick="factuExclure(${id},${ex?'false':'true'})">${ex?'↩':'✕'}</button>`}</span>
+      <span style="width:56px;text-align:right;display:inline-flex;gap:4px;justify-content:flex-end"><a class="fa-mini" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center" href="${shResaUrl(id)}" target="_blank" rel="noopener" title="Ouvrir la réservation dans SuperHote" onclick="event.stopPropagation()">↗</a>${an?'':`<button class="fa-mini" title="${ex?'Remettre dans la facture':'Retirer de la facture'}" onclick="factuExclure(${id},${ex?'false':'true'})">${ex?'↩':'✕'}</button>`}</span>
     </div>`;
   });
   h+=`</div>`;
@@ -8543,29 +8546,109 @@ function factuFactureHtml(g){
       tbody td{padding:6px 8px;border-bottom:1px solid #eee}</style>
   </div>`;
 }
+/* Rend un HTML en PDF A4 multi-pages (découpe verticale), puis partage (iPhone) ou télécharge. */
+async function factuPdfRender(html,nf,orient){
+  await Promise.all([ensureLib('jspdf'),ensureLib('html2canvas')]);
+  const host=document.createElement('div');
+  host.style.cssText='position:fixed;left:-99999px;top:0;pointer-events:none;z-index:-1';
+  host.innerHTML=html;
+  document.body.appendChild(host);
+  await new Promise(r=>setTimeout(r,160));
+  const cv=await html2canvas(host.firstElementChild,{scale:2,backgroundColor:'#ffffff',logging:false});
+  document.body.removeChild(host);
+  const {jsPDF}=window.jspdf;
+  const pays=orient==='landscape';
+  const pdf=new jsPDF({unit:'mm',format:'a4',orientation:pays?'landscape':'portrait'});
+  const pw=pays?297:210, ph=pays?210:297;
+  const pagePx=Math.floor(cv.width*ph/pw);
+  let y=0, first=true;
+  while(y<cv.height){
+    const h=Math.min(pagePx,cv.height-y);
+    const pc=document.createElement('canvas');pc.width=cv.width;pc.height=h;
+    pc.getContext('2d').drawImage(cv,0,y,cv.width,h,0,0,cv.width,h);
+    if(!first)pdf.addPage();
+    pdf.addImage(pc.toDataURL('image/jpeg',0.93),'JPEG',0,0,pw,h*pw/cv.width,undefined,'FAST');
+    first=false;y+=pagePx;
+  }
+  if(navigator.share&&/iPhone|iPad|Android/i.test(navigator.userAgent)){
+    const b=pdf.output('blob');
+    try{await navigator.share({files:[new File([b],nf,{type:'application/pdf'})],title:nf});return;}catch(_e){}
+  }
+  pdf.save(nf);
+}
 async function factuPdf(k){
   const grp=factuGroupes(), g=grp[k]; if(!g||!g.lignes.length){toast('Rien à facturer');return;}
   toast('Génération du PDF…');
   try{
-    await Promise.all([ensureLib('jspdf'),ensureLib('html2canvas')]);
-    const host=document.createElement('div');
-    host.style.cssText='position:fixed;left:-99999px;top:0;pointer-events:none;z-index:-1';
-    host.innerHTML=factuFactureHtml(g);
-    document.body.appendChild(host);
-    await new Promise(r=>setTimeout(r,160));
-    const cv=await html2canvas(host.firstElementChild,{scale:2,backgroundColor:'#ffffff',logging:false});
-    document.body.removeChild(host);
-    const {jsPDF}=window.jspdf;
-    const pdf=new jsPDF({unit:'mm',format:'a4',orientation:'landscape'});
-    const lw=297, lh=cv.height*lw/cv.width;
-    pdf.addImage(cv.toDataURL('image/jpeg',0.93),'JPEG',0,0,lw,Math.min(lh,210),undefined,'FAST');
-    const nf=`facture-${factuMois}-${(g.nom||'').replace(/\s+/g,'-')}.pdf`;
-    if(navigator.share&&/iPhone|iPad|Android/i.test(navigator.userAgent)){
-      const b=pdf.output('blob');
-      try{await navigator.share({files:[new File([b],nf,{type:'application/pdf'})],title:nf});return;}catch(_e){}
-    }
-    pdf.save(nf);
+    await factuPdfRender(factuFactureHtml(g),`facture-${factuMois}-${(g.nom||'').replace(/\s+/g,'-')}.pdf`,'landscape');
     toast('✓ Facture téléchargée');
+  }catch(e){toast('Erreur PDF');logAndShowErr&&logAndShowErr(e);}
+}
+
+/* ---------- Récap du mois, ligne par ligne, tous logements ---------- */
+function factuRecapHtml(){
+  const grp=factuGroupes();
+  const cles=Object.keys(grp).sort((a,b)=>grp[a].nom.localeCompare(grp[b].nom,'fr'));
+  let tCom=0,tBl=0,tTot=0,tSej=0;
+  let corps='';
+  cles.forEach(k=>{
+    const g=grp[k];
+    const lignes=g.lignes.filter(l=>!l.ov.exclue&&!l.annulee);
+    if(!lignes.length)return;
+    tCom+=g.com;tBl+=g.blanch;tTot+=g.total;tSej+=lignes.length;
+    corps+=`<tr class="grp"><td colspan="6">${fesc(g.nom)} — ${Math.round(g.cfg.commission*100)} % · blanchisserie ×${g.cfg.marge_blanch}</td>
+      <td class="r">${eur(g.com)}</td><td class="r">${eur(g.blanch)}</td><td class="r b">${eur(g.total)}</td></tr>`;
+    lignes.forEach(l=>{
+      corps+=`<tr><td class="num">${l.r.booking_id}</td>
+        <td>${fesc(((l.r.first_name||'')+' '+(l.r.last_name||'')).trim()||'—')}${l.inconnu?' <i>(statut inconnu)</i>':''}</td>
+        <td class="c">${l.r.checkin?new Date(l.r.checkin+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
+        <td class="c">${l.r.checkout?new Date(l.r.checkout+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
+        <td class="c">${nuits(l.r)}</td>
+        <td class="r">${l.calc.prix===null?'à saisir':eur(l.calc.prix)}</td>
+        <td class="r">${l.calc.com===null?'—':eur(l.calc.com)}</td>
+        <td class="r">${eur(l.calc.blanch)}</td>
+        <td class="r b">${eur(l.calc.total)}</td></tr>`;
+    });
+  });
+  const d=new Date();
+  return `<div style="width:1000px;background:#fff;color:#111;padding:40px 42px;font:12.5px/1.5 Helvetica,Arial,sans-serif;box-sizing:border-box">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #111;padding-bottom:14px">
+      <div><div style="font-size:22px;font-weight:700;letter-spacing:.5px">BE NOMADS</div>
+        <div style="color:#666;font-size:12px;margin-top:3px">Récapitulatif des séjours facturés — ${factuMoisLabel(factuMois)}</div></div>
+      <div style="text-align:right;color:#666;font-size:12px">Édité le ${d.toLocaleDateString('fr-FR')}<br>${tSej} séjour${tSej>1?'s':''}</div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:11.5px;margin-top:16px">
+      <thead><tr style="background:#f4f2ed">
+        <th style="text-align:left;padding:6px 7px">N° SuperHote</th>
+        <th style="text-align:left;padding:6px 7px">Voyageur</th>
+        <th style="padding:6px 7px">Entrée</th><th style="padding:6px 7px">Sortie</th>
+        <th style="padding:6px 7px">Nuits</th>
+        <th style="text-align:right;padding:6px 7px">Prix voyageur</th>
+        <th style="text-align:right;padding:6px 7px">Commission</th>
+        <th style="text-align:right;padding:6px 7px">Blanchisserie</th>
+        <th style="text-align:right;padding:6px 7px">Total</th></tr></thead>
+      <tbody>${corps||'<tr><td colspan="9" style="padding:14px;text-align:center;color:#888">Aucun séjour facturable sur ce mois.</td></tr>'}</tbody></table>
+    <div style="display:flex;justify-content:flex-end;margin-top:20px">
+      <table style="font-size:12.5px;border-collapse:collapse;min-width:300px">
+        <tr><td style="padding:4px 14px 4px 0;color:#666">Commission</td><td style="text-align:right;padding:4px 0">${eur(tCom)}</td></tr>
+        <tr><td style="padding:4px 14px 4px 0;color:#666">Blanchisserie</td><td style="text-align:right;padding:4px 0">${eur(tBl)}</td></tr>
+        <tr><td style="padding:6px 14px 6px 0;color:#666;border-top:1px solid #ddd">Total HT</td><td style="text-align:right;padding:6px 0;border-top:1px solid #ddd">${eur(tTot/1.2)}</td></tr>
+        <tr><td style="padding:4px 14px 4px 0;color:#666">TVA 20 %</td><td style="text-align:right;padding:4px 0">${eur(tTot-tTot/1.2)}</td></tr>
+        <tr><td style="padding:8px 14px 8px 0;font-weight:700;font-size:14px;border-top:2px solid #111">Total TTC</td>
+            <td style="text-align:right;padding:8px 0;font-weight:700;font-size:14px;border-top:2px solid #111">${eur(tTot)}</td></tr>
+      </table></div>
+    <div style="margin-top:26px;color:#888;font-size:10px;border-top:1px solid #eee;padding-top:10px">
+      Mathemia — Be Nomads · Chaque ligne porte le n° de la réservation dans SuperHote
+      (connect.superhote.com → Réservations). Les séjours annulés ou exclus ne figurent pas ici.</div>
+    <style>td.c{text-align:center}td.r{text-align:right}td.b{font-weight:700}td.num{font-variant-numeric:tabular-nums;color:#555}
+      tbody td{padding:5px 7px;border-bottom:1px solid #eee}tbody tr.grp td{background:#faf8f3;font-weight:700;border-top:2px solid #ddd;padding:7px}</style>
+  </div>`;
+}
+async function factuRecapPdf(){
+  toast('Génération du récap…');
+  try{
+    await factuPdfRender(factuRecapHtml(),`recap-sejours-${factuMois}.pdf`,'portrait');
+    toast('✓ Récap téléchargé');
   }catch(e){toast('Erreur PDF');logAndShowErr&&logAndShowErr(e);}
 }
 
