@@ -698,6 +698,8 @@ body{top:0!important}
   border-radius:7px;padding:3px 7px;font-size:12px;cursor:pointer;font-family:inherit;line-height:1.4}
 .fa-mini:hover{background:rgba(224,169,58,.14);border-color:var(--border-gold)}
 .fa-dl{cursor:pointer}
+.fa-dl.lng{background:rgba(224,86,64,.10);border-radius:8px}
+.fa-etq.rge{color:#e8907e;border-color:rgba(224,86,64,.55)}
 .fa-edit{background:rgba(224,169,58,.06);border:1px solid var(--border-gold);border-radius:11px;
   padding:12px 14px;margin:4px 0 10px;display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center}
 .fa-edit .bl{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted)}
@@ -8190,9 +8192,10 @@ async function deleteAvis(id){
 }
 
 /* ===================== FACTURATION CONCIERGERIE =====================
-   Un séjour est facturé sur le mois de son DÉPART : à la sortie le linge est
-   lavé et le prix est définitif. Les classeurs Excel de Mathieu classaient par
-   arrivée ; 7 % des séjours, à cheval sur deux mois, changent donc de facture.
+   Règle de Mathieu (26/11/2026) : un séjour est facturé sur le mois de son
+   ARRIVÉE (check-in), comme ses classeurs historiques. Une longue réservation
+   (≥ 28 nuits) apparaît sur chaque mois couvert, surlignée en rouge clair, et
+   son montant est divisé en parts égales entre ces mois.
 
    Ce que Be Nomads facture au propriétaire pour un séjour :
      commission  = taux du logement × prix tout inclus payé par le voyageur
@@ -8201,7 +8204,7 @@ async function deleteAvis(id){
    mais n'entre pas dans la facture pour l'instant.
    Les taux viennent des classeurs Excel de Mathieu, repris au centime près. */
 const fesc=x=>(''+(x==null?'':x)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-let factuCfg=[], factuResas=[], factuOv={}, factuFact={}, factuLivrets=[],
+let factuCfg=[], factuResas=[], factuEnCours=[], factuOv={}, factuFact={}, factuLivrets=[],
     factuMois=null, factuTab='mois', factuOuvert=null, factuAnnee=null,
     factuEdit=null, factuParamOuverts={};
 
@@ -8284,24 +8287,46 @@ async function openFactu(){
 async function loadFactu(){
   const [d1,d2]=factuBornes(factuMois);
   try{
-    const [cf,rs,fa,lv]=await Promise.all([
+    const colonnes='booking_id,rental_id,first_name,last_name,checkin,checkout,adults,children,total_price,platform,platform_name,statut,status_label,nights';
+    const [cf,rs,ec,fa,lv]=await Promise.all([
       axios.get(`${API}/factu_config?select=*,livrets(id,nom,superhote_rental_id)`,{headers:hd()}),
-      axios.get(`${API}/sh_reservations?select=booking_id,rental_id,first_name,last_name,checkin,checkout,adults,children,total_price,platform,platform_name,statut,status_label,nights&checkout=gte.${d1}&checkout=lt.${d2}&order=checkout.asc&limit=3000`,{headers:hd()}),
+      /* Règle de Mathieu (26/11/2026) : un séjour se facture au mois de son ARRIVÉE. */
+      axios.get(`${API}/sh_reservations?select=${colonnes}&checkin=gte.${d1}&checkin=lt.${d2}&order=checkin.asc&limit=3000`,{headers:hd()}),
+      /* longues réservations EN COURS sur ce mois : commencées avant, encore présentes */
+      axios.get(`${API}/sh_reservations?select=${colonnes}&checkin=lt.${d1}&checkout=gt.${d1}&order=checkin.asc&limit=400`,{headers:hd()}).catch(()=>({data:[]})),
       axios.get(`${API}/factu_facture?select=*&mois=eq.${d1}`,{headers:hd()}).catch(()=>({data:[]})),
       axios.get(`${API}/livrets?select=id,nom,superhote_rental_id&deleted_at=is.null&order=nom.asc`,{headers:hd()}).catch(()=>({data:[]}))
     ]);
     factuCfg=cf.data||[]; factuResas=rs.data||[];
+    factuEnCours=(ec.data||[]).filter(r=>!FACTU_ANNULE[String(r.statut)]&&factuEstLongue(r)&&r.checkin<d1);
     factuFact={}; (fa.data||[]).forEach(f=>factuFact[f.livret_id]=f);
     factuLivrets=lv.data||[];
     factuOv={};
-    const ids=factuResas.map(r=>r.booking_id);
+    const ids=factuResas.map(r=>r.booking_id).concat(factuEnCours.map(r=>r.booking_id));
     for(let i=0;i<ids.length;i+=350){
       const lot=ids.slice(i,i+350).join(',');
       const o=await axios.get(`${API}/factu_ligne?select=*&booking_id=in.(${lot})`,{headers:hd()}).catch(()=>({data:[]}));
       (o.data||[]).forEach(x=>factuOv[x.booking_id]=x);
     }
-  }catch(e){factuCfg=[];factuResas=[];logAndShowErr&&logAndShowErr(e);}
+  }catch(e){factuCfg=[];factuResas=[];factuEnCours=[];logAndShowErr&&logAndShowErr(e);}
 }
+/* ---------- Longues réservations (≥ 28 nuits) ----------
+   Règle de Mathieu (26/11/2026) : une longue réservation apparaît sur CHAQUE mois
+   qu'elle couvre, surlignée en rouge clair, et son montant est DIVISÉ par le nombre
+   de mois couverts — chaque mois facture sa part, la somme des mois redonne le séjour. */
+function factuEstLongue(r){ return (parseInt(nuits(r))||0)>=28; }
+function factuNbMois(r){
+  if(!r.checkin||!r.checkout)return 1;
+  const a=new Date(r.checkin+'T12:00:00'), b=new Date(r.checkout+'T12:00:00');
+  b.setDate(b.getDate()-1); // la dernière nuit, pas le jour du départ
+  return Math.max(1,(b.getFullYear()*12+b.getMonth())-(a.getFullYear()*12+a.getMonth())+1);
+}
+function factuPart(calc,nbM){
+  if(nbM<=1)return calc;
+  return {...calc,com:calc.com===null?null:calc.com/nbM,blanch:calc.blanch/nbM,
+          men:(calc.men||0)/nbM,total:calc.total/nbM};
+}
+
 /* Statuts SuperHote : 1 = CONFIRMED, 0 = CANCELED, 5 = CANCELED_BY_TRAVELER,
    7 = REQUEST_INFORMATION (simple demande, pas une réservation).
    Seul un séjour confirmé se facture. Un statut vide vient d'une ligne jamais
@@ -8321,13 +8346,29 @@ function factuGroupes(){
     const g=grp[c.livret_id]||(grp[c.livret_id]={cfg:c,nom:(c.livrets||{}).nom||'—',lignes:[],
                                                 com:0,blanch:0,men:0,total:0,sansPrix:0,menManquant:0,
                                                 annulees:0,inconnus:0});
-    const calc=factuCalc(r,c,ov);
     const annulee=factuAnnulee(r), inconnu=factuStatutInconnu(r);
     const annEnc=annulee&&!!ov.annule_encaisse;
-    g.lignes.push({r,ov,calc,annulee,annEnc,inconnu});
+    const nbMois=(!annulee||annEnc)&&factuEstLongue(r)?factuNbMois(r):1;
+    const calc=factuPart(factuCalc(r,c,ov),nbMois);
+    g.lignes.push({r,ov,calc,annulee,annEnc,inconnu,nbMois,enCours:false});
     if(annulee&&!annEnc){g.annulees++;return;}
     if(ov.exclue)return;
     if(inconnu)g.inconnus++;
+    g.com+=calc.com||0; g.blanch+=calc.blanch; g.men+=calc.men||0; g.total+=calc.total;
+    if(calc.sansPrix)g.sansPrix++;
+    if(calc.menageManquant)g.menManquant++;
+  });
+  /* Longues réservations en cours : part du mois comptée, ligne surlignée. */
+  factuEnCours.forEach(r=>{
+    const c=parRental[r.rental_id]; if(!c||c.actif===false)return;
+    const ov=factuOv[r.booking_id]||{};
+    const g=grp[c.livret_id]||(grp[c.livret_id]={cfg:c,nom:(c.livrets||{}).nom||'—',lignes:[],
+                                                com:0,blanch:0,men:0,total:0,sansPrix:0,menManquant:0,
+                                                annulees:0,inconnus:0});
+    const nbMois=factuNbMois(r);
+    const calc=factuPart(factuCalc(r,c,ov),nbMois);
+    g.lignes.push({r,ov,calc,annulee:false,annEnc:false,inconnu:factuStatutInconnu(r),nbMois,enCours:true});
+    if(ov.exclue)return;
     g.com+=calc.com||0; g.blanch+=calc.blanch; g.men+=calc.men||0; g.total+=calc.total;
     if(calc.sansPrix)g.sansPrix++;
     if(calc.menageManquant)g.menManquant++;
@@ -8398,7 +8439,7 @@ function factuMoisHtml(){
     <button class="adm-logout" onclick="factuAllerMois(1)">→</button>
     <span class="fa-lab">${factuMoisLabel(factuMois)}</span>
     <button class="adm-logout" style="margin-left:auto" onclick="factuRecapPdf()" title="Toutes les réservations du mois, ligne par ligne, avec leur n° SuperHote">🖨 Récap PDF</button>
-    <span class="fa-lab">séjours <b style="color:var(--gold3)">terminés</b> dans le mois</span>
+    <span class="fa-lab">séjours <b style="color:var(--gold3)">commençant</b> dans le mois · longues durées réparties</span>
   </div>`;
   if(!cles.length)
     return h+`<div class="lst"><div class="lgn"><div class="pr"><div class="t1">Aucun séjour facturable sur ce mois</div>
@@ -8497,11 +8538,13 @@ function factuDetailHtml(g){
   g.lignes.forEach(l=>{
     const {r,ov,calc}=l, id=r.booking_id, ex=!!ov.exclue, an=!!l.annulee, enc=!!l.annEnc;
     const mort=an&&!enc; // annulé sans encaissement : barré, hors facture
-    const etiq = an ? (enc?'annulé · encaissé':(r.status_label==='REQUEST_INFORMATION'?'demande':'annulé'))
-                    : (l.inconnu?'statut inconnu':'');
-    h+=`<div class="fa-dl${(ex||mort)?' ex':''}"${menage?'':` onclick="factuEditer(${id})" title="${an?'Séjour annulé : saisir un montant encaissé malgré tout':'Modifier ce séjour (lits, personnes, prix…)'}"`}>
+    const lng=!mort&&(l.enCours||l.nbMois>1); // longue durée : surlignée en rouge clair
+    let etiq = an ? (enc?'annulé · encaissé':(r.status_label==='REQUEST_INFORMATION'?'demande':'annulé'))
+                  : (l.inconnu?'statut inconnu':'');
+    if(lng)etiq=(l.enCours?'longue durée · en cours':'longue durée · arrivée')+` · part 1/${l.nbMois}`+(etiq?' · '+etiq:'');
+    h+=`<div class="fa-dl${(ex||mort)?' ex':''}${lng?' lng':''}"${menage?'':` onclick="factuEditer(${id})" title="${an?'Séjour annulé : saisir un montant encaissé malgré tout':'Modifier ce séjour (lits, personnes, prix…)'}"`}>
       <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-        ${fesc(((r.first_name||'')+' '+(r.last_name||'')).trim()||'—')}${etiq?` <i class="fa-etq">${etiq}</i>`:''}</span>
+        ${fesc(((r.first_name||'')+' '+(r.last_name||'')).trim()||'—')}${etiq?` <i class="fa-etq${lng?' rge':''}">${etiq}</i>`:''}</span>
       <span style="width:62px;font-variant-numeric:tabular-nums">${jjmm(r.checkin)}</span>
       <span style="width:62px;font-variant-numeric:tabular-nums">${jjmm(r.checkout)}</span>
       <span style="width:38px;text-align:center">${nuits(r)}</span>
@@ -8708,7 +8751,7 @@ function factuFactureHtml(g){
   const d=new Date();
   let rows='';
   lignes.forEach(l=>{
-    rows+=`<tr><td>${fesc(((l.r.first_name||'')+' '+(l.r.last_name||'')).trim()||'—')}${l.annEnc?' <i>(annulé · encaissé)</i>':''}</td>
+    rows+=`<tr><td>${fesc(((l.r.first_name||'')+' '+(l.r.last_name||'')).trim()||'—')}${l.nbMois>1?` <i>(longue durée · 1/${l.nbMois})</i>`:''}${l.annEnc?' <i>(annulé · encaissé)</i>':''}</td>
       <td class="c">${l.r.checkin?new Date(l.r.checkin+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
       <td class="c">${l.r.checkout?new Date(l.r.checkout+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
       <td class="c">${nuits(l.r)}</td><td class="c">${l.calc.pers}</td>
@@ -8816,7 +8859,7 @@ function factuRecapHtml(){
       <td class="r">${eur(g.com)}</td><td class="r">${eur(g.blanch+g.men)}</td><td class="r b">${eur(g.total)}</td></tr>`;
     lignes.forEach(l=>{
       corps+=`<tr><td class="num">${l.r.booking_id}</td>
-        <td>${fesc(((l.r.first_name||'')+' '+(l.r.last_name||'')).trim()||'—')}${l.annEnc?' <i>(annulé · encaissé)</i>':(l.inconnu?' <i>(statut inconnu)</i>':'')}</td>
+        <td>${fesc(((l.r.first_name||'')+' '+(l.r.last_name||'')).trim()||'—')}${l.nbMois>1?` <i>(longue durée · part 1/${l.nbMois}${l.enCours?' · en cours':''})</i>`:''}${l.annEnc?' <i>(annulé · encaissé)</i>':(l.inconnu?' <i>(statut inconnu)</i>':'')}</td>
         <td class="c">${l.r.checkin?new Date(l.r.checkin+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
         <td class="c">${l.r.checkout?new Date(l.r.checkout+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
         <td class="c">${nuits(l.r)}</td>
@@ -9034,8 +9077,9 @@ async function factuBilan(){
   try{
     /* PostgREST tronque toute réponse à 1 000 lignes : on pagine jusqu'à épuisement,
        sinon le bilan s'arrête au printemps (vécu : 2 873 séjours en 2026, coupés à mai). */
+    /* Tout séjour qui touche l'année (une longue peut la traverser sans y commencer). */
     for(let off=0;off<30000;off+=1000){
-      const r=await axios.get(`${API}/sh_reservations?select=booking_id,rental_id,checkin,checkout,adults,children,total_price,statut,nights&checkout=gte.${a}-01-01&checkout=lt.${a+1}-01-01&order=checkout.asc&limit=1000&offset=${off}`,{headers:hd()});
+      const r=await axios.get(`${API}/sh_reservations?select=booking_id,rental_id,checkin,checkout,adults,children,total_price,statut,nights&checkout=gt.${a}-01-01&checkin=lt.${a+1}-01-01&order=checkin.asc&limit=1000&offset=${off}`,{headers:hd()});
       const page=r.data||[];
       resas=resas.concat(page);
       if(page.length<1000)break;
@@ -9048,13 +9092,32 @@ async function factuBilan(){
   resas.forEach(r=>{
     const cf=parRental[r.rental_id]; if(!cf||cf.actif===false)return;
     if(factuAnnulee(r)){annulees++;return;}
-    const k=cf.livret_id, m=(r.checkout||r.checkin).slice(0,7);
-    const calc=factuCalc(r,cf,factuOv[r.booking_id]||{});
+    const k=cf.livret_id;
+    const nbM=factuEstLongue(r)?factuNbMois(r):1;
+    const calc=factuPart(factuCalc(r,cf,factuOv[r.booking_id]||{}),nbM);
+    /* Mois concernés : l'arrivée pour un séjour normal, chaque mois couvert pour une longue. */
+    const moisListe=[];
+    if(nbM===1){
+      const m=(r.checkin||r.checkout||'').slice(0,7);
+      if(m.slice(0,4)===String(a))moisListe.push(m);
+    }else if(r.checkin&&r.checkout){
+      const fin=new Date(r.checkout+'T12:00:00'); fin.setDate(fin.getDate()-1);
+      const cur=new Date(parseInt(r.checkin.slice(0,4)),parseInt(r.checkin.slice(5,7))-1,1);
+      let garde=0;
+      while(cur<=fin&&garde++<36){
+        if(cur.getFullYear()===a)moisListe.push(cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0'));
+        cur.setMonth(cur.getMonth()+1);
+      }
+    }
+    if(!moisListe.length)return;
     const g=par[k]||(par[k]={nom:(cf.livrets||{}).nom||'—',mois:{},total:0,com:0,bl:0,n:0,sans:0});
-    g.mois[m]=(g.mois[m]||0)+calc.total;
-    g.total+=calc.total; g.com+=calc.com||0; g.bl+=calc.blanch; g.n++;
+    moisListe.forEach(m=>{
+      g.mois[m]=(g.mois[m]||0)+calc.total;
+      mois[m]=(mois[m]||0)+calc.total;
+    });
+    g.total+=calc.total*moisListe.length; g.com+=(calc.com||0)*moisListe.length;
+    g.bl+=calc.blanch*moisListe.length; g.n++;
     if(calc.sansPrix)g.sans++;
-    mois[m]=(mois[m]||0)+calc.total;
   });
   const cles=Object.keys(par).sort((x,y)=>par[y].total-par[x].total);
   const lm=[]; for(let i=1;i<=12;i++)lm.push(`${a}-${String(i).padStart(2,'0')}`);
