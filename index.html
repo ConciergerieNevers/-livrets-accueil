@@ -8224,8 +8224,9 @@ function factuMoisDecale(m,d){
 /* Prix HT d'un forfait, reconstitué depuis les coûts unitaires du linge */
 function factuPacks(c){
   const g=k=>parseFloat((c.linge||{})[k])||0;
+  /* peignoir : 0 partout sauf logements qui en fournissent (La Chapelle, 3,08 € HT/pers) */
   return {lit:g('drap_plat')+g('housse')+(c.taies_par_lit||4)*g('taie'),
-          kit:g('drap_bain')+g('serviette')+g('carre'),
+          kit:g('drap_bain')+g('serviette')+g('carre')+g('peignoir'),
           tap:g('tapis')*(c.tapis_par_kit||1),
           cui:(c.torchons_par_kit||2)*g('torchon')};
 }
