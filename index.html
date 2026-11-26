@@ -1075,7 +1075,7 @@ body{top:0!important}
       <div class="adm-hero-stats">
         <div class="adm-stat"><div class="adm-stat-num money gold-text serif" id="fa-total">—</div><div class="adm-stat-lbl">Total du mois</div></div>
         <div class="adm-stat"><div class="adm-stat-num money gold-text serif" id="fa-com">—</div><div class="adm-stat-lbl">Commission</div></div>
-        <div class="adm-stat"><div class="adm-stat-num money gold-text serif" id="fa-bl">—</div><div class="adm-stat-lbl">Blanchisserie</div></div>
+        <div class="adm-stat"><div class="adm-stat-num money gold-text serif" id="fa-bl">—</div><div class="adm-stat-lbl">Blanch. + ménage</div></div>
         <div class="adm-stat"><div class="adm-stat-num gold-text serif" id="fa-sej">—</div><div class="adm-stat-lbl">Séjours</div></div>
       </div>
     </div>
@@ -8218,10 +8218,24 @@ function factuPacks(c){
    et il réduit à la main sur les séjours où ils n'ont pas tous servi. Le nombre de
    personnes ne permet pas de deviner — un couple et deux amis donnent le même chiffre. */
 function factuLits(c){ return Math.max(1, parseInt(c.lits_max)||1); }
+/* Barème ménage au séjour : n1 = 1 nuit, n2 = 2 nuits, n3 = 3 nuits et plus. */
+function factuMenageTarif(c,n){
+  const m=c.menage||{};
+  const v=n<=1?m.n1:(n===2?m.n2:m.n3);
+  const x=parseFloat(v);
+  return isFinite(x)&&x>0?x:null;
+}
 function factuCalc(r,c,ov){
   ov=ov||{};
   const nn=(v,d)=>(v===null||v===undefined||v==='')?d:(parseFloat(v)||0);
   const pers=Math.max(1,nn(ov.nb_personnes,(parseInt(r.adults)||0)+(parseInt(r.children)||0))||1);
+  if(c.mode==='menage'){
+    const n=parseInt(nuits(r))||1;
+    const men=factuMenageTarif(c,n);
+    return {pers,lits:0,litsAuto:0,tap:0,cui:0,chg:0,prix:null,blanch:0,com:null,
+            men:men||0,menageManquant:men===null,estMenage:true,
+            total:men||0,sansPrix:false,corrige:false};
+  }
   const auto=factuLits(c);
   const lits=Math.max(0,nn(ov.nb_lits,auto));
   const tap =Math.max(0,nn(ov.nb_tapis,c.nb_tapis||1));
@@ -8234,8 +8248,9 @@ function factuCalc(r,c,ov){
   const P=factuPacks(c);
   const blanch=chg*(pers*P.kit+lits*P.lit+tap*P.tap+cui*P.cui)*(parseFloat(c.marge_blanch)||1)*1.2;
   const com=prix===null?null:prix*(parseFloat(c.commission)||0);
-  return {pers,lits,litsAuto:auto,tap,cui,chg,prix,blanch,com,
-          total:(com||0)+blanch, sansPrix:prix===null,
+  return {pers,lits,litsAuto:auto,tap,cui,chg,prix,blanch,com,men:0,estMenage:false,
+          total:(com||0)+blanch,
+          sansPrix:prix===null&&(parseFloat(c.commission)||0)>0,
           corrige:ov.nb_lits!==null&&ov.nb_lits!==undefined};
 }
 
@@ -8285,7 +8300,7 @@ function factuGroupes(){
     const c=parRental[r.rental_id]; if(!c||c.actif===false)return;
     const ov=factuOv[r.booking_id]||{};
     const g=grp[c.livret_id]||(grp[c.livret_id]={cfg:c,nom:(c.livrets||{}).nom||'—',lignes:[],
-                                                com:0,blanch:0,total:0,sansPrix:0,
+                                                com:0,blanch:0,men:0,total:0,sansPrix:0,menManquant:0,
                                                 annulees:0,inconnus:0});
     const calc=factuCalc(r,c,ov);
     const annulee=factuAnnulee(r), inconnu=factuStatutInconnu(r);
@@ -8293,8 +8308,9 @@ function factuGroupes(){
     if(annulee){g.annulees++;return;}
     if(ov.exclue)return;
     if(inconnu)g.inconnus++;
-    g.com+=calc.com||0; g.blanch+=calc.blanch; g.total+=calc.total;
+    g.com+=calc.com||0; g.blanch+=calc.blanch; g.men+=calc.men||0; g.total+=calc.total;
     if(calc.sansPrix)g.sansPrix++;
+    if(calc.menageManquant)g.menManquant++;
   });
   return grp;
 }
@@ -8328,15 +8344,15 @@ function nuits(r){
 function factuMoisHtml(){
   const grp=factuGroupes();
   const cles=Object.keys(grp).sort((a,b)=>grp[a].nom.localeCompare(grp[b].nom,'fr'));
-  let tCom=0,tBl=0,tTot=0,tSej=0,tSans=0,tAnn=0,tInc=0;
-  cles.forEach(k=>{const g=grp[k];tCom+=g.com;tBl+=g.blanch;tTot+=g.total;
+  let tCom=0,tBl=0,tMen=0,tTot=0,tSej=0,tSans=0,tAnn=0,tInc=0,tMenM=0;
+  cles.forEach(k=>{const g=grp[k];tCom+=g.com;tBl+=g.blanch;tMen+=g.men;tTot+=g.total;
     tSej+=g.lignes.filter(l=>!l.ov.exclue&&!l.annulee).length;
-    tSans+=g.sansPrix;tAnn+=g.annulees;tInc+=g.inconnus;});
+    tSans+=g.sansPrix;tAnn+=g.annulees;tInc+=g.inconnus;tMenM+=g.menManquant;});
   const maj=document.getElementById('fa-total');
   if(maj){
     maj.textContent=eur(tTot);
     document.getElementById('fa-com').textContent=eur(tCom);
-    document.getElementById('fa-bl').textContent=eur(tBl);
+    document.getElementById('fa-bl').textContent=eur(tBl+tMen);
     document.getElementById('fa-sej').textContent=tSej;
   }
   let h=`<div class="fa-bar">
@@ -8359,32 +8375,44 @@ function factuMoisHtml(){
   if(tInc)
     h+=`<div class="fa-alerte">⚠️ ${tInc} séjour${tInc>1?'s':''} au statut inconnu, facturé${tInc>1?'s':''} par défaut.
         Relance « ⟳ Tout » dans Réservations pour savoir s'il s'agit d'annulations.</div>`;
+  if(tMenM)
+    h+=`<div class="fa-alerte">⚠️ ${tMenM} séjour${tMenM>1?'s':''} en mode ménage sans barème : renseigne les tarifs
+        1 nuit / 2 nuits / 3 nuits+ dans l'onglet Paramètres, sinon ces lignes valent 0.</div>`;
   h+=`<div class="lst"><div class="lst-t"><span style="flex:1">Logement</span>
       <span style="width:58px;text-align:right">Séjours</span>
       <span style="width:92px;text-align:right">Commission</span>
-      <span style="width:92px;text-align:right">Blanchisserie</span>
+      <span style="width:92px;text-align:right">Blanch. / Ménage</span>
       <span style="width:98px;text-align:right">Total TTC</span>
       <span style="width:118px"></span></div>`;
   cles.forEach(k=>{
     const g=grp[k], f=factuFact[k], validee=f&&f.statut==='validee';
     const nb=g.lignes.filter(l=>!l.ov.exclue).length;
+    const ent=g.cfg.entite==='jimadenton'?'JIMADENTON':'MATHEMIA';
+    const m=g.cfg.menage||{};
+    const regle=g.cfg.mode==='menage'
+      ?`ménage au séjour : ${m.n1?eur(m.n1):'?'} / ${m.n2?eur(m.n2):'?'} / ${m.n3?eur(m.n3):'?'} (1 n · 2 n · 3 n+)`
+      :`${Math.round(g.cfg.commission*100)} % de commission · blanchisserie ×${g.cfg.marge_blanch}`;
+    const pl=f&&f.pennylane?` · facture Pennylane ${f.pennylane.invoice_number||('#'+f.pennylane.invoice_id)}`:'';
     h+=`<div class="lgn fa-lgn" onclick="factuOuvrir('${k}')">
-      <div class="pt" style="background:${validee?'#39b174':g.sansPrix?'#e0a93a':'#8d7a4f'}"></div>
-      <div class="pr"><div class="t1">${fesc(g.nom)}</div>
-        <div class="t2">${Math.round(g.cfg.commission*100)} % de commission · blanchisserie ×${g.cfg.marge_blanch}${validee?' · facture validée':''}</div></div>
+      <div class="pt" style="background:${validee?'#39b174':(g.sansPrix||g.menManquant)?'#e0a93a':'#8d7a4f'}"></div>
+      <div class="pr"><div class="t1">${fesc(g.nom)} <i class="fa-etq" title="Entité qui facture ce logement">${ent}</i></div>
+        <div class="t2">${regle}${validee?' · facture validée':''}${pl}</div></div>
       <span class="dt" style="width:58px;text-align:right">${nb}</span>
       <span class="dt" style="width:92px;text-align:right">${eur(g.com)}</span>
-      <span class="dt" style="width:92px;text-align:right">${eur(g.blanch)}</span>
+      <span class="dt" style="width:92px;text-align:right">${eur(g.blanch+g.men)}</span>
       <span class="mt" style="width:98px;text-align:right">${eur(g.total)}</span>
       <span class="ac" style="width:118px;justify-content:flex-end" onclick="event.stopPropagation()">
         <button class="fa-mini" onclick="factuPdf('${k}')" title="Facture PDF">📄</button>
-        <button class="fa-mini" onclick="factuValider('${k}')" title="${validee?'Facture validée':'Figer la facture'}">${validee?'✓':'🔒'}</button>
+        <button class="fa-mini" onclick="factuValider('${k}')" title="${validee?'Facture validée — recliquer pour regénérer':'Valider et générer la facture Pennylane'}">${validee?'✓':'🔒'}</button>
       </span></div>`;
     if(factuOuvert===k)h+=factuDetailHtml(g);
   });
   h+=`</div>
    <div class="fa-pied">
      <div><span>Total facturé TTC</span><b>${eur(tTot)}</b></div>
+     <div><span>dont commission</span><b>${eur(tCom)}</b></div>
+     <div><span>dont blanchisserie</span><b>${eur(tBl)}</b></div>
+     <div><span>dont ménages</span><b>${eur(tMen)}</b></div>
      <div><span>dont HT</span><b>${eur(tTot/1.2)}</b></div>
      <div><span>dont TVA 20 %</span><b>${eur(tTot-tTot/1.2)}</b></div>
    </div>
@@ -8393,12 +8421,16 @@ function factuMoisHtml(){
   return h;
 }
 function factuDetailHtml(g){
+  const menage=g.cfg.mode==='menage';
   const parLit=factuPacks(g.cfg).lit*(parseFloat(g.cfg.marge_blanch)||1)*1.2;
   const nonAjustes=g.lignes.filter(l=>!l.annulee&&!l.ov.exclue&&!l.calc.corrige).length;
+  const m=g.cfg.menage||{};
   let h=`<div class="fa-det">
-    <div class="fa-det-aide">Tous les lits sont comptés par défaut — ${eur(parLit)} par lit.
+    <div class="fa-det-aide">${menage
+      ? `Seul le ménage est facturé, au barème du séjour : ${m.n1?eur(m.n1):'à saisir'} pour 1 nuit · ${m.n2?eur(m.n2):'à saisir'} pour 2 nuits · ${m.n3?eur(m.n3):'à saisir'} pour 3 nuits et plus.`
+      : `Tous les lits sont comptés par défaut — ${eur(parLit)} par lit.
       Clique sur <b>−</b> quand ils n'ont pas tous servi.${nonAjustes
-        ? ` ${nonAjustes} séjour${nonAjustes>1?'s':''} encore au défaut.` : ' Tous ajustés.'}</div>
+        ? ` ${nonAjustes} séjour${nonAjustes>1?'s':''} encore au défaut.` : ' Tous ajustés.'}`}</div>
     <div class="fa-det-t">
     <span style="flex:1">Voyageur</span>
     <span style="width:62px">Entrée</span><span style="width:62px">Sortie</span>
@@ -8420,13 +8452,15 @@ function factuDetailHtml(g){
       <span style="width:62px;font-variant-numeric:tabular-nums">${jjmm(r.checkout)}</span>
       <span style="width:38px;text-align:center">${nuits(r)}</span>
       <span style="width:34px;text-align:center">${calc.pers}</span>
-      <span style="width:62px;text-align:center" class="fa-lits">
-        <button onclick="factuLitsDelta(${id},-1)">−</button><b${calc.corrige?' class="cor"':''}>${calc.lits}</b><button onclick="factuLitsDelta(${id},1)">+</button></span>
-      <span style="width:86px;text-align:right">${an?'—':(calc.sansPrix
+      <span style="width:62px;text-align:center" class="fa-lits">${menage?'—':`
+        <button onclick="factuLitsDelta(${id},-1)">−</button><b${calc.corrige?' class="cor"':''}>${calc.lits}</b><button onclick="factuLitsDelta(${id},1)">+</button>`}</span>
+      <span style="width:86px;text-align:right">${an||menage?'—':(calc.sansPrix
         ?`<input class="fa-px" type="number" step="0.01" placeholder="à saisir" onchange="factuPrix(${id},this.value)">`
-        :eur(calc.prix))}</span>
+        :(calc.prix===null?'—':eur(calc.prix)))}</span>
       <span style="width:76px;text-align:right">${an||calc.com===null?'—':eur(calc.com)}</span>
-      <span style="width:76px;text-align:right">${an?'—':eur(calc.blanch)}</span>
+      <span style="width:76px;text-align:right">${an?'—':(menage
+        ?(calc.menageManquant?'<i class="fa-etq">barème ?</i>':eur(calc.men))
+        :eur(calc.blanch))}</span>
       <span style="width:82px;text-align:right;font-weight:600;color:var(--gold2)">${an?'—':eur(calc.total)}</span>
       <span style="width:56px;text-align:right;display:inline-flex;gap:4px;justify-content:flex-end"><a class="fa-mini" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center" href="${shResaUrl(id)}" target="_blank" rel="noopener" title="Ouvrir la réservation dans SuperHote" onclick="event.stopPropagation()">↗</a>${an?'':`<button class="fa-mini" title="${ex?'Remettre dans la facture':'Retirer de la facture'}" onclick="factuExclure(${id},${ex?'false':'true'})">${ex?'↩':'✕'}</button>`}</span>
     </div>`;
@@ -8467,10 +8501,12 @@ function factuExclure(id,ex){factuUpsert(id,{exclue:!!ex});}
 async function factuValider(k){
   const grp=factuGroupes(), g=grp[k]; if(!g)return;
   const dejaa=factuFact[k];
+  const ent=g.cfg.entite==='jimadenton'?'JIMADENTON':'MATHEMIA';
   if(dejaa&&dejaa.statut==='validee'){
-    if(!await askConfirm(`La facture de ${g.nom} pour ${factuMoisLabel(factuMois)} est déjà validée (${eur((dejaa.totaux||{}).total||0)}).\n\nLa recalculer et la remplacer ?`))return;
+    const dejaPl=dejaa.pennylane?`\n\n⚠️ Une facture Pennylane existe déjà (${dejaa.pennylane.invoice_number||('#'+dejaa.pennylane.invoice_id)}) : en continuant, un NOUVEAU brouillon sera créé chez ${ent} — supprime l'ancien dans Pennylane.`:'';
+    if(!await askConfirm(`La facture de ${g.nom} pour ${factuMoisLabel(factuMois)} est déjà validée (${eur((dejaa.totaux||{}).total||0)}).\n\nLa recalculer, la remplacer et regénérer la facture Pennylane ?${dejaPl}`))return;
   }else{
-    if(!await askConfirm(`Figer la facture de ${g.nom} pour ${factuMoisLabel(factuMois)} ?\n\nTotal TTC : ${eur(g.total)}\nCommission : ${eur(g.com)}\nBlanchisserie : ${eur(g.blanch)}${g.sansPrix?`\n\n⚠️ ${g.sansPrix} séjour(s) sans prix : leur commission vaut 0.`:''}`))return;
+    if(!await askConfirm(`Valider la facture de ${g.nom} pour ${factuMoisLabel(factuMois)} et générer le brouillon Pennylane chez ${ent} ?\n\nTotal TTC : ${eur(g.total)}\nCommission : ${eur(g.com)}\nBlanchisserie : ${eur(g.blanch)}${g.men?`\nMénages : ${eur(g.men)}`:''}${g.sansPrix?`\n\n⚠️ ${g.sansPrix} séjour(s) sans prix : leur commission vaut 0.`:''}${g.menManquant?`\n\n⚠️ ${g.menManquant} séjour(s) sans barème ménage : ils valent 0.`:''}`))return;
   }
   const [d1]=factuBornes(factuMois);
   const lignes=g.lignes.filter(l=>!l.ov.exclue&&!l.annulee).map(l=>({
@@ -8478,23 +8514,47 @@ async function factuValider(k){
     nom:((l.r.first_name||'')+' '+(l.r.last_name||'')).trim(),
     checkin:l.r.checkin, checkout:l.r.checkout, nuits:nuits(l.r),
     pers:l.calc.pers, lits:l.calc.lits, prix:l.calc.prix,
-    com:+(l.calc.com||0).toFixed(2), blanch:+l.calc.blanch.toFixed(2), total:+l.calc.total.toFixed(2)}));
+    com:+(l.calc.com||0).toFixed(2), blanch:+l.calc.blanch.toFixed(2),
+    menage:+(l.calc.men||0).toFixed(2), total:+l.calc.total.toFixed(2)}));
   const totaux={commission:+g.com.toFixed(2), blanchisserie:+g.blanch.toFixed(2),
+                menage:+g.men.toFixed(2),
                 total:+g.total.toFixed(2), ht:+(g.total/1.2).toFixed(2),
                 tva:+(g.total-g.total/1.2).toFixed(2), sejours:lignes.length,
-                taux:g.cfg.commission, marge:g.cfg.marge_blanch};
+                taux:g.cfg.commission, marge:g.cfg.marge_blanch, mode:g.cfg.mode||'standard'};
   const numero=`BN-${factuMois.replace('-','')}-${(g.nom||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6)}`;
   try{
     await axios.post(`${API}/factu_facture?on_conflict=livret_id,mois`,
-      {livret_id:k,mois:d1,numero,statut:'validee',totaux,lignes,validee_at:new Date().toISOString()},
+      {livret_id:k,mois:d1,numero,statut:'validee',totaux,lignes,pennylane:null,validee_at:new Date().toISOString()},
       {headers:{...hd(),'Prefer':'resolution=merge-duplicates,return=minimal'}});
     toast('✓ Facture figée — '+eur(g.total));
-    await loadFactu(); renderFactu();
-  }catch(e){toast('Impossible de figer la facture');logAndShowErr&&logAndShowErr(e);}
+  }catch(e){toast('Impossible de figer la facture');logAndShowErr&&logAndShowErr(e);return;}
+  await factuPennylane(k);
+}
+
+/* ---------- Génération du brouillon dans Pennylane (MATHEMIA ou JIMADENTON) ---------- */
+async function factuPennylane(k){
+  toast('Envoi à Pennylane…');
+  let d={};
+  try{
+    const [d1]=factuBornes(factuMois);
+    const r=await axios.post(`${SB}/functions/v1/pennylane-invoice`,{livret_id:k,mois:d1},
+      {headers:{'apikey':KEY,'Authorization':`Bearer ${cu.access_token}`,'Content-Type':'application/json'},timeout:30000});
+    d=r.data||{};
+  }catch(e){d=(e.response&&e.response.data)||{error:'réseau'};}
+  if(d.ok){
+    toast('✓ Facture Pennylane '+(d.invoice_number||'brouillon')+' créée chez '+(d.entite==='jimadenton'?'JIMADENTON':'MATHEMIA'));
+  }else{
+    const ent=d.entite==='jimadenton'?'JIMADENTON':'MATHEMIA';
+    if(d.error==='customer_manquant')alert(`Facture figée, mais pas envoyée à Pennylane :\nrenseigne l'ID client Pennylane du propriétaire dans l'onglet Paramètres (compte ${ent}).`);
+    else if(d.error==='token_manquant')alert(`Facture figée, mais pas envoyée à Pennylane :\nle token API ${ent} n'est pas encore enregistré dans le coffre.`);
+    else alert('Facture figée, mais Pennylane a répondu une erreur :\n'+(typeof d.detail==='string'?d.detail:JSON.stringify(d.detail||d.error||'').slice(0,300)));
+  }
+  await loadFactu(); renderFactu();
 }
 
 /* ---------- Facture PDF ---------- */
 function factuFactureHtml(g){
+  const menage=g.cfg.mode==='menage';
   const lignes=g.lignes.filter(l=>!l.ov.exclue&&!l.annulee);
   const d=new Date();
   let rows='';
@@ -8503,9 +8563,9 @@ function factuFactureHtml(g){
       <td class="c">${l.r.checkin?new Date(l.r.checkin+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
       <td class="c">${l.r.checkout?new Date(l.r.checkout+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
       <td class="c">${nuits(l.r)}</td><td class="c">${l.calc.pers}</td>
-      <td class="r">${l.calc.prix===null?'—':eur(l.calc.prix)}</td>
+      <td class="r">${menage||l.calc.prix===null?'—':eur(l.calc.prix)}</td>
       <td class="r">${l.calc.com===null?'—':eur(l.calc.com)}</td>
-      <td class="r">${eur(l.calc.blanch)}</td>
+      <td class="r">${menage?eur(l.calc.men):eur(l.calc.blanch)}</td>
       <td class="r b">${eur(l.calc.total)}</td></tr>`;
   });
   return `<div style="width:1000px;background:#fff;color:#111;padding:44px 46px;font:13px/1.5 Helvetica,Arial,sans-serif;box-sizing:border-box">
@@ -8518,8 +8578,10 @@ function factuFactureHtml(g){
     </div>
     <div style="margin:22px 0 6px;font-size:15px;font-weight:700">${fesc(g.nom)}</div>
     <div style="color:#666;font-size:12px;margin-bottom:18px">
-      Commission ${Math.round(g.cfg.commission*100)} % du prix tout inclus payé par le voyageur ·
-      blanchisserie refacturée avec un coefficient de ${g.cfg.marge_blanch} · ${lignes.length} séjour${lignes.length>1?'s':''}</div>
+      ${menage
+        ?`Ménages de fin de séjour facturés au barème : ${(g.cfg.menage||{}).n1||'—'} € (1 nuit) · ${(g.cfg.menage||{}).n2||'—'} € (2 nuits) · ${(g.cfg.menage||{}).n3||'—'} € (3 nuits et +)`
+        :`Commission ${Math.round(g.cfg.commission*100)} % du prix tout inclus payé par le voyageur ·
+      blanchisserie refacturée avec un coefficient de ${g.cfg.marge_blanch}`} · ${lignes.length} séjour${lignes.length>1?'s':''}</div>
     <table style="width:100%;border-collapse:collapse;font-size:12px">
       <thead><tr style="background:#f4f2ed">
         <th style="text-align:left;padding:7px 8px">Voyageur</th>
@@ -8527,21 +8589,21 @@ function factuFactureHtml(g){
         <th style="padding:7px 8px">Nuits</th><th style="padding:7px 8px">Pers.</th>
         <th style="text-align:right;padding:7px 8px">Prix voyageur</th>
         <th style="text-align:right;padding:7px 8px">Commission</th>
-        <th style="text-align:right;padding:7px 8px">Blanchisserie</th>
+        <th style="text-align:right;padding:7px 8px">${menage?'Ménage':'Blanchisserie'}</th>
         <th style="text-align:right;padding:7px 8px">Total</th></tr></thead>
       <tbody>${rows}</tbody></table>
     <div style="display:flex;justify-content:flex-end;margin-top:22px">
       <table style="font-size:13px;border-collapse:collapse;min-width:300px">
         <tr><td style="padding:5px 14px 5px 0;color:#666">Commission</td><td style="text-align:right;padding:5px 0">${eur(g.com)}</td></tr>
-        <tr><td style="padding:5px 14px 5px 0;color:#666">Blanchisserie</td><td style="text-align:right;padding:5px 0">${eur(g.blanch)}</td></tr>
+        <tr><td style="padding:5px 14px 5px 0;color:#666">${menage?'Ménages':'Blanchisserie'}</td><td style="text-align:right;padding:5px 0">${eur(menage?g.men:g.blanch)}</td></tr>
         <tr><td style="padding:7px 14px 7px 0;color:#666;border-top:1px solid #ddd">Total HT</td><td style="text-align:right;padding:7px 0;border-top:1px solid #ddd">${eur(g.total/1.2)}</td></tr>
         <tr><td style="padding:5px 14px 5px 0;color:#666">TVA 20 %</td><td style="text-align:right;padding:5px 0">${eur(g.total-g.total/1.2)}</td></tr>
         <tr><td style="padding:9px 14px 9px 0;font-weight:700;font-size:15px;border-top:2px solid #111">Total TTC</td>
             <td style="text-align:right;padding:9px 0;font-weight:700;font-size:15px;border-top:2px solid #111">${eur(g.total)}</td></tr>
       </table></div>
     <div style="margin-top:30px;color:#888;font-size:10.5px;border-top:1px solid #eee;padding-top:12px">
-      Mathemia — Be Nomads · Prix voyageur relevé automatiquement depuis SuperHote.
-      Le ménage ne figure pas sur cette note.</div>
+      ${g.cfg.entite==='jimadenton'?'Jimadenton':'Mathemia'} — Be Nomads · Prix voyageur relevé automatiquement depuis SuperHote.
+      ${menage?'Seuls les ménages de fin de séjour figurent sur cette note.':'Le ménage ne figure pas sur cette note.'}</div>
     <style>td.c{text-align:center}td.r{text-align:right}td.b{font-weight:700}
       tbody td{padding:6px 8px;border-bottom:1px solid #eee}</style>
   </div>`;
@@ -8589,24 +8651,29 @@ async function factuPdf(k){
 function factuRecapHtml(){
   const grp=factuGroupes();
   const cles=Object.keys(grp).sort((a,b)=>grp[a].nom.localeCompare(grp[b].nom,'fr'));
-  let tCom=0,tBl=0,tTot=0,tSej=0;
+  let tCom=0,tBl=0,tMen=0,tTot=0,tSej=0;
   let corps='';
   cles.forEach(k=>{
     const g=grp[k];
+    const menage=g.cfg.mode==='menage';
     const lignes=g.lignes.filter(l=>!l.ov.exclue&&!l.annulee);
     if(!lignes.length)return;
-    tCom+=g.com;tBl+=g.blanch;tTot+=g.total;tSej+=lignes.length;
-    corps+=`<tr class="grp"><td colspan="6">${fesc(g.nom)} — ${Math.round(g.cfg.commission*100)} % · blanchisserie ×${g.cfg.marge_blanch}</td>
-      <td class="r">${eur(g.com)}</td><td class="r">${eur(g.blanch)}</td><td class="r b">${eur(g.total)}</td></tr>`;
+    tCom+=g.com;tBl+=g.blanch;tMen+=g.men;tTot+=g.total;tSej+=lignes.length;
+    const mb=g.cfg.menage||{};
+    const regle=menage
+      ?`ménage au séjour (${mb.n1||'?'} / ${mb.n2||'?'} / ${mb.n3||'?'} € selon 1, 2 ou 3 nuits et +)`
+      :`${Math.round(g.cfg.commission*100)} % · blanchisserie ×${g.cfg.marge_blanch}`;
+    corps+=`<tr class="grp"><td colspan="6">${fesc(g.nom)} — ${regle} — ${g.cfg.entite==='jimadenton'?'JIMADENTON':'MATHEMIA'}</td>
+      <td class="r">${eur(g.com)}</td><td class="r">${eur(g.blanch+g.men)}</td><td class="r b">${eur(g.total)}</td></tr>`;
     lignes.forEach(l=>{
       corps+=`<tr><td class="num">${l.r.booking_id}</td>
         <td>${fesc(((l.r.first_name||'')+' '+(l.r.last_name||'')).trim()||'—')}${l.inconnu?' <i>(statut inconnu)</i>':''}</td>
         <td class="c">${l.r.checkin?new Date(l.r.checkin+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
         <td class="c">${l.r.checkout?new Date(l.r.checkout+'T12:00:00').toLocaleDateString('fr-FR'):'—'}</td>
         <td class="c">${nuits(l.r)}</td>
-        <td class="r">${l.calc.prix===null?'à saisir':eur(l.calc.prix)}</td>
+        <td class="r">${menage?'—':(l.calc.prix===null?'à saisir':eur(l.calc.prix))}</td>
         <td class="r">${l.calc.com===null?'—':eur(l.calc.com)}</td>
-        <td class="r">${eur(l.calc.blanch)}</td>
+        <td class="r">${menage?(l.calc.menageManquant?'barème ?':eur(l.calc.men)):eur(l.calc.blanch)}</td>
         <td class="r b">${eur(l.calc.total)}</td></tr>`;
     });
   });
@@ -8625,13 +8692,14 @@ function factuRecapHtml(){
         <th style="padding:6px 7px">Nuits</th>
         <th style="text-align:right;padding:6px 7px">Prix voyageur</th>
         <th style="text-align:right;padding:6px 7px">Commission</th>
-        <th style="text-align:right;padding:6px 7px">Blanchisserie</th>
+        <th style="text-align:right;padding:6px 7px">Blanch. / Ménage</th>
         <th style="text-align:right;padding:6px 7px">Total</th></tr></thead>
       <tbody>${corps||'<tr><td colspan="9" style="padding:14px;text-align:center;color:#888">Aucun séjour facturable sur ce mois.</td></tr>'}</tbody></table>
     <div style="display:flex;justify-content:flex-end;margin-top:20px">
       <table style="font-size:12.5px;border-collapse:collapse;min-width:300px">
         <tr><td style="padding:4px 14px 4px 0;color:#666">Commission</td><td style="text-align:right;padding:4px 0">${eur(tCom)}</td></tr>
         <tr><td style="padding:4px 14px 4px 0;color:#666">Blanchisserie</td><td style="text-align:right;padding:4px 0">${eur(tBl)}</td></tr>
+        <tr><td style="padding:4px 14px 4px 0;color:#666">Ménages</td><td style="text-align:right;padding:4px 0">${eur(tMen)}</td></tr>
         <tr><td style="padding:6px 14px 6px 0;color:#666;border-top:1px solid #ddd">Total HT</td><td style="text-align:right;padding:6px 0;border-top:1px solid #ddd">${eur(tTot/1.2)}</td></tr>
         <tr><td style="padding:4px 14px 4px 0;color:#666">TVA 20 %</td><td style="text-align:right;padding:4px 0">${eur(tTot-tTot/1.2)}</td></tr>
         <tr><td style="padding:8px 14px 8px 0;font-weight:700;font-size:14px;border-top:2px solid #111">Total TTC</td>
@@ -8670,9 +8738,19 @@ function factuParamHtml(){
                   [c.nb_tapis,'tapis de bain',P.tap],
                   [c.nb_cuisine,pl(c.nb_cuisine,'service cuisine','services cuisine'),P.cui]];
     const htTot=detail.reduce((t,d)=>t+d[0]*d[2],0);
-    h+=`<div class="fa-card">
-      <div class="fa-card-t">${fesc((c.livrets||{}).nom||'—')}</div>
-      <div class="fa-ln"><input class="fa-in lg" type="number" step="0.5" min="0" max="100"
+    const men=c.menage||{};
+    const estMenage=c.mode==='menage';
+    const corps=estMenage
+      ?`<div class="fa-ln"><span style="font-size:12.5px;color:var(--muted2)">Seul le ménage est facturé, selon la durée du séjour :</span></div>
+      <div class="fa-ln">
+        <input class="fa-in" type="number" step="1" min="0" value="${men.n1||''}" placeholder="€"
+          onchange="factuSetMenage('${id}','n1',this.value)"><span>1 nuit</span>
+        <input class="fa-in" type="number" step="1" min="0" value="${men.n2||''}" placeholder="€"
+          onchange="factuSetMenage('${id}','n2',this.value)"><span>2 nuits</span>
+        <input class="fa-in" type="number" step="1" min="0" value="${men.n3||''}" placeholder="€"
+          onchange="factuSetMenage('${id}','n3',this.value)"><span>3 nuits et +</span>
+      </div>`
+      :`<div class="fa-ln"><input class="fa-in lg" type="number" step="0.5" min="0" max="100"
         value="${Math.round(c.commission*1000)/10}"
         onchange="factuSetCfg('${id}','commission',this.value/100)"><span>% du prix tout inclus payé par le voyageur</span></div>
       <div class="fa-ln"><input class="fa-in lg" type="number" step="0.05" min="1" value="${m}"
@@ -8693,6 +8771,21 @@ function factuParamHtml(){
           onchange="factuSetCfg('${id}','nb_tapis',this.value)"><span>tapis</span>
         <input class="fa-in" type="number" min="0" value="${c.nb_cuisine}"
           onchange="factuSetCfg('${id}','nb_cuisine',this.value)"><span>${pl(c.nb_cuisine,'service cuisine','services cuisine')}</span>
+      </div>`;
+    h+=`<div class="fa-card">
+      <div class="fa-card-t">${fesc((c.livrets||{}).nom||'—')}</div>
+      <div class="fa-ln"><select class="fa-in lg" style="width:auto" onchange="factuSetTxt('${id}','mode',this.value)">
+          <option value="standard"${estMenage?'':' selected'}>Commission + blanchisserie</option>
+          <option value="menage"${estMenage?' selected':''}>Ménage seul</option>
+        </select><span>ce qui est facturé au propriétaire</span></div>
+      ${corps}
+      <div class="fa-ln" style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px">
+        <select class="fa-in lg" style="width:auto" onchange="factuSetTxt('${id}','entite',this.value)">
+          <option value="mathemia"${c.entite==='jimadenton'?'':' selected'}>MATHEMIA</option>
+          <option value="jimadenton"${c.entite==='jimadenton'?' selected':''}>JIMADENTON</option>
+        </select><span>compte Pennylane qui facture</span>
+        <input class="fa-in" type="text" style="width:110px" value="${fesc(c.pennylane_customer_id||'')}" placeholder="ID client"
+          onchange="factuSetTxt('${id}','pennylane_customer_id',this.value)"><span>n° client Pennylane du propriétaire</span>
       </div></div>`;
   });
   h+=`</div>`;
@@ -8702,6 +8795,27 @@ function factuParamHtml(){
         ${manquants.map(l=>fesc(l.nom)).join(', ')}.
         <button class="fa-mini" style="margin-left:8px" onclick="factuCreerConf()">Les ajouter à 20 % et 1,5</button></div>`;
   return h;
+}
+/* Champs texte de la config (mode, entité Pennylane, n° client). */
+async function factuSetTxt(id,champ,val){
+  try{
+    await axios.patch(`${API}/factu_config?livret_id=eq.${id}`,{[champ]:val===''?null:val},
+      {headers:{...hd(),'Prefer':'return=minimal'}});
+    const c=factuCfg.find(x=>x.livret_id===id); if(c)c[champ]=val===''?null:val;
+    toast('✓ Enregistré'); renderFactu();
+  }catch(e){toast('Enregistrement impossible');logAndShowErr&&logAndShowErr(e);}
+}
+/* Barème ménage n1/n2/n3 fusionné dans le jsonb. */
+async function factuSetMenage(id,k,val){
+  const c=factuCfg.find(x=>x.livret_id===id); if(!c)return;
+  const n=parseFloat(String(val).replace(',','.'));
+  const men={...(c.menage||{})};
+  if(isFinite(n)&&n>0)men[k]=n; else delete men[k];
+  try{
+    await axios.patch(`${API}/factu_config?livret_id=eq.${id}`,{menage:men},
+      {headers:{...hd(),'Prefer':'return=minimal'}});
+    c.menage=men; toast('✓ Enregistré'); renderFactu();
+  }catch(e){toast('Enregistrement impossible');logAndShowErr&&logAndShowErr(e);}
 }
 async function factuSetCfg(id,champ,val){
   const n=parseFloat(String(val).replace(',','.'));
