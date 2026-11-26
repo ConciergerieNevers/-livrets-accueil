@@ -706,6 +706,8 @@ body{top:0!important}
   border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;line-height:1}
 .fa-edit .som{font-size:12.5px;color:var(--gold3);font-variant-numeric:tabular-nums;margin-left:auto}
 .fa-edit .som b{color:var(--gold2)}
+.fa-grp{display:flex;align-items:center;gap:10px;background:rgba(224,169,58,.08);border:1px solid var(--border-gold);
+  border-radius:11px;padding:9px 13px;margin:12px 0 4px;font-size:12.5px;color:var(--gold3);flex-wrap:wrap}
 .fa-card-t{cursor:pointer;display:flex;align-items:center;gap:8px}
 .fa-card-t .chev{margin-left:auto;color:var(--muted2);font-size:11px}
 .fa-card-res{font-size:11px;color:var(--muted2);font-weight:400;letter-spacing:0}
@@ -8353,10 +8355,27 @@ function nuits(r){
   return Math.max(0,Math.round((new Date(r.checkout)-new Date(r.checkin))/86400000));
 }
 
+/* Ordre de facturation : factu_config.ordre, les logements d'un même groupe restant
+   collés (le groupe se place à l'ordre de son membre le mieux classé). */
+function factuOrdreCles(grp){
+  const cles=Object.keys(grp);
+  const ordre=c=>{const o=parseInt(grp[c].cfg.ordre);return isFinite(o)?o:999;};
+  const gmin={};
+  cles.forEach(c=>{const g=grp[c].cfg.groupe;if(g){const o=ordre(c);if(!(g in gmin)||o<gmin[g])gmin[g]=o;}});
+  return cles.sort((a,b)=>{
+    const ga=grp[a].cfg.groupe||'', gb=grp[b].cfg.groupe||'';
+    const ea=ga?gmin[ga]:ordre(a), eb=gb?gmin[gb]:ordre(b);
+    if(ea!==eb)return ea-eb;
+    if(ga!==gb)return ga.localeCompare(gb,'fr');
+    if(ordre(a)!==ordre(b))return ordre(a)-ordre(b);
+    return grp[a].nom.localeCompare(grp[b].nom,'fr');
+  });
+}
+
 /* ---------- Onglet « Factures du mois » ---------- */
 function factuMoisHtml(){
   const grp=factuGroupes();
-  const cles=Object.keys(grp).sort((a,b)=>grp[a].nom.localeCompare(grp[b].nom,'fr'));
+  const cles=factuOrdreCles(grp);
   let tCom=0,tBl=0,tMen=0,tTot=0,tSej=0,tSans=0,tAnn=0,tInc=0,tMenM=0;
   cles.forEach(k=>{const g=grp[k];tCom+=g.com;tBl+=g.blanch;tMen+=g.men;tTot+=g.total;
     tSej+=g.lignes.filter(l=>!l.ov.exclue&&!l.annulee).length;
@@ -8397,10 +8416,24 @@ function factuMoisHtml(){
       <span style="width:92px;text-align:right">Blanch. / Ménage</span>
       <span style="width:98px;text-align:right">Total TTC</span>
       <span style="width:118px"></span></div>`;
+  let dernierGrp=null;
   cles.forEach(k=>{
     const g=grp[k], f=factuFact[k], validee=f&&f.statut==='validee';
     const nb=g.lignes.filter(l=>!l.ov.exclue).length;
     const ent=g.cfg.entite==='jimadenton'?'JIMADENTON':'MATHEMIA';
+    const gr=g.cfg.groupe||null;
+    if(gr!==dernierGrp){
+      dernierGrp=gr;
+      if(gr){
+        const membres=cles.filter(x=>grp[x].cfg.groupe===gr);
+        const totG=membres.reduce((s,x)=>s+grp[x].total,0);
+        const entG=grp[membres[0]].cfg.entite==='jimadenton'?'JIMADENTON':'MATHEMIA';
+        const fG=membres.map(x=>factuFact[x]).find(x=>x&&x.pennylane&&x.pennylane.groupe===gr);
+        h+=`<div class="fa-grp"><span>🧾 Groupe <b>${fesc(gr)}</b> — ${membres.length} logements · une seule facture ${entG}${fG?` · Pennylane ${fG.pennylane.invoice_number||('#'+fG.pennylane.invoice_id)}`:''}</span>
+          <b style="margin-left:auto">${eur(totG)}</b>
+          <button class="fa-mini" data-g="${fesc(gr)}" onclick="event.stopPropagation();factuValiderGroupe(this.dataset.g)" title="Figer tous les logements du groupe et générer UNE facture Pennylane">🔒 Facturer le groupe</button></div>`;
+      }
+    }
     const m=g.cfg.menage||{};
     const regle=g.cfg.mode==='menage'
       ?`ménage au séjour : ${m.n1?eur(m.n1):'?'} / ${m.n2?eur(m.n2):'?'} / ${m.n3?eur(m.n3):'?'} (1 n · 2 n · 3 n+)`
@@ -8546,11 +8579,12 @@ async function factuValider(k){
   const grp=factuGroupes(), g=grp[k]; if(!g)return;
   const dejaa=factuFact[k];
   const ent=g.cfg.entite==='jimadenton'?'JIMADENTON':'MATHEMIA';
+  const finPhrase=g.cfg.groupe?`?\n\n(${g.nom} fait partie du groupe « ${g.cfg.groupe} » : la facture Pennylane se génère au niveau du groupe.)`:` et générer le brouillon Pennylane chez ${ent} ?`;
   if(dejaa&&dejaa.statut==='validee'){
     const dejaPl=dejaa.pennylane?`\n\n⚠️ Une facture Pennylane existe déjà (${dejaa.pennylane.invoice_number||('#'+dejaa.pennylane.invoice_id)}) : en continuant, un NOUVEAU brouillon sera créé chez ${ent} — supprime l'ancien dans Pennylane.`:'';
-    if(!await askConfirm(`La facture de ${g.nom} pour ${factuMoisLabel(factuMois)} est déjà validée (${eur((dejaa.totaux||{}).total||0)}).\n\nLa recalculer, la remplacer et regénérer la facture Pennylane ?${dejaPl}`))return;
+    if(!await askConfirm(`La facture de ${g.nom} pour ${factuMoisLabel(factuMois)} est déjà validée (${eur((dejaa.totaux||{}).total||0)}).\n\nLa recalculer et la remplacer${g.cfg.groupe?'':' et regénérer la facture Pennylane'} ?${dejaPl}`))return;
   }else{
-    if(!await askConfirm(`Valider la facture de ${g.nom} pour ${factuMoisLabel(factuMois)} et générer le brouillon Pennylane chez ${ent} ?\n\nTotal TTC : ${eur(g.total)}\nCommission : ${eur(g.com)}\nBlanchisserie : ${eur(g.blanch)}${g.men?`\nMénages : ${eur(g.men)}`:''}${g.sansPrix?`\n\n⚠️ ${g.sansPrix} séjour(s) sans prix : leur commission vaut 0.`:''}${g.menManquant?`\n\n⚠️ ${g.menManquant} séjour(s) sans barème ménage : ils valent 0.`:''}`))return;
+    if(!await askConfirm(`Valider la facture de ${g.nom} pour ${factuMoisLabel(factuMois)}${finPhrase}\n\nTotal TTC : ${eur(g.total)}\nCommission : ${eur(g.com)}\nBlanchisserie : ${eur(g.blanch)}${g.men?`\nMénages : ${eur(g.men)}`:''}${g.sansPrix?`\n\n⚠️ ${g.sansPrix} séjour(s) sans prix : leur commission vaut 0.`:''}${g.menManquant?`\n\n⚠️ ${g.menManquant} séjour(s) sans barème ménage : ils valent 0.`:''}`))return;
   }
   const [d1]=factuBornes(factuMois);
   const lignes=g.lignes.filter(l=>!l.ov.exclue&&!l.annulee).map(l=>({
@@ -8572,16 +8606,56 @@ async function factuValider(k){
       {headers:{...hd(),'Prefer':'resolution=merge-duplicates,return=minimal'}});
     toast('✓ Facture figée — '+eur(g.total));
   }catch(e){toast('Impossible de figer la facture');logAndShowErr&&logAndShowErr(e);return;}
-  await factuPennylane(k);
+  if(g.cfg.groupe){
+    alert(`Facture figée.\n\n${g.nom} fait partie du groupe « ${g.cfg.groupe} » : la facture Pennylane se génère pour tout le groupe, avec le bouton 🔒 du bandeau du groupe.`);
+    await loadFactu(); renderFactu();
+  }else{
+    await factuPennylane({livret_id:k});
+  }
+}
+
+/* ---------- Valider tout un groupe et générer UNE facture Pennylane ---------- */
+async function factuValiderGroupe(gr){
+  const grp=factuGroupes();
+  const membres=factuOrdreCles(grp).filter(k=>grp[k].cfg.groupe===gr);
+  if(!membres.length){toast('Aucun séjour pour ce groupe ce mois-ci');return;}
+  const ent=grp[membres[0]].cfg.entite==='jimadenton'?'JIMADENTON':'MATHEMIA';
+  const tot=membres.reduce((s,k)=>s+grp[k].total,0);
+  const detail=membres.map(k=>`• ${grp[k].nom} : ${eur(grp[k].total)}`).join('\n');
+  const dejaPl=membres.map(k=>factuFact[k]).find(f=>f&&f.pennylane&&f.pennylane.groupe===gr);
+  if(!await askConfirm(`Valider les ${membres.length} logements du groupe « ${gr} » et générer UNE facture Pennylane chez ${ent} ?\n\n${detail}\n\nTotal TTC : ${eur(tot)}${dejaPl?`\n\n⚠️ Une facture Pennylane existe déjà (${dejaPl.pennylane.invoice_number||('#'+dejaPl.pennylane.invoice_id)}) : un NOUVEAU brouillon sera créé, supprime l'ancien dans Pennylane.`:''}`))return;
+  const [d1]=factuBornes(factuMois);
+  try{
+    for(const k of membres){
+      const g=grp[k];
+      const lignes=g.lignes.filter(l=>!l.ov.exclue&&!l.annulee).map(l=>({
+        booking_id:l.r.booking_id,
+        nom:((l.r.first_name||'')+' '+(l.r.last_name||'')).trim(),
+        checkin:l.r.checkin, checkout:l.r.checkout, nuits:nuits(l.r),
+        pers:l.calc.pers, lits:l.calc.lits, prix:l.calc.prix,
+        com:+(l.calc.com||0).toFixed(2), blanch:+l.calc.blanch.toFixed(2),
+        menage:+(l.calc.men||0).toFixed(2), total:+l.calc.total.toFixed(2)}));
+      const totaux={commission:+g.com.toFixed(2), blanchisserie:+g.blanch.toFixed(2),
+                    menage:+g.men.toFixed(2), total:+g.total.toFixed(2), ht:+(g.total/1.2).toFixed(2),
+                    tva:+(g.total-g.total/1.2).toFixed(2), sejours:lignes.length,
+                    taux:g.cfg.commission, marge:g.cfg.marge_blanch, mode:g.cfg.mode||'standard'};
+      const numero=`BN-${factuMois.replace('-','')}-${(g.nom||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6)}`;
+      await axios.post(`${API}/factu_facture?on_conflict=livret_id,mois`,
+        {livret_id:k,mois:d1,numero,statut:'validee',totaux,lignes,pennylane:null,validee_at:new Date().toISOString()},
+        {headers:{...hd(),'Prefer':'resolution=merge-duplicates,return=minimal'}});
+    }
+  }catch(e){toast('Impossible de figer le groupe');logAndShowErr&&logAndShowErr(e);return;}
+  toast('✓ Groupe figé — '+eur(tot));
+  await factuPennylane({groupe:gr});
 }
 
 /* ---------- Génération du brouillon dans Pennylane (MATHEMIA ou JIMADENTON) ---------- */
-async function factuPennylane(k){
+async function factuPennylane(corps){
   toast('Envoi à Pennylane…');
   let d={};
   try{
     const [d1]=factuBornes(factuMois);
-    const r=await axios.post(`${SB}/functions/v1/pennylane-invoice`,{livret_id:k,mois:d1},
+    const r=await axios.post(`${SB}/functions/v1/pennylane-invoice`,{...corps,mois:d1},
       {headers:{'apikey':KEY,'Authorization':`Bearer ${cu.access_token}`,'Content-Type':'application/json'},timeout:30000});
     d=r.data||{};
   }catch(e){d=(e.response&&e.response.data)||{error:'réseau'};}
@@ -8591,6 +8665,8 @@ async function factuPennylane(k){
     const ent=d.entite==='jimadenton'?'JIMADENTON':'MATHEMIA';
     if(d.error==='customer_manquant')alert(`Facture figée, mais pas envoyée à Pennylane :\nrenseigne l'ID client Pennylane du propriétaire dans l'onglet Paramètres (compte ${ent}).`);
     else if(d.error==='token_manquant')alert(`Facture figée, mais pas envoyée à Pennylane :\nle token API ${ent} n'est pas encore enregistré dans le coffre.`);
+    else if(d.error==='entites_differentes')alert('Les logements de ce groupe ne facturent pas sous la même société (Mathemia / Jimadenton).\nHarmonise l\'entité dans Paramètres avant de générer la facture.');
+    else if(d.error==='groupe_incomplet')alert('Certains logements du groupe n\'ont pas de facture figée ce mois-ci :\n'+(Array.isArray(d.detail)?d.detail.join(', '):'')+'\n\nRepasse par le bouton du groupe.');
     else alert('Facture figée, mais Pennylane a répondu une erreur :\n'+(typeof d.detail==='string'?d.detail:JSON.stringify(d.detail||d.error||'').slice(0,300)));
   }
   await loadFactu(); renderFactu();
@@ -8694,7 +8770,7 @@ async function factuPdf(k){
 /* ---------- Récap du mois, ligne par ligne, tous logements ---------- */
 function factuRecapHtml(){
   const grp=factuGroupes();
-  const cles=Object.keys(grp).sort((a,b)=>grp[a].nom.localeCompare(grp[b].nom,'fr'));
+  const cles=factuOrdreCles(grp);
   let tCom=0,tBl=0,tMen=0,tTot=0,tSej=0;
   let corps='';
   cles.forEach(k=>{
@@ -8707,7 +8783,7 @@ function factuRecapHtml(){
     const regle=menage
       ?`ménage au séjour (${mb.n1||'?'} / ${mb.n2||'?'} / ${mb.n3||'?'} € selon 1, 2 ou 3 nuits et +)`
       :`${Math.round(g.cfg.commission*100)} % · blanchisserie ×${g.cfg.marge_blanch}`;
-    corps+=`<tr class="grp"><td colspan="6">${fesc(g.nom)} — ${regle} — ${g.cfg.entite==='jimadenton'?'JIMADENTON':'MATHEMIA'}</td>
+    corps+=`<tr class="grp"><td colspan="6">${fesc(g.nom)} — ${regle} — ${g.cfg.entite==='jimadenton'?'JIMADENTON':'MATHEMIA'}${g.cfg.groupe?` — groupe ${fesc(g.cfg.groupe)}`:''}</td>
       <td class="r">${eur(g.com)}</td><td class="r">${eur(g.blanch+g.men)}</td><td class="r b">${eur(g.total)}</td></tr>`;
     lignes.forEach(l=>{
       corps+=`<tr><td class="num">${l.r.booking_id}</td>
@@ -8769,7 +8845,11 @@ async function factuRecapPdf(){
    Objectif : voir en une phrase ce qu'on prend, et ce qu'un séjour consomme.
    L'exemple chiffré est calculé en direct, donc il bouge avec les réglages. */
 function factuParamHtml(){
-  const cfg=[...factuCfg].sort((a,b)=>((a.livrets||{}).nom||'').localeCompare(((b.livrets||{}).nom||''),'fr'));
+  const cfg=[...factuCfg].sort((a,b)=>{
+    const oa=isFinite(parseInt(a.ordre))?parseInt(a.ordre):999, ob=isFinite(parseInt(b.ordre))?parseInt(b.ordre):999;
+    if(oa!==ob)return oa-ob;
+    return ((a.livrets||{}).nom||'').localeCompare(((b.livrets||{}).nom||''),'fr');
+  });
   const tousOuverts=cfg.length&&cfg.every(c=>factuParamOuverts[c.livret_id]);
   let h=`<div style="display:flex;align-items:flex-start;gap:12px;margin:0 0 16px">
     <p class="fa-note" style="margin:0;flex:1">Valeurs reprises de tes classeurs, sur le dernier mois rempli.
@@ -8821,9 +8901,10 @@ function factuParamHtml(){
           onchange="factuSetCfg('${id}','nb_cuisine',this.value)"><span>${pl(c.nb_cuisine,'service cuisine','services cuisine')}</span>
       </div>`;
     const ouvert=!!factuParamOuverts[id];
-    const resume=estMenage
+    const resume=(estMenage
       ?`ménage ${men.n1||'?'} / ${men.n2||'?'} / ${men.n3||'?'} €`
-      :`${Math.round(c.commission*1000)/10} % · linge ×${m}`;
+      :`${Math.round(c.commission*1000)/10} % · linge ×${m}`)
+      +(c.groupe?` · groupe ${fesc(c.groupe)}`:'');
     h+=`<div class="fa-card" id="fa-card-${id}">
       <div class="fa-card-t" onclick="factuParamToggle('${id}')">${fesc((c.livrets||{}).nom||'—')}
         <span class="fa-card-res">${resume} · ${c.entite==='jimadenton'?'JIMADENTON':'MATHEMIA'}</span>
@@ -8841,6 +8922,12 @@ function factuParamHtml(){
         </select><span>compte Pennylane qui facture</span>
         <input class="fa-in" type="text" style="width:110px" value="${fesc(c.pennylane_customer_id||'')}" placeholder="ID client"
           onchange="factuSetTxt('${id}','pennylane_customer_id',this.value)"><span>n° client Pennylane du propriétaire</span>
+      </div>
+      <div class="fa-ln">
+        <input class="fa-in" type="number" min="0" value="${isFinite(parseInt(c.ordre))?parseInt(c.ordre):999}"
+          onchange="factuSetCfg('${id}','ordre',this.value)"><span>ordre de facturation</span>
+        <input class="fa-in" type="text" style="width:130px" value="${fesc(c.groupe||'')}" placeholder="aucun"
+          onchange="factuSetTxt('${id}','groupe',this.value.trim())"><span>groupe de facturation (même nom = une seule facture Pennylane)</span>
       </div>`;
     h+=`</div>`;
   });
